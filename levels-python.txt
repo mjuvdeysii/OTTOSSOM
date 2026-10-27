@@ -1,0 +1,38 @@
+ 0 none   par  4 ok
+ 1 none   par  6 ok
+ 2 none   par  9 ok
+ 3 none   par  9 ok
+ 4 none   par  9 ok
+ 5 none   par 14 ok
+ 6 none   par 15 ok
+ 7 none   par 15 ok
+ 8 none   par 15 ok
+ 9 none   par 15 ok
+10 none   par  5 ok
+11 none   par  7 ok
+12 none   par 15 ok
+13 none   par 15 ok
+14 none   par 15 ok
+15 none   par 15 ok
+16 none   par 15 ok
+17 none   par 15 ok
+18 none   par 15 ok
+19 shadow par  7 ok
+20 shadow par 13 ok
+21 shadow par 14 ok
+22 shadow par 14 ok
+23 shadow par 15 ok
+24 shadow par 15 ok
+25 shadow par 15 ok
+26 shadow par 15 ok
+27 shadow par 15 ok
+28 pair   par  6 ok
+29 pair   par 12 ok
+30 pair   par 15 ok
+31 pair   par 15 ok
+32 pair   par 15 ok
+33 pair   par 15 ok
+34 pair   par 15 ok
+35 pair   par 15 ok
+36 pair   par 15 ok
+37 levels, 0 mismatches
