@@ -120,8 +120,8 @@ final class StoryScene: SKScene {
         return s
     }
     private func follow(_ s: SKSpriteNode, _ n: SKSpriteNode, lamp from: CGPoint) {
-        s.run(.repeatForever(.sequence([.run { [weak s, weak n] in
-            guard let s, let n else { return }
+        s.run(.repeatForever(.sequence([.run { [weak self, weak s, weak n] in
+            guard let self, let s, let n else { return }
             s.texture = n.texture
             let dx = n.position.x - from.x
             s.position = CGPoint(x: from.x + dx * 1.6, y: self.wallBottom + self.u * 0.15)

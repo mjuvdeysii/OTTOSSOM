@@ -13,6 +13,8 @@ final class BoardScene: SKScene {
     var selected: Actor = .moss { didSet { updateSelection(); onChange?() } }
     var onChange: (() -> Void)?
     var onWin: ((Int) -> Void)?
+    /// The hint found no way on from here: the board needs an undo.
+    var onStuck: (() -> Void)?
     private(set) var finished = false
 
     // MARK: geometry
@@ -39,6 +41,7 @@ final class BoardScene: SKScene {
     private let dark = SKSpriteNode()
     private let darkOld = SKSpriteNode()
     private let warm = SKSpriteNode()
+    private let warmOld = SKSpriteNode()
     private let halo = SKSpriteNode()
     private let hintNode = SKNode()
     private var busy = false
@@ -187,8 +190,8 @@ final class BoardScene: SKScene {
             n.name = "crown"; world.addChild(n); goalNodes.append(n)
         }
         // light
-        for n in [dark, darkOld] { n.anchorPoint = .zero; n.position = .zero; n.zPosition = 50; n.removeFromParent(); world.addChild(n) }
-        warm.anchorPoint = .zero; warm.position = .zero; warm.zPosition = 51; warm.blendMode = .add; warm.removeFromParent(); world.addChild(warm)
+        for (n, zz) in [(darkOld, 50.0), (dark, 50.5)] { n.anchorPoint = .zero; n.position = .zero; n.zPosition = zz; n.removeFromParent(); world.addChild(n) }
+        for (n, zz) in [(warmOld, 51.0), (warm, 51.5)] { n.anchorPoint = .zero; n.position = .zero; n.zPosition = zz; n.blendMode = .add; n.removeFromParent(); world.addChild(n) }
         halo.texture = Glow.radial; halo.blendMode = .add; halo.zPosition = 900; halo.removeFromParent(); world.addChild(halo)
         // figures
         for (n, figure) in [(moss, true), (otto, true), (mosto, true)] {
@@ -244,45 +247,64 @@ final class BoardScene: SKScene {
             let on = lit & bit(i) == 0 || state.mosto == i
             let filled = state.filled & bit(i) != 0
             n.run(.fadeAlpha(to: filled ? 0 : on ? 1 : 0.08, duration: dur))
-            if filled { showSunk(i) }
         }
-        // blocks
+        // blocks. A block moves one cell, pushed by Moss in the swipe's direction or by Mosto in its mirror.
+        let dirs: [Dir] = moved.map { [$0.dir, $0.dir.mirrored] } ?? []
+        func cell(_ n: SKSpriteNode) -> Int { (n.userData?["cell"] as? Int) ?? -1 }
+        func shifted(_ i: Int, _ d: Dir, _ k: Int) -> Int {
+            let x = board.x(i) + d.dx * k, y = board.y(i) + d.dy * k
+            return board.inside(x, y) ? y * board.width + x : -1
+        }
         var have = blockNodes
         var used: [SKSpriteNode] = []
-        for i in 0..<(board.width * board.height) where state.blocks & bit(i) != 0 {
-            let n: SKSpriteNode
-            if let o = old, o.blocks & bit(i) == 0, let m = moved {
-                // the block that was pushed: find the node at the cell behind
-                let from = i - m.dir.dx - m.dir.dy * board.width
-                if let k = have.firstIndex(where: { $0.userData?["cell"] as? Int == from }) { n = have.remove(at: k) }
-                else if let k = have.firstIndex(where: { state.blocks & bit(($0.userData?["cell"] as? Int) ?? -1) == 0 }) { n = have.remove(at: k) }
-                else { n = newBlock(i) }
-            } else if let k = have.firstIndex(where: { $0.userData?["cell"] as? Int == i }) {
-                n = have.remove(at: k)
-            } else if let k = have.firstIndex(where: { state.blocks & bit(($0.userData?["cell"] as? Int) ?? -1) == 0 }) {
-                n = have.remove(at: k)
-            } else { n = newBlock(i) }
-            n.userData = ["cell": i]
+        let all = 0..<(board.width * board.height)
+        // blocks that stayed keep their nodes
+        for i in all where state.blocks & bit(i) != 0 && (old == nil || old!.blocks & bit(i) != 0) {
+            if let k = have.firstIndex(where: { cell($0) == i }) { used.append(have.remove(at: k)) }
+        }
+        // blocks that arrived: take the node from the cell behind, in either push direction
+        for i in all where state.blocks & bit(i) != 0 && !used.contains(where: { cell($0) == i }) {
+            var n: SKSpriteNode?
+            for d in dirs {
+                let from = shifted(i, d, -1)
+                if from >= 0, state.blocks & bit(from) == 0, let k = have.firstIndex(where: { cell($0) == from }) { n = have.remove(at: k); break }
+            }
+            if n == nil, let k = have.firstIndex(where: { state.blocks & bit(cell($0)) == 0 }) { n = have.remove(at: k) }
+            let node = n ?? newBlock(i)
+            node.userData = ["cell": i]
+            used.append(node)
+        }
+        for n in used {
+            let i = cell(n)
             n.zPosition = z(i, 2)
             n.run(.move(to: point(i), duration: dur))
             n.alpha = 1
-            used.append(n)
         }
+        // blocks that left: pushed into a gap, they drop and become floor
         for n in have {
-            // pushed into a gap: it drops and becomes floor
-            if let cell = n.userData?["cell"] as? Int, let m = moved {
-                let into = cell + m.dir.dx + m.dir.dy * board.width
-                if into >= 0 && into < board.ground.count && state.filled & bit(into) != 0 {
-                    n.zPosition = z(into, -1)
-                    n.run(.sequence([.move(to: point(into), duration: dur), .group([.moveBy(x: 0, y: -c * 0.25, duration: dur), .fadeOut(withDuration: dur)]), .removeFromParent()]))
-                    showSunk(into, after: dur * 2)
-                    continue
+            let from = cell(n)
+            var into = -1
+            if let o = old {
+                for d in dirs {
+                    let q = shifted(from, d, 1)
+                    if q >= 0, state.filled & bit(q) != 0, o.filled & bit(q) == 0 { into = q; break }
                 }
             }
-            n.removeFromParent()
+            if into >= 0 && dur > 0 {
+                n.zPosition = z(into, -1)
+                n.run(.sequence([.move(to: point(into), duration: dur), .group([.moveBy(x: 0, y: -c * 0.25, duration: dur), .fadeOut(withDuration: dur)]), .removeFromParent()]))
+            } else {
+                n.removeFromParent()
+            }
         }
         blockNodes = used
-        for (i, n) in sunkNodes { n.isHidden = state.filled & bit(i) == 0 }
+        // filled gaps, always derived from the state: a new one fades in after its block has dropped
+        for i in all where board.ground[i] == .gap || board.ground[i] == .bridge {
+            let filled = state.filled & bit(i) != 0
+            let fresh = filled && old != nil && old!.filled & bit(i) == 0 && dur > 0
+            if filled { showSunk(i, after: fresh ? dur * 2 : 0, animated: fresh) }
+            else if let n = sunkNodes[i] { n.removeAllActions(); n.alpha = 0; n.isHidden = true }
+        }
         // figures
         place(moss, at: state.moss, name: mossName(moved: moved, old: old), dur: dur, hop: moved?.actor == .moss)
         place(otto, at: state.otto, name: ottoName(), dur: dur, hop: false)
@@ -316,16 +338,18 @@ final class BoardScene: SKScene {
         return n
     }
 
-    private func showSunk(_ i: Int, after: TimeInterval = 0) {
+    private func showSunk(_ i: Int, after: TimeInterval = 0, animated: Bool = false) {
         if sunkNodes[i] == nil {
             let n = SKSpriteNode(texture: Art.texture("prop_blockTop"))
             n.size = CGSize(width: c * 0.98, height: c * K * 0.98)
             n.position = point(i); n.zPosition = 12
             world.addChild(n); sunkNodes[i] = n
-            n.alpha = 0
         }
-        sunkNodes[i]!.isHidden = false
-        sunkNodes[i]!.run(.sequence([.wait(forDuration: after), .fadeIn(withDuration: 0.12)]))
+        let n = sunkNodes[i]!
+        n.isHidden = false
+        n.removeAllActions()
+        if animated { n.alpha = 0; n.run(.sequence([.wait(forDuration: after), .fadeIn(withDuration: 0.12)])) }
+        else { n.alpha = 1 }
     }
 
     private func place(_ n: SKSpriteNode, at i: Int, name: String, dur: TimeInterval, hop: Bool) {
@@ -359,12 +383,16 @@ final class BoardScene: SKScene {
 
     private func updateLight(_ lit: UInt64, animated: Bool) {
         let images = Glow.lightMaps(board: board, lit: lit, otto: state.otto, facing: state.facing, cell: c, k: K, left: left, top: top, size: size)
-        darkOld.texture = dark.texture; darkOld.size = size; darkOld.alpha = animated && !reduceMotion ? 1 : 0
+        let fade = animated && !reduceMotion && dark.texture != nil
+        darkOld.texture = dark.texture; darkOld.size = size; darkOld.alpha = fade ? 1 : 0
+        warmOld.texture = warm.texture; warmOld.size = size; warmOld.alpha = fade ? 1 : 0
         dark.texture = SKTexture(image: images.dark); dark.size = size
         warm.texture = SKTexture(image: images.warm); warm.size = size
-        if animated && !reduceMotion {
+        for n in [dark, warm, darkOld, warmOld] { n.removeAllActions() }
+        if fade {
             dark.alpha = 0; warm.alpha = 0
-            dark.run(.fadeIn(withDuration: 0.22)); warm.run(.fadeIn(withDuration: 0.22)); darkOld.run(.fadeOut(withDuration: 0.22))
+            for n in [dark, warm] { n.run(.fadeIn(withDuration: 0.22)) }
+            for n in [darkOld, warmOld] { n.run(.fadeOut(withDuration: 0.22)) }
         } else { dark.alpha = 1; warm.alpha = 1 }
     }
 
@@ -425,6 +453,7 @@ final class BoardScene: SKScene {
     // MARK: input
 
     private var touchStart: CGPoint?
+    private var pending: Move?
     private var touchActor: Actor?
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -448,6 +477,7 @@ final class BoardScene: SKScene {
         // screen directions: up the screen is north (away from the viewer)
         let d: Dir = abs(dx) > abs(dy) ? (dx > 0 ? .e : .w) : (dy > 0 ? .n : .s)
         let who = touchActor ?? selected
+        if busy { pending = Move(actor: who, dir: d); return }
         if who != selected { selected = who }
         perform(Move(actor: who, dir: d))
     }
@@ -459,9 +489,9 @@ final class BoardScene: SKScene {
             let q = point(i)
             return abs(p.x - q.x) < c * 0.55 && p.y > q.y - c * 0.35 && p.y < q.y + c * 1.0
         }
-        if hit(otto, state.otto) { return .otto }
-        if hit(moss, state.moss) { return .moss }
-        return nil
+        let m = hit(moss, state.moss), o = hit(otto, state.otto)
+        if m && o { return board.y(state.moss) >= board.y(state.otto) ? .moss : .otto }   // the one in front is on top
+        return m ? .moss : o ? .otto : nil
     }
 
     // MARK: moves
@@ -484,6 +514,11 @@ final class BoardScene: SKScene {
             guard let self else { return }
             self.busy = false
             if self.board.won(self.state) { self.win() }
+            else if let p = self.pending {
+                self.pending = nil
+                if p.actor != self.selected { self.selected = p.actor }
+                self.perform(p)
+            }
             self.onChange?()
         }
         onChange?()
@@ -500,6 +535,7 @@ final class BoardScene: SKScene {
 
     func undo() {
         guard !busy, !finished, let prev = history.popLast() else { return }
+        hintNode.removeAllChildren(); pending = nil
         moves.removeLast()
         state = prev
         Progress.shared.saveMoves(info.id, moves.map { $0.description })
@@ -510,6 +546,7 @@ final class BoardScene: SKScene {
 
     func restart() {
         guard !busy, !finished, !history.isEmpty else { return }
+        hintNode.removeAllChildren(); pending = nil
         state = board.start; history = []; moves = []
         Progress.shared.saveMoves(info.id, [])
         mosto.isHidden = board.mode == .none
@@ -525,8 +562,8 @@ final class BoardScene: SKScene {
         DispatchQueue.global(qos: .userInitiated).async {
             let m = Solver.hint(b, from: s)
             DispatchQueue.main.async { [weak self] in
-                guard let self, let m, self.state == s else { return }
-                self.showHint(m)
+                guard let self, self.state == s else { return }
+                if let m { self.showHint(m) } else { self.onStuck?() }
             }
         }
     }
@@ -578,13 +615,13 @@ final class BoardScene: SKScene {
             bead.setScale(0.6); bead.alpha = 0
             world.addChild(bead)
             seq = [.wait(forDuration: 0.5),
-                   .run { bead.run(.group([.fadeIn(withDuration: 0.2), .moveBy(x: 0, y: self.c * 0.5, duration: 0.6)])) },
+                   .run { [c = self.c] in bead.run(.group([.fadeIn(withDuration: 0.2), .moveBy(x: 0, y: c * 0.5, duration: 0.6)])) },
                    .run { [weak self] in self?.mosto.run(.group([.move(to: away, duration: 0.6), .fadeOut(withDuration: 0.6)])) },
                    .wait(forDuration: 0.9)]
         } else {
             let goal = goalNodes.first { $0.name == "bead" }
             seq = [.wait(forDuration: 0.25),
-                   .run { goal?.removeAllActions(); goal?.run(.group([.moveBy(x: 0, y: self.c * 0.9, duration: 0.7), .sequence([.wait(forDuration: 0.4), .fadeOut(withDuration: 0.3)])])) },
+                   .run { [c = self.c] in goal?.removeAllActions(); goal?.run(.group([.moveBy(x: 0, y: c * 0.9, duration: 0.7), .sequence([.wait(forDuration: 0.4), .fadeOut(withDuration: 0.3)])])) },
                    .wait(forDuration: 0.8)]
             if board.mode == .pair { mosto.texture = Art.texture("mosto_found") }
         }

@@ -36,9 +36,19 @@ struct NightlyView: View {
         }
         .task {
             let night = Nightly.night()
-            let made = await Task.detached(priority: .userInitiated) { Nightly.make(night: night) }.value
+            // tonight's board is made once and kept, so coming back finds the same board and the moves made on it
+            let key = "nightly.board.\(night)"
+            var made: LevelInfo? = UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(LevelInfo.self, from: $0) }
+            if made == nil {
+                made = await Task.detached(priority: .userInitiated) { Nightly.make(night: night) }.value
+                if let made, let data = try? JSONEncoder().encode(made) { UserDefaults.standard.set(data, forKey: key) }
+            }
             if let made {
-                if lastNight != night { Progress.shared.saveMoves(made.id, []); lastNight = night }
+                if lastNight != night {
+                    Progress.shared.saveMoves(made.id, [])
+                    if !lastNight.isEmpty { UserDefaults.standard.removeObject(forKey: "nightly.board.\(lastNight)") }
+                    lastNight = night
+                }
                 info = made
             } else { failed = true }
         }

@@ -8,11 +8,14 @@ final class PlayModel: ObservableObject {
     @Published var selected: Actor = .moss
     @Published var won = false
     @Published var canUndo = false
+    @Published var stuck = 0
 
     init(info: LevelInfo) {
         scene = BoardScene(info: info, size: UIScreen.main.bounds.size)
         sync()
         scene.onChange = { [weak self] in self?.sync() }
+        scene.onWin = { [weak self] _ in self?.won = true }
+        scene.onStuck = { [weak self] in self?.stuck += 1 }
     }
     func sync() {
         moves = scene.moves.count; selected = scene.selected; canUndo = !scene.moves.isEmpty
@@ -59,9 +62,7 @@ struct LevelView: View {
             .padding(.horizontal, 12)
             if showWin { winCard.transition(.opacity.combined(with: .scale(scale: 0.96))) }
         }
-        .onAppear {
-            model.scene.onWin = { _ in withAnimation(.easeOut(duration: 0.3)) { showWin = true } }
-        }
+        .onChange(of: model.won) { _, won in if won { withAnimation(.easeOut(duration: 0.3)) { showWin = true } } }
     }
 
     private var topBar: some View {
@@ -77,6 +78,7 @@ struct LevelView: View {
             Spacer()
             icon("lightbulb", "提示") { model.scene.hint() }
             icon("arrow.uturn.backward", "撤销") { model.scene.undo() }.disabled(!model.canUndo).opacity(model.canUndo ? 1 : 0.35)
+                .phaseAnimator([1.0, 1.25, 1.0], trigger: model.stuck) { v, k in v.scaleEffect(k) }   // no way on: undo is the way
             icon("arrow.counterclockwise", "重来") { model.scene.restart() }.disabled(!model.canUndo).opacity(model.canUndo ? 1 : 0.35)
         }
         .padding(.top, 6)
