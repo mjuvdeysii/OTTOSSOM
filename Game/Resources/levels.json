@@ -1,0 +1,1130 @@
+[
+ {
+  "id": 0,
+  "chapter": 0,
+  "rows": [
+   "..*..",
+   ".....",
+   ".....",
+   "..M..",
+   "..O.."
+  ],
+  "facing": "S",
+  "mode": "none",
+  "par": 4,
+  "solution": [
+   "ON",
+   "MN",
+   "MN",
+   "MN"
+  ]
+ },
+ {
+  "id": 1,
+  "chapter": 1,
+  "rows": [
+   "..*..",
+   ".....",
+   "__.__",
+   ".....",
+   ".M..O"
+  ],
+  "facing": "W",
+  "mode": "none",
+  "par": 6,
+  "solution": [
+   "MN",
+   "ME",
+   "MN",
+   "ON",
+   "MN",
+   "MN"
+  ]
+ },
+ {
+  "id": 2,
+  "chapter": 1,
+  "rows": [
+   "..._O",
+   "..._*",
+   "..._.",
+   "..._.",
+   "..._.",
+   "M....",
+   "..._."
+  ],
+  "facing": "W",
+  "mode": "none",
+  "par": 9,
+  "solution": [
+   "OS",
+   "ME",
+   "ME",
+   "ME",
+   "ME",
+   "MN",
+   "MN",
+   "MN",
+   "MN"
+  ]
+ },
+ {
+  "id": 3,
+  "chapter": 1,
+  "rows": [
+   ".T*..",
+   ".....",
+   "__.__",
+   "...TT",
+   ".....",
+   ".....",
+   "..MO."
+  ],
+  "facing": "E",
+  "mode": "none",
+  "par": 9,
+  "solution": [
+   "MN",
+   "OW",
+   "OW",
+   "ON",
+   "MN",
+   "MN",
+   "MN",
+   "MN",
+   "MN"
+  ]
+ },
+ {
+  "id": 4,
+  "chapter": 1,
+  "rows": [
+   "O.._*",
+   "T.._.",
+   "____.",
+   "..._.",
+   ".T._.",
+   "..._.",
+   "..._M",
+   "T.._."
+  ],
+  "facing": "E",
+  "mode": "none",
+  "par": 9,
+  "solution": [
+   "OE",
+   "OS",
+   "MN",
+   "MN",
+   "MN",
+   "OE",
+   "MN",
+   "MN",
+   "MN"
+  ]
+ },
+ {
+  "id": 5,
+  "chapter": 1,
+  "rows": [
+   ".....",
+   "....T",
+   "...O*",
+   "..._.",
+   ".____",
+   ".....",
+   ".TM.T"
+  ],
+  "facing": "E",
+  "mode": "none",
+  "par": 14,
+  "solution": [
+   "ON",
+   "ON",
+   "OS",
+   "MN",
+   "MW",
+   "MW",
+   "MN",
+   "OW",
+   "MN",
+   "MN",
+   "ME",
+   "ME",
+   "ME",
+   "ME"
+  ]
+ },
+ {
+  "id": 6,
+  "chapter": 1,
+  "rows": [
+   "......",
+   ".....*",
+   "......",
+   "_.__._",
+   "......",
+   "T.T...",
+   "MO.T.."
+  ],
+  "facing": "E",
+  "mode": "none",
+  "par": 15,
+  "solution": [
+   "ON",
+   "ON",
+   "ME",
+   "ON",
+   "MN",
+   "ON",
+   "MN",
+   "ME",
+   "OE",
+   "ME",
+   "ME",
+   "MN",
+   "MN",
+   "MN",
+   "ME"
+  ]
+ },
+ {
+  "id": 7,
+  "chapter": 1,
+  "rows": [
+   "......",
+   ".O...*",
+   "._....",
+   "._....",
+   "..T...",
+   ".T.T..",
+   ".M...."
+  ],
+  "facing": "W",
+  "mode": "none",
+  "par": 15,
+  "solution": [
+   "ON",
+   "ON",
+   "OS",
+   "MW",
+   "MN",
+   "MN",
+   "MN",
+   "MN",
+   "MN",
+   "ME",
+   "ME",
+   "OE",
+   "ME",
+   "ME",
+   "ME"
+  ]
+ },
+ {
+  "id": 8,
+  "chapter": 1,
+  "rows": [
+   "...*.",
+   "._..T",
+   "O_T..",
+   "._T..",
+   "._...",
+   "._M.."
+  ],
+  "facing": "S",
+  "mode": "none",
+  "par": 15,
+  "solution": [
+   "ME",
+   "ON",
+   "ON",
+   "ON",
+   "OE",
+   "OE",
+   "OE",
+   "OS",
+   "ME",
+   "MN",
+   "MN",
+   "MN",
+   "MW",
+   "MN",
+   "MN"
+  ]
+ },
+ {
+  "id": 9,
+  "chapter": 1,
+  "rows": [
+   "....T",
+   ".....",
+   ".....",
+   ".....",
+   "_O__.",
+   "...T.",
+   "*..TM"
+  ],
+  "facing": "S",
+  "mode": "none",
+  "par": 15,
+  "solution": [
+   "ON",
+   "ON",
+   "ON",
+   "OE",
+   "MN",
+   "MN",
+   "MN",
+   "MW",
+   "MW",
+   "MW",
+   "OS",
+   "MS",
+   "MS",
+   "MS",
+   "MW"
+  ]
+ },
+ {
+  "id": 10,
+  "chapter": 2,
+  "rows": [
+   "..*..",
+   ".....",
+   "_____",
+   "..B..",
+   ".M.O."
+  ],
+  "facing": "N",
+  "mode": "none",
+  "par": 5,
+  "solution": [
+   "ME",
+   "MN",
+   "MN",
+   "MN",
+   "MN"
+  ]
+ },
+ {
+  "id": 11,
+  "chapter": 2,
+  "rows": [
+   "..*..",
+   "..B..",
+   ".....",
+   "__.__",
+   ".M.O."
+  ],
+  "facing": "N",
+  "mode": "none",
+  "par": 7,
+  "solution": [
+   "ME",
+   "MN",
+   "MN",
+   "ME",
+   "MN",
+   "MW",
+   "MN"
+  ]
+ },
+ {
+  "id": 12,
+  "chapter": 2,
+  "rows": [
+   "...OT.",
+   "......",
+   "....*.",
+   "______",
+   "......",
+   "__B___",
+   ".T...B",
+   "..M.B."
+  ],
+  "facing": "W",
+  "mode": "none",
+  "par": 15,
+  "solution": [
+   "OS",
+   "OS",
+   "OE",
+   "OE",
+   "OE",
+   "OS",
+   "OS",
+   "MN",
+   "MN",
+   "OW",
+   "MN",
+   "MN",
+   "MN",
+   "ME",
+   "ME"
+  ]
+ },
+ {
+  "id": 13,
+  "chapter": 2,
+  "rows": [
+   "..B*..",
+   "......",
+   "______",
+   "....TO",
+   "......",
+   "......",
+   ".B....",
+   ".M...."
+  ],
+  "facing": "W",
+  "mode": "none",
+  "par": 15,
+  "solution": [
+   "MN",
+   "OS",
+   "OS",
+   "OW",
+   "MN",
+   "MN",
+   "MN",
+   "OW",
+   "MN",
+   "MN",
+   "OW",
+   "ON",
+   "ME",
+   "ME",
+   "MN"
+  ]
+ },
+ {
+  "id": 14,
+  "chapter": 2,
+  "rows": [
+   "...T*",
+   ".....",
+   ".....",
+   "_____",
+   ".....",
+   "B....",
+   ".MTTO"
+  ],
+  "facing": "N",
+  "mode": "none",
+  "par": 15,
+  "solution": [
+   "ON",
+   "ON",
+   "OW",
+   "MW",
+   "MN",
+   "MN",
+   "MN",
+   "MN",
+   "MN",
+   "ME",
+   "ON",
+   "ME",
+   "ME",
+   "ME",
+   "MN"
+  ]
+ },
+ {
+  "id": 15,
+  "chapter": 2,
+  "rows": [
+   ".._.*",
+   ".._..",
+   ".._..",
+   "_____",
+   ".._.B",
+   ".._..",
+   ".MOB."
+  ],
+  "facing": "W",
+  "mode": "none",
+  "par": 15,
+  "solution": [
+   "MN",
+   "OW",
+   "OW",
+   "MS",
+   "OE",
+   "ME",
+   "ME",
+   "MN",
+   "ME",
+   "MN",
+   "MN",
+   "MN",
+   "ON",
+   "MN",
+   "MN"
+  ]
+ },
+ {
+  "id": 16,
+  "chapter": 2,
+  "rows": [
+   "..B..",
+   ".....",
+   "..O..",
+   "....*",
+   "_____",
+   ".B..M",
+   ".....",
+   "....."
+  ],
+  "facing": "N",
+  "mode": "none",
+  "par": 15,
+  "solution": [
+   "OE",
+   "OE",
+   "OE",
+   "OS",
+   "MS",
+   "MW",
+   "MW",
+   "MW",
+   "MN",
+   "OW",
+   "MN",
+   "MN",
+   "ME",
+   "ME",
+   "ME"
+  ]
+ },
+ {
+  "id": 17,
+  "chapter": 2,
+  "rows": [
+   "*T...",
+   ".....",
+   ".....",
+   ".....",
+   "_T___",
+   ".TB..",
+   "O....",
+   "...M."
+  ],
+  "facing": "S",
+  "mode": "none",
+  "par": 15,
+  "solution": [
+   "OE",
+   "MN",
+   "MW",
+   "OE",
+   "MN",
+   "OE",
+   "OE",
+   "ON",
+   "MN",
+   "MN",
+   "MN",
+   "MN",
+   "MW",
+   "MW",
+   "MN"
+  ]
+ },
+ {
+  "id": 18,
+  "chapter": 2,
+  "rows": [
+   ".....",
+   "O....",
+   ".*...",
+   ".....",
+   "_____",
+   "....B",
+   "MTB.."
+  ],
+  "facing": "E",
+  "mode": "none",
+  "par": 15,
+  "solution": [
+   "OS",
+   "MN",
+   "ME",
+   "ME",
+   "ME",
+   "MS",
+   "ME",
+   "MN",
+   "OE",
+   "MN",
+   "MN",
+   "MN",
+   "MW",
+   "MW",
+   "MW"
+  ]
+ },
+ {
+  "id": 19,
+  "chapter": 3,
+  "rows": [
+   "X....",
+   ".....",
+   ".....",
+   "....M",
+   "...O."
+  ],
+  "facing": "N",
+  "mode": "shadow",
+  "par": 7,
+  "solution": [
+   "MN",
+   "MN",
+   "MN",
+   "MW",
+   "MW",
+   "MW",
+   "MW"
+  ]
+ },
+ {
+  "id": 20,
+  "chapter": 3,
+  "rows": [
+   "..X..",
+   ".....",
+   "_=_=_",
+   ".....",
+   ".M.O."
+  ],
+  "facing": "N",
+  "mode": "shadow",
+  "par": 13,
+  "solution": [
+   "ON",
+   "OE",
+   "ME",
+   "MN",
+   "MS",
+   "ON",
+   "MN",
+   "MS",
+   "MN",
+   "MS",
+   "OW",
+   "MN",
+   "MW"
+  ]
+ },
+ {
+  "id": 21,
+  "chapter": 3,
+  "rows": [
+   ".....",
+   "._BX.",
+   "..T..",
+   "___=.",
+   ".....",
+   "....T",
+   "OT.M."
+  ],
+  "facing": "E",
+  "mode": "shadow",
+  "par": 14,
+  "solution": [
+   "ON",
+   "ON",
+   "OE",
+   "MN",
+   "MN",
+   "ME",
+   "MN",
+   "MN",
+   "MW",
+   "OE",
+   "OE",
+   "ON",
+   "MN",
+   "MN"
+  ]
+ },
+ {
+  "id": 22,
+  "chapter": 3,
+  "rows": [
+   ".....",
+   ".....",
+   "=_.==",
+   ".....",
+   "....X",
+   "..TTB",
+   "T.MOB"
+  ],
+  "facing": "N",
+  "mode": "shadow",
+  "par": 14,
+  "solution": [
+   "OW",
+   "MW",
+   "OW",
+   "MN",
+   "OW",
+   "ON",
+   "MN",
+   "MN",
+   "ON",
+   "ME",
+   "MN",
+   "MN",
+   "ME",
+   "ME"
+  ]
+ },
+ {
+  "id": 23,
+  "chapter": 3,
+  "rows": [
+   "..B.T.",
+   "......",
+   "......",
+   "......",
+   ".T..X.",
+   "__.=__",
+   ".MT...",
+   "....O."
+  ],
+  "facing": "W",
+  "mode": "shadow",
+  "par": 15,
+  "solution": [
+   "MS",
+   "ME",
+   "ON",
+   "ME",
+   "MN",
+   "ME",
+   "OE",
+   "OE",
+   "MS",
+   "ON",
+   "MN",
+   "MS",
+   "MN",
+   "OW",
+   "MW"
+  ]
+ },
+ {
+  "id": 24,
+  "chapter": 3,
+  "rows": [
+   "T....",
+   "....X",
+   ".....",
+   "_==__",
+   "..OM.",
+   ".....",
+   ".B..."
+  ],
+  "facing": "S",
+  "mode": "shadow",
+  "par": 15,
+  "solution": [
+   "MS",
+   "MW",
+   "ME",
+   "OS",
+   "OS",
+   "ON",
+   "MN",
+   "OE",
+   "ME",
+   "MS",
+   "MS",
+   "MW",
+   "MN",
+   "ON",
+   "MN"
+  ]
+ },
+ {
+  "id": 25,
+  "chapter": 3,
+  "rows": [
+   "..X..",
+   ".....",
+   ".T=_=",
+   ".....",
+   ".O...",
+   "....M"
+  ],
+  "facing": "W",
+  "mode": "shadow",
+  "par": 15,
+  "solution": [
+   "OE",
+   "MN",
+   "MN",
+   "MS",
+   "MS",
+   "MW",
+   "MW",
+   "ON",
+   "MN",
+   "MN",
+   "OS",
+   "OS",
+   "MS",
+   "ON",
+   "MN"
+  ]
+ },
+ {
+  "id": 26,
+  "chapter": 3,
+  "rows": [
+   "..=..",
+   ".....",
+   "..=..",
+   ".._..",
+   "O.=..",
+   ".._..",
+   "X.=M."
+  ],
+  "facing": "W",
+  "mode": "shadow",
+  "par": 15,
+  "solution": [
+   "ON",
+   "ON",
+   "ON",
+   "OE",
+   "MN",
+   "MN",
+   "MN",
+   "MN",
+   "MN",
+   "MW",
+   "MW",
+   "OS",
+   "MS",
+   "MS",
+   "MS"
+  ]
+ },
+ {
+  "id": 27,
+  "chapter": 3,
+  "rows": [
+   ".._..",
+   "..X..",
+   ".._T.",
+   "=__._",
+   ".....",
+   ".M.O."
+  ],
+  "facing": "W",
+  "mode": "shadow",
+  "par": 15,
+  "solution": [
+   "MN",
+   "ME",
+   "ME",
+   "ON",
+   "MN",
+   "OE",
+   "MS",
+   "ON",
+   "MN",
+   "MS",
+   "MN",
+   "MS",
+   "MW",
+   "OW",
+   "MW"
+  ]
+ },
+ {
+  "id": 28,
+  "chapter": 4,
+  "rows": [
+   "C._.*",
+   ".._..",
+   ".._..",
+   ".X_M.",
+   ".._O."
+  ],
+  "facing": "N",
+  "mode": "pair",
+  "par": 6,
+  "solution": [
+   "ME",
+   "MN",
+   "ON",
+   "MN",
+   "ON",
+   "MN"
+  ]
+ },
+ {
+  "id": 29,
+  "chapter": 4,
+  "rows": [
+   "C...*",
+   ".....",
+   "_=_._",
+   ".....",
+   "X.MO."
+  ],
+  "facing": "N",
+  "mode": "pair",
+  "par": 12,
+  "solution": [
+   "MN",
+   "ME",
+   "ME",
+   "MW",
+   "MN",
+   "ON",
+   "MN",
+   "ON",
+   "MN",
+   "ME",
+   "MS",
+   "MN"
+  ]
+ },
+ {
+  "id": 30,
+  "chapter": 4,
+  "rows": [
+   "..C.*",
+   "...T.",
+   ".....",
+   "..X..",
+   "_==.=",
+   ".....",
+   ".OM.."
+  ],
+  "facing": "W",
+  "mode": "pair",
+  "par": 15,
+  "solution": [
+   "MN",
+   "MW",
+   "ON",
+   "ME",
+   "ON",
+   "OE",
+   "ME",
+   "MN",
+   "MN",
+   "OE",
+   "ON",
+   "MN",
+   "ME",
+   "MN",
+   "MN"
+  ]
+ },
+ {
+  "id": 31,
+  "chapter": 4,
+  "rows": [
+   "C..*.",
+   "T....",
+   ".....",
+   ".=_._",
+   ".....",
+   "....O",
+   "X..M."
+  ],
+  "facing": "S",
+  "mode": "pair",
+  "par": 15,
+  "solution": [
+   "MN",
+   "MN",
+   "OW",
+   "OW",
+   "ON",
+   "MN",
+   "ON",
+   "MN",
+   "ON",
+   "MW",
+   "ON",
+   "MN",
+   "ON",
+   "MN",
+   "ME"
+  ]
+ },
+ {
+  "id": 32,
+  "chapter": 4,
+  "rows": [
+   ".C*...",
+   "......",
+   "_.==__",
+   ".X....",
+   "...T..",
+   "....O.",
+   "......",
+   "...M.."
+  ],
+  "facing": "W",
+  "mode": "pair",
+  "par": 15,
+  "solution": [
+   "MN",
+   "OW",
+   "OW",
+   "ON",
+   "MW",
+   "MW",
+   "OE",
+   "MN",
+   "MN",
+   "ON",
+   "MN",
+   "MN",
+   "MN",
+   "ME",
+   "MN"
+  ]
+ },
+ {
+  "id": 33,
+  "chapter": 4,
+  "rows": [
+   "...C.",
+   ".....",
+   "._.=_",
+   "...*.",
+   ".....",
+   ".....",
+   "..XMO"
+  ],
+  "facing": "W",
+  "mode": "pair",
+  "par": 15,
+  "solution": [
+   "ON",
+   "MN",
+   "ON",
+   "ON",
+   "OS",
+   "MS",
+   "MN",
+   "MN",
+   "MN",
+   "ME",
+   "MW",
+   "MS",
+   "MS",
+   "MN",
+   "MN"
+  ]
+ },
+ {
+  "id": 34,
+  "chapter": 4,
+  "rows": [
+   ".O..*",
+   ".....",
+   "..X..",
+   "=__._",
+   "C..M.",
+   "....."
+  ],
+  "facing": "E",
+  "mode": "pair",
+  "par": 15,
+  "solution": [
+   "OS",
+   "MN",
+   "MN",
+   "OE",
+   "MN",
+   "MN",
+   "MW",
+   "ME",
+   "ME",
+   "MS",
+   "MS",
+   "MW",
+   "MN",
+   "MN",
+   "ME"
+  ]
+ },
+ {
+  "id": 35,
+  "chapter": 4,
+  "rows": [
+   "..*..",
+   ".C...",
+   ".....",
+   "_==._",
+   ".T.X.",
+   ".....",
+   "..OM."
+  ],
+  "facing": "N",
+  "mode": "pair",
+  "par": 15,
+  "solution": [
+   "OE",
+   "MN",
+   "MW",
+   "ME",
+   "ME",
+   "MS",
+   "MN",
+   "MN",
+   "ON",
+   "MW",
+   "MN",
+   "MN",
+   "MN",
+   "MN",
+   "MW"
+  ]
+ },
+ {
+  "id": 36,
+  "chapter": 4,
+  "rows": [
+   "..CT*.",
+   "......",
+   "......",
+   "=__._=",
+   "X.....",
+   ".....O",
+   "......",
+   "...M.."
+  ],
+  "facing": "W",
+  "mode": "pair",
+  "par": 15,
+  "solution": [
+   "OS",
+   "ME",
+   "MN",
+   "MN",
+   "MN",
+   "ME",
+   "MW",
+   "OW",
+   "MW",
+   "MN",
+   "ON",
+   "MN",
+   "MN",
+   "ME",
+   "MN"
+  ]
+ }
+]

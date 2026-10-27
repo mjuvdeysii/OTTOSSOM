@@ -1,0 +1,5 @@
+.DS_Store
+build/
+*.xcodeproj/
+__pycache__/
+Tools/fast/libfast.so

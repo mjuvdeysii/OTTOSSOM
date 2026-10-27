@@ -1,0 +1,144 @@
+name: iOS
+# Every push to main: check the levels with the Python reference, build and test the game in the iPhone simulator
+# (the Swift engine must solve every level to the same shortest solution), take screenshots of every screen, then
+# archive, sign and upload the build to TestFlight. Reports go to the ci-logs branch, screenshots to screens.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["README.md", "docs/**"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Levels (Python reference)
+        run: python3 Tools/check_levels.py Game/Resources/levels.json | tee levels-python.txt
+      - name: Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1); sudo xcode-select -s "$X"; xcodebuild -version
+          echo "::notice title=Xcode::$(xcodebuild -version | tr '\n' ' ')"
+          brew install xcodegen >/dev/null
+          xcodegen generate
+      - name: Test in the simulator
+        run: |
+          set -o pipefail
+          DEV=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys,re
+          d=json.load(sys.stdin)['devices']
+          c=[(k,x) for k,v in d.items() if 'iOS' in k for x in v if re.fullmatch(r'iPhone \\d+ Pro', x['name'])]
+          c.sort(key=lambda t:(t[0],t[1]['name'])); print(c[-1][1]['udid'])")
+          echo "$DEV" > sim.txt
+          echo "::notice title=Simulator::$DEV"
+          xcrun simctl boot "$DEV" 2>/dev/null || true
+          LEVEL_REPORT="$PWD/levels-swift.txt" xcodebuild test -project OTTOSSOM.xcodeproj -scheme OTTOSSOM -destination "id=$DEV" \
+            -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO 2>&1 | tee build.log | grep -E "error:|Test Case.*(passed|failed)|XCTAssert|\*\* " || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" build.log
+      - name: Screenshots
+        if: success()
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          DEV=$(cat sim.txt)
+          APP=$(find build/dd/Build/Products -maxdepth 3 -name OTTOSSOM.app -path "*iphonesimulator*" | head -1)
+          xcrun simctl install "$DEV" "$APP"
+          xcrun simctl status_bar "$DEV" override --time 21:30 2>/dev/null || true
+          xcrun simctl launch "$DEV" app.mossling.game -snapshots
+          DATA=$(xcrun simctl get_app_container "$DEV" app.mossling.game data)
+          mkdir -p shots; last=""
+          for i in $(seq 1 400); do
+            now=$(cat "$DATA/Documents/snap/now.txt" 2>/dev/null || true)
+            if [ -n "$now" ] && [ "$now" != "$last" ]; then
+              [ "$now" = "done" ] && break
+              xcrun simctl io "$DEV" screenshot "shots/$now.png" >/dev/null 2>&1; last="$now"; echo "shot $now"
+            fi
+            sleep 0.5
+          done
+          cp "$DATA"/Documents/snap/sheet_*.png shots/ 2>/dev/null || true
+          ls shots
+      - name: Report
+        if: always()
+        run: |
+          mkdir -p report
+          { echo "commit ${GITHUB_SHA}"; xcodebuild -version | tr '\n' ' '; echo
+            grep -q "TEST SUCCEEDED" build.log 2>/dev/null && echo "TEST SUCCEEDED" || echo "TEST FAILED"
+            echo "-- errors --"; grep -E "error:" build.log 2>/dev/null | sed "s#$PWD/##" | sort -u | head -80
+            echo "-- test failures --"; grep -E "XCTAssert|failed" build.log 2>/dev/null | sed "s#$PWD/##" | sort -u | head -40
+            echo "-- warnings (project files) --"; grep -E "warning:" build.log 2>/dev/null | grep "/Game/" | sed "s#$PWD/##" | sort -u | head -40
+          } > report/build.txt
+          cp levels-python.txt levels-swift.txt report/ 2>/dev/null || true
+          cp -r shots report/ 2>/dev/null || true
+          head -60 report/build.txt
+          grep -E "error:" build.log 2>/dev/null | sort -u | head -30 | while IFS= read -r l; do echo "::error::$l"; done
+          cp -r report /tmp/report
+          git config user.name "github-actions"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q --orphan logs-tmp && git rm -rqf --cached . && find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r /tmp/report/. . && git add -A && git commit -qm "ci report ${GITHUB_SHA}" && git push -qf origin logs-tmp:ci-logs
+
+  testflight:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      TEAM: ${{ secrets.APPLE_TEAM_ID }}
+      BUNDLE: app.mossling.game
+    steps:
+      - name: Secrets present?
+        if: env.ASC_KEY_ID == ''
+        run: echo "::warning title=TestFlight skipped::Add secrets ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, APPLE_TEAM_ID to this repository."
+      - uses: actions/checkout@v4
+        if: env.ASC_KEY_ID != ''
+      - name: Bundle ID and app record
+        if: env.ASC_KEY_ID != ''
+        run: |
+          pip3 install --quiet --break-system-packages pyjwt cryptography 2>/dev/null || pip3 install --quiet pyjwt cryptography
+          python3 Tools/asc.py ensure-bundle-ids "$BUNDLE"
+          python3 Tools/asc.py check-app "$BUNDLE"
+      - name: Archive and upload
+        if: env.ASC_KEY_ID != ''
+        run: |
+          set -o pipefail
+          X=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1); sudo xcode-select -s "$X"
+          brew install xcodegen >/dev/null && xcodegen generate
+          mkdir -p ~/private_keys && printf '%s' "$ASC_KEY_P8" > ~/private_keys/AuthKey_$ASC_KEY_ID.p8
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$HOME/private_keys/AuthKey_$ASC_KEY_ID.p8" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          BUILD=$((100 + ${{ github.run_number }}))
+          xcodebuild archive -project OTTOSSOM.xcodeproj -scheme OTTOSSOM -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath build/G.xcarchive DEVELOPMENT_TEAM="$TEAM" CURRENT_PROJECT_VERSION=$BUILD \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO 2>&1 | tee archive.log | grep -E "error:|\*\* " || true
+          grep -q "ARCHIVE SUCCEEDED" archive.log
+          codesign -f -s - build/G.xcarchive/Products/Applications/OTTOSSOM.app
+          cat > ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$TEAM</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath build/G.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/export "${AUTH[@]}" 2>&1 | tee export.log | grep -E "error:|Upload|\*\* " || true
+          grep -q "EXPORT SUCCEEDED" export.log
+          echo "::notice title=TestFlight::build $BUILD uploaded; it appears in TestFlight after Apple finishes processing (usually 10–30 minutes)"
+      - name: Report errors
+        if: failure()
+        run: cat archive.log export.log 2>/dev/null | grep -E "error:|Error|failed" | sort -u | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+      - name: Publish TestFlight report
+        if: always() && env.ASC_KEY_ID != ''
+        run: |
+          { echo "commit ${GITHUB_SHA}"; grep -h -E "error:|EXPORT SUCCEEDED|ARCHIVE SUCCEEDED|Upload" archive.log export.log 2>/dev/null | head -60; } > /tmp/tf.txt
+          git config user.name "github-actions"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q --orphan tf-tmp && git rm -rqf --cached . && find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp /tmp/tf.txt testflight.txt && git add -A && git commit -qm "testflight ${GITHUB_SHA}" && git push -qf origin tf-tmp:ci-logs-testflight
