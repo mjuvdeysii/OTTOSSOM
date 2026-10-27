@@ -125,7 +125,7 @@ final class StoryScene: SKScene {
             s.texture = n.texture
             let dx = n.position.x - from.x
             s.position = CGPoint(x: from.x + dx * 1.6, y: self.wallBottom + self.u * 0.15)
-        }, .wait(forDuration: 1 / 30)])), withKey: "follow")
+        }, .wait(forDuration: 1.0 / 30)])), withKey: "follow")
     }
 
     private func bead(at p: CGPoint, scale: CGFloat = 0.32, violet: Bool = false) -> SKSpriteNode {
@@ -291,7 +291,7 @@ final class StoryScene: SKScene {
             guard let self, let moss, let horned else { return }
             let dx = moss.position.x - lampAt.x
             horned.position = CGPoint(x: lampAt.x - dx * 1.6 + self.u * 0.9, y: self.wallBottom + self.u * 0.15 + (moss.position.y - self.tableY))
-        }, .wait(forDuration: 1 / 30)])))
+        }, .wait(forDuration: 1.0 / 30)])))
         horned.run(.sequence([.wait(forDuration: 0.8), .fadeAlpha(to: 0.5, duration: 0.6)]))
         hop(moss, to: size.width * 0.3, after: 1.2, hops: 2, dur: 0.8)
         set(moss, "moss_left", after: 1.2)
