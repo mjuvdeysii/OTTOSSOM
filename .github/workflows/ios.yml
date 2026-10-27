@@ -37,7 +37,7 @@ jobs:
           echo "$DEV" > sim.txt
           echo "::notice title=Simulator::$DEV"
           xcrun simctl boot "$DEV" 2>/dev/null || true
-          LEVEL_REPORT="$PWD/levels-swift.txt" xcodebuild test -project OTTOSSOM.xcodeproj -scheme OTTOSSOM -destination "id=$DEV" \
+          TEST_RUNNER_LEVEL_REPORT="$PWD/levels-swift.txt" xcodebuild test -project OTTOSSOM.xcodeproj -scheme OTTOSSOM -destination "id=$DEV" \
             -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO 2>&1 | tee build.log | grep -E "error:|Test Case.*(passed|failed)|XCTAssert|\*\* " || true
           grep -q "\*\* TEST SUCCEEDED \*\*" build.log
       - name: Screenshots

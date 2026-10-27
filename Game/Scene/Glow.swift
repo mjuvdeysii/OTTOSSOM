@@ -49,7 +49,7 @@ enum Glow {
         // 2. darkness with the mask cut out
         let dark = UIGraphicsImageRenderer(size: CGSize(width: W, height: H), format: fmt).image { r in
             let g = r.cgContext
-            g.setFillColor(UIColor(hex: 0x0B1030, alpha: 0.64).cgColor)
+            g.setFillColor(UIColor(hex: 0x0B1030, alpha: 0.72).cgColor)
             g.fill(CGRect(x: 0, y: 0, width: W, height: H))
             blurred.draw(in: CGRect(x: 0, y: 0, width: W, height: H), blendMode: .destinationOut, alpha: 0.92)
         }

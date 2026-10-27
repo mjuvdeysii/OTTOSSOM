@@ -54,8 +54,8 @@ final class StoryScene: SKScene {
         view.ignoresSiblingOrder = true
         addChild(stage)
         u = min(size.width / 4.2, 130)
-        tableY = size.height * 0.36
-        wallBottom = size.height * 0.5
+        tableY = size.height * 0.4
+        wallBottom = size.height * 0.55
         buildRoom(surface: ["finale": "desk", "ch3": "cushion", "ch2": "shelf"][name_] ?? "table")
         switch name_ {
         case "prologue": prologue()
@@ -83,9 +83,9 @@ final class StoryScene: SKScene {
         edge.anchorPoint = CGPoint(x: 0.5, y: 1); edge.size = CGSize(width: size.width * 1.2, height: size.height * 0.04)
         edge.position = CGPoint(x: size.width / 2, y: size.height * 0.2); edge.zPosition = 1
         stage.addChild(edge)
-        darkness.anchorPoint = .zero; darkness.size = size; darkness.zPosition = 500; darkness.alpha = 0.35
+        darkness.anchorPoint = .zero; darkness.size = size; darkness.zPosition = 50; darkness.alpha = 0.35
         stage.addChild(darkness)
-        halo.blendMode = .add; halo.color = BoardScene.lamp; halo.colorBlendFactor = 1; halo.zPosition = 501
+        halo.blendMode = .add; halo.color = BoardScene.lamp; halo.colorBlendFactor = 1; halo.zPosition = 60   // under the figures: it lights the table and the wall, not their faces
         halo.size = CGSize(width: u * 4.4, height: u * 4.4); halo.alpha = 0.55
         stage.addChild(halo)
     }
@@ -178,6 +178,13 @@ final class StoryScene: SKScene {
     private func lamp(_ alpha: CGFloat, dark: CGFloat, after t: TimeInterval, dur: TimeInterval = 1.0) {
         halo.run(.sequence([.wait(forDuration: t), .fadeAlpha(to: alpha, duration: dur)]))
         darkness.run(.sequence([.wait(forDuration: t), .fadeAlpha(to: dark, duration: dur)]))
+        // the figures stand above the darkness layer, so the night reaches them as the moon's blue
+        run(.sequence([.wait(forDuration: t), .run { [weak self] in
+            guard let self else { return }
+            for case let n as SKSpriteNode in self.stage.children where n.zPosition >= 80 && n.zPosition < 200 {
+                n.run(.colorize(with: BoardScene.moon, colorBlendFactor: min(0.85, dark * 0.95), duration: dur))
+            }
+        }]))
     }
     private func finish(after t: TimeInterval) {
         run(.sequence([.wait(forDuration: reduce ? min(t, 1.0) : t), .run { [weak self] in self?.onDone?() }]))

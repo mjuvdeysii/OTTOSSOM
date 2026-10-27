@@ -17,7 +17,9 @@ final class BoardScene: SKScene {
 
     // MARK: geometry
     static let tilt: CGFloat = 35 * .pi / 180
-    private let K = sin(BoardScene.tilt)                 // a cell's depth on screen, as a share of its width
+    /// A cell's depth on screen, as a share of its width. Deeper than the 35° camera would draw it (0.57), so that a
+    /// figure standing behind another stays in view; the eye reads the table as a little steeper, never as wrong.
+    private let K: CGFloat = 0.72
     private let H = cos(BoardScene.tilt)                 // one unit of height on screen
     private var c: CGFloat = 60                          // cell width in points
     private var left: CGFloat = 0, top: CGFloat = 0

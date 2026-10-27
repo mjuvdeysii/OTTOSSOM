@@ -19,7 +19,7 @@ enum Art {
         static let feetY: CGFloat = 0.7309
     }
     /// How large the companions stand on a one-unit cell.
-    static let figureScale: CGFloat = 0.62
+    static let figureScale: CGFloat = 0.56
 
     private static var cache: [String: SKTexture] = [:]
     private static var images: [String: UIImage] = [:]
