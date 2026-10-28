@@ -154,7 +154,7 @@ struct Stage {
 
     /// Where someone's head is, for a speech-free bubble: heroes by their letter, story actors by name, townsfolk by theirs.
     func head(_ who: String) -> CGPoint? {
-        let tall: [String: CGFloat] = ["o": 1.75, "m": 1.15, "x": 1.35, "moss": 1.15, "mosto": 1.35]
+        let tall: [String: CGFloat] = ["o": 2.2, "m": 1.45, "x": 1.7, "moss": 1.45, "mosto": 1.7]
         let heroKey: [String: Hero] = ["o": .otto, "m": .moss, "x": .mosto]
         var at: CGPoint? = nil
         if who == "x", let t = f.state.thief { at = CGPoint(x: t.x, y: t.y) }
@@ -210,7 +210,12 @@ struct Stage {
     }
 
     /// A sprite standing on a cell: its feet on the cell centre, scaled T / pc. "_w" is laid over "_n" where it is lit.
+    /// The figures are drawn a little larger than the world, so faces read on a phone; props keep the world's scale.
+    func scaleOf(_ name: String) -> CGFloat {
+        name.hasPrefix("otto") || name.hasPrefix("moss") || name.hasPrefix("mosto") || name.hasPrefix("npc") ? s * 1.3 : s
+    }
     func sprite(_ ctx: inout GraphicsContext, _ name: String, at p: CGPoint, lift: CGFloat = 0, warm: Bool = true, flip: Bool = false) {
+        let s = scaleOf(name)
         guard let m = Art.meta[name] else { return }
         let g = ground(p)
         let n = Art.image(name + "_n") ?? Art.image(name)
@@ -255,6 +260,7 @@ struct Stage {
     func bulb(_ ctx: inout GraphicsContext, _ sprite: String, at p: CGPoint, lift: CGFloat) {
         guard let m = Art.meta[sprite], let b = m.bead else { return }
         let g = ground(p)
+        let s = scaleOf(sprite)
         let c = CGPoint(x: g.x + (b.x - m.feet.x) * s, y: g.y + (b.y - m.feet.y) * s - lift * T)
         var a = ctx; a.blendMode = .plusLighter
         let R = T * 0.55
@@ -267,6 +273,7 @@ struct Stage {
     func spark(_ ctx: inout GraphicsContext, _ holder: String, at p: CGPoint, lift: CGFloat = 0) {
         guard let m = Art.meta[holder], let hold = m.hold else { return }
         let g = ground(p)
+        let s = scaleOf(holder)
         let c = CGPoint(x: g.x + (hold.x - m.feet.x) * s, y: g.y + (hold.y - m.feet.y) * s - lift * T)
         var a = ctx; a.blendMode = .plusLighter
         let R = T * 0.7
