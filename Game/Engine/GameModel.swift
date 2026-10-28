@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct Actor {
+struct Figure {
     var kind: String
     var x: Double
     var y: Double
@@ -33,7 +33,7 @@ final class GameModel: ObservableObject {
     @Published var hist: [GameState] = []
     @Published var active = 0
     @Published var face: [Int] = [1, 1, 1]
-    @Published var actors: [String: Actor] = [:]
+    @Published var actors: [String: Figure] = [:]
     @Published var mainDim = false
     @Published var dark: Double = 0
     @Published var hideHeroes = false
@@ -151,7 +151,7 @@ final class GameModel: ObservableObject {
             } else if let ms = c["wait"] as? Int {
                 try? await Task.sleep(for: .milliseconds(ms))
             } else if let k = c["actor"] as? String, let at = c["at"] as? [Int], at.count == 2 {
-                actors[k] = Actor(kind: k, x: Double(at[0]), y: Double(at[1]))
+                actors[k] = Figure(kind: k, x: Double(at[0]), y: Double(at[1]))
             } else if let k = c["walk"] as? String, let path = c["path"] as? [[Int]] {
                 await walkActor(k, path, c["ms"] as? Int ?? 400)
             } else if let k = c["remove"] as? String {

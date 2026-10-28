@@ -9,7 +9,7 @@ struct BoardFrame {
     let t: Double              // seconds, for idle motion
     let active: Int
     let face: [Int]
-    let actors: [String: Actor]
+    let actors: [String: Figure]
     let mainDim: Bool
     let dark: Double
     let hideHeroes: Bool
