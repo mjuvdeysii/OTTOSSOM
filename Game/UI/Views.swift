@@ -48,6 +48,7 @@ struct RootView: View {
 }
 
 struct TitleView: View {
+    static let trio = Room(RoomSpec(id: "title", name: "", day: 60, map: ["#####", "#OMX#", "#####"]))
     @EnvironmentObject var router: Router
     @State private var tick = 0
     @State private var allOpen = false
@@ -57,8 +58,7 @@ struct TitleView: View {
             TimelineView(.animation) { tl in
                 Canvas { ctx, size in
                     let t = tl.date.timeIntervalSinceReferenceDate
-                    let spec = RoomSpec(id: "title", name: "", day: 60, map: ["#####", "#OMX#", "#####"])
-                    let room = Room(spec)
+                    let room = TitleView.trio
                     let frame = BoardFrame(room: room, state: room.start, prev: nil, e: 1, t: t, active: -1, face: [1, 1, -1], actors: [:],
                                            mainDim: false, dark: 0, hideHeroes: false, bulbR: 0, doudou: false)
                     let T = min(size.width / 3.2, 110)
@@ -84,7 +84,7 @@ struct TitleView: View {
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("第\(["一", "二", "三", "四"][ch.id - 1])章").font(.caption).foregroundStyle(mutedText)
+                                Text("第\(["一", "二", "三", "四"][ch.id - 1])章 · \(ch.steps.filter { $0.cut == nil }.count) 间").font(.caption).foregroundStyle(mutedText)
                                 Text(ch.title).font(.system(size: 20, weight: .semibold, design: .serif)).foregroundStyle(open ? .white : mutedText)
                             }
                             Spacer()
@@ -122,12 +122,25 @@ struct GameView: View {
                 Text("第 \(model.room.spec.day) 天 · \(model.room.spec.name)").font(.caption).foregroundStyle(mutedText)
             }
             .foregroundStyle(.white)
+            HStack(spacing: 6) {
+                ForEach(Array(model.chapter.steps.enumerated()).filter { $0.element.cut == nil }, id: \.offset) { i, _ in
+                    Capsule().fill(i < model.stepIndex ? gold : i == model.stepIndex ? Color.white.opacity(0.85) : Color.white.opacity(0.15))
+                        .frame(height: 4)
+                }
+                Text("\(model.state.steps) 步 · 最少 \(model.room.spec.par ?? 0)").font(.caption.monospacedDigit()).foregroundStyle(mutedText)
+                    .fixedSize()
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("本章第 \(model.chapter.steps[0..<min(model.stepIndex + 1, model.chapter.steps.count)].filter { $0.cut == nil }.count) 间，已走 \(model.state.steps) 步，最少 \(model.room.spec.par ?? 0) 步")
             board
             Text(model.hint).font(.footnote).foregroundStyle(mutedText).frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 20)
                 .accessibilityAddTraits(.updatesFrequently)
             if let d = model.dialog { dialogView(d) } else { controls }
             HStack {
                 Button(soundOn ? "声音：开" : "声音：关") { soundOn.toggle(); Sound.shared.enabled = soundOn }
+                Spacer()
+                Button { model.requestHint() } label: { Label("提示", systemImage: "lightbulb") }
+                    .disabled(!model.canPlay || model.dialog != nil)
                 Spacer()
                 Button("怎么玩") { showRules = true }
             }
@@ -153,7 +166,9 @@ struct GameView: View {
                 let eased = 1 - pow(1 - e, 3)
                 let frame = BoardFrame(room: r, state: model.state, prev: model.prev, e: eased, t: now.timeIntervalSinceReferenceDate,
                                        active: model.active, face: model.face, actors: model.actors, mainDim: model.mainDim, dark: model.dark,
-                                       hideHeroes: model.hideHeroes, bulbR: model.bulbR, doudou: Progress.shared.flags.contains("doudou"))
+                                       hideHeroes: model.hideHeroes, bulbR: model.bulbR, doudou: Progress.shared.flags.contains("doudou"),
+                                       hint: model.hintMark, dots: model.pathDots,
+                                       tap: model.tapMark.map { ($0.p, now.timeIntervalSince($0.at)) })
                 Canvas { ctx, _ in
                     var c = ctx
                     c.translateBy(x: (geo.size.width - T * CGFloat(r.w)) / 2, y: 0)
@@ -177,7 +192,29 @@ struct GameView: View {
                     .transition(.opacity)
                 }
             }
+            .overlay(alignment: .top) {
+                if let b = model.banner, model.card == nil {
+                    Text(b).font(.system(size: 15, weight: .semibold, design: .serif)).foregroundStyle(.white).tracking(3)
+                        .padding(.horizontal, 16).padding(.vertical, 7)
+                        .background(.black.opacity(0.55), in: Capsule())
+                        .padding(.top, 10)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .overlay {
+                if let c = model.cleared {
+                    VStack(spacing: 6) {
+                        Text(c.steps <= c.par ? "完美" : "过关").font(.system(size: 30, weight: .semibold, design: .serif)).foregroundStyle(gold)
+                        Text(c.steps <= c.par ? "\(c.steps) 步，正好是最少步数" : "\(c.steps) 步 · 最少 \(c.par) 步").font(.callout).foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 26).padding(.vertical, 16)
+                    .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 16))
+                    .transition(.scale(scale: 0.85).combined(with: .opacity))
+                }
+            }
             .animation(.easeInOut(duration: 0.45), value: model.card)
+            .animation(.spring(duration: 0.4), value: model.banner)
+            .animation(.spring(duration: 0.4), value: model.cleared)
         }
         .aspectRatio(CGFloat(r.w) / CGFloat(r.h), contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 12))

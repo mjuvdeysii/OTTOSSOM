@@ -20,6 +20,10 @@ struct CardInfo: Equatable {
     var sub: String
 }
 
+struct ClearInfo: Equatable { var steps: Int; var par: Int }
+struct HintMark: Equatable { var hero: Int; var verb: Verb; var target: Pt? }
+struct TapMark: Equatable { var p: Pt; var at: Date }
+
 /// One chapter being played: the room, its state, the story scripts and the player's taps.
 @MainActor
 final class GameModel: ObservableObject {
@@ -44,6 +48,12 @@ final class GameModel: ObservableObject {
     @Published var busy = false
     @Published var finished = false
     @Published var walking = false
+    @Published var banner: String?
+    @Published var cleared: ClearInfo?
+    @Published var hintMark: HintMark?
+    @Published var pathDots: [Pt] = []
+    @Published var tapMark: TapMark?
+    @Published var hintsUsed = 0
     private var dialogCont: CheckedContinuation<Int, Never>?
     private var started = false
 
@@ -80,6 +90,7 @@ final class GameModel: ObservableObject {
         guard let spec = Content.rooms[id] else { return }
         let r = Room(spec)
         room = r; state = r.start; prev = nil; hist = []; active = 0; actors = [:]
+        hintMark = nil; pathDots = []; cleared = nil
         dark = 0; bulbR = Double(r.rOtto); hint = ""; hideHeroes = false
         mainDim = (id == "top" && chapter.id == 1 && stepIndex > 4)
         Sound.shared.hum(state.bulb)
@@ -97,8 +108,17 @@ final class GameModel: ObservableObject {
             return
         }
         load(st.room ?? "top")
+        showBanner(room.spec.name)
         if let i = st.intro { await run(i) }
         busy = false
+    }
+
+    private func showBanner(_ text: String) {
+        banner = text
+        Task {
+            try? await Task.sleep(for: .milliseconds(1800))
+            if banner == text { banner = nil }
+        }
     }
 
     private func advance() {
@@ -109,7 +129,11 @@ final class GameModel: ObservableObject {
     private func roomCleared() async {
         busy = true
         Sound.shared.win(); Haptic.success()
-        try? await Task.sleep(for: .milliseconds(350))
+        hintMark = nil; pathDots = []
+        cleared = ClearInfo(steps: state.steps, par: room.spec.par ?? state.steps)
+        try? await Task.sleep(for: .milliseconds(1700))
+        cleared = nil
+        try? await Task.sleep(for: .milliseconds(250))
         if let o = chapter.steps[stepIndex].outro { await run(o) }
         advance()
         await enterStep()
@@ -228,6 +252,57 @@ final class GameModel: ObservableObject {
         Sound.shared.hum(false)
     }
 
+    // MARK: hints
+    func verbText(_ v: Verb) -> String {
+        switch v {
+        case .up: return "往上走"
+        case .down: return "往下走"
+        case .left: return "往左走"
+        case .right: return "往右走"
+        case .bulb: return state.bulb ? "关上灯珠" : "打开灯珠"
+        case .light: return "点灯"
+        case .take: return "抓光"
+        case .give: return "放光"
+        }
+    }
+    func heroName(_ h: Hero) -> String { h == .otto ? "Otto" : h == .moss ? "Moss" : "Mosto" }
+
+    func requestHint() {
+        guard canPlay, !walking else { return }
+        hintsUsed += 1
+        if room.needKey && !room.keyGiven && room.lampsOK(state) {
+            hint = room.spec.id == "gate" ? "提示：灯都亮了，去找老韩说话。" : "提示：先去摸一摸石碑。"
+            return
+        }
+        let spec = room.spec, st = state, key = room.keyGiven, atStart = hist.isEmpty
+        hint = "想一想……"
+        busy = true
+        Task {
+            let res = await Task.detached(priority: .userInitiated) { () -> Solver.Result? in
+                let r = Room(spec); r.keyGiven = key || r.needKey
+                return Solver.search(r, from: st, cap: 350_000)
+            }.value
+            busy = false
+            var move: (Int, Verb)? = res?.path.first
+            if move == nil, atStart, let first = spec.solution?.first {
+                let parts = first.split(separator: ":")
+                if parts.count == 2, let ci = Int(parts[0]), let v = Verb(rawValue: String(parts[1])) { move = (ci, v) }
+            }
+            guard let m = move else {
+                hint = hist.isEmpty ? "这一间路太多，先自己试试。" : "从这里走不出去了。撤回几步，或者重来。"
+                return
+            }
+            let ci = m.0, v = m.1
+            if ci != active { active = ci }
+            let target = v.delta.map { state.c[ci] + $0 }
+            hintMark = HintMark(hero: ci, verb: v, target: target)
+            let who: String = room.heroes.count > 1 ? heroName(room.heroes[ci]) : ""
+            let left: Int = res?.path.count ?? (spec.par ?? 0)
+            hint = "提示：\(who)\(verbText(v))。还差 \(left) 步。"
+            Haptic.light()
+        }
+    }
+
     // MARK: play
     var canPlay: Bool { dialog == nil && !busy && card == nil }
     var hero: Hero { room.heroes[active] }
@@ -236,6 +311,7 @@ final class GameModel: ObservableObject {
     func apply(_ v: Verb) -> Bool {
         var ev: [Event] = []
         guard let n = room.step(state, active, v, &ev) else { return false }
+        hintMark = nil
         hist.append(state)
         prev = state
         state = n
@@ -352,6 +428,7 @@ final class GameModel: ObservableObject {
     /// A tap on the board, in tile coordinates.
     func tap(_ p: Pt) {
         guard canPlay, !walking else { return }
+        tapMark = TapMark(p: p, at: Date())
         if let i = state.c.firstIndex(of: p), room.heroes.count > 1 { select(i); return }
         let t = room.tile(p)
         if adjacent(p) {
@@ -397,9 +474,14 @@ final class GameModel: ObservableObject {
 
     private func walk(_ verbs: [Verb]) {
         walking = true
+        var dots: [Pt] = []; var p = state.c[active]
+        for v in verbs { p = p + v.delta!; dots.append(p) }
+        pathDots = dots
         Task {
+            defer { pathDots = [] }
             for (i, v) in verbs.enumerated() {
                 guard canPlay else { break }
+                if !pathDots.isEmpty { pathDots.removeFirst() }
                 if !apply(v) {
                     let n = state.c[active] + v.delta!
                     if i == verbs.count - 1 && room.tile(n) == .exit { exitRefused() } else { Sound.shared.no() }

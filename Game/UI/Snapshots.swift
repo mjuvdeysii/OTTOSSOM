@@ -14,7 +14,7 @@ enum Snapshots {
 
     static func run(_ router: Router) async {
         Sound.shared.enabled = false
-        router.screen = .title; await wait(2.5); say("00_title"); await wait(2.0)
+        router.screen = .title; await wait(4.5); say("00_title"); await wait(2.0)
         for ch in Content.chapters {
             for (i, st) in ch.steps.enumerated() {
                 guard let room = st.room, st.cut == nil else { continue }

@@ -15,6 +15,9 @@ struct BoardFrame {
     let hideHeroes: Bool
     let bulbR: Double
     let doudou: Bool
+    var hint: HintMark? = nil
+    var dots: [Pt] = []
+    var tap: (Pt, Double)? = nil
 }
 
 private extension Color {
@@ -85,9 +88,37 @@ struct Painter {
                 if a.kind == "moss" { self.moss(&c, p, alpha: a.alpha) } else { self.mosto(&c, p, alpha: a.alpha, carry: a.carry) }
             }))
         }
+        guides(&ctx)
         for it in items.sorted(by: { $0.0 < $1.0 }) { it.1(&ctx) }
         darkness(&ctx)
         glow(&ctx)
+        hintMarks(&ctx)
+    }
+
+    /// Path preview dots and the tap ripple, under the figures.
+    func guides(_ ctx: inout GraphicsContext) {
+        for (k, p) in f.dots.enumerated() {
+            let c = CGPoint(x: (CGFloat(p.x) + 0.5) * T, y: (CGFloat(p.y) + 0.55) * T)
+            let r = T * (k == f.dots.count - 1 ? 0.1 : 0.06)
+            ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .color(Pal.gold.opacity(0.75)))
+        }
+        if let tp = f.tap, tp.1 < 0.45 {
+            let p = tp.0, k = tp.1 / 0.45
+            let c = CGPoint(x: (CGFloat(p.x) + 0.5) * T, y: (CGFloat(p.y) + 0.5) * T)
+            let r = T * (0.2 + 0.35 * CGFloat(k))
+            ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .color(Color.white.opacity(0.5 * (1 - k))), lineWidth: 2)
+        }
+    }
+
+    /// The hint: a pulsing ring on the hero to move and on the tile to step to.
+    func hintMarks(_ ctx: inout GraphicsContext) {
+        guard let h = f.hint, h.hero < f.state.c.count else { return }
+        let pulse = 0.55 + 0.45 * sin(f.t * 6)
+        let hp = f.state.c[h.hero]
+        for p in [hp] + (h.target.map { [$0] } ?? []) {
+            let rr = CGRect(x: CGFloat(p.x) * T + 3, y: CGFloat(p.y) * T + 3, width: T - 6, height: T - 6)
+            ctx.stroke(Path(roundedRect: rr, cornerRadius: T * 0.2), with: .color(Pal.gold.opacity(pulse)), lineWidth: 2.5)
+        }
     }
 
     // MARK: tiles

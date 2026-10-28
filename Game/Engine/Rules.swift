@@ -258,12 +258,18 @@ final class Room {
     static func verbs(_ h: Hero) -> [Verb] { h == .otto ? [.bulb, .light] : h == .mosto ? [.take, .give] : [] }
 }
 
-/// Breadth-first search for the shortest solution — the CI judge for every room.
+/// Breadth-first search for the shortest solution — the CI judge for every room, and the in-game hint.
 enum Solver {
-    struct Result { var path: [(Int, Verb)]; var states: Int }
+    struct Result: Sendable { var path: [(Int, Verb)]; var states: Int }
+
     static func solve(_ spec: RoomSpec, cap: Int = 800_000) -> Result? {
         let r = Room(spec); r.keyGiven = true
-        let start = r.start
+        return search(r, from: r.start, cap: cap)
+    }
+
+    /// Shortest solution from any state of a room (uses the room's current key state).
+    static func search(_ r: Room, from start: GameState, cap: Int) -> Result? {
+        var start = start; start.steps = 0
         if r.won(start) { return Result(path: [], states: 1) }
         var acts: [(Int, Verb)] = []
         for (ci, h) in r.heroes.enumerated() { for v in Verb.moves + Room.verbs(h) { acts.append((ci, v)) } }
