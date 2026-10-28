@@ -184,7 +184,7 @@ struct TitleWorld: View {
                     let o = CGPoint(x: (size.width - T * 5) / 2, y: size.height * 0.36)
                     let frame = BoardFrame(room: room, state: room.start, prev: nil, e: 1, t: tl.date.timeIntervalSinceReferenceDate, active: -1,
                                            face: [1, 1, -1], actors: [:], mainDim: false, dark: 0, hideHeroes: true, bulbR: 0, doudou: false,
-                                           extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height), emotes: model.emotes)
+                                           extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height))
                     var c = ctx
                     c.translateBy(x: o.x, y: o.y)
                     let p = Painter(f: frame, T: T)

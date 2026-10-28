@@ -15,6 +15,7 @@ if [ "$what" = rooms ] || [ "$what" = all ]; then
   rooms="$*"
   [ -z "$rooms" ] && rooms=$(python3 -c "import json;print(' '.join(json.load(open('Game/Resources/rooms.json'))['rooms']))")
   for r in $rooms; do
+    if [ -n "$SKIP_DONE" ] && [ -f "$OUT/bg_$r.jpg" ]; then continue; fi
     t0=$(date +%s)
     python3 Tools/art/scene3d.py "$r" "$OUT/bg_$r.jpg" --bg --samples "$SAMPLES" > /tmp/art_$r.log 2>&1 || { echo "FAIL $r"; tail -5 /tmp/art_$r.log; continue; }
     echo "$r $(( $(date +%s) - t0 ))s"

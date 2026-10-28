@@ -101,53 +101,101 @@ final class Sound {
         }
     }
 
+    /// Each chapter has its own written theme, built from the three characters' voices (the character bible):
+    /// Otto a low warm hum (C3), Moss a short bright pluck (G5), Mosto a long tone that slides up from a semitone below.
+    /// 0 = title (all three, sparse), 1 = Otto, 2 = Moss, 3 = Mosto, 4 = the chase (all three, together).
+    private enum Timbre { case hum, pluck, glide, pad }
+    private struct Note { var at: Double; var len: Double; var midi: Int; var voice: Timbre; var vol: Float }
+
+    private static func score(_ theme: Int) -> (bpm: Double, beats: Double, notes: [Note]) {
+        var n: [Note] = []
+        func add(_ v: Timbre, _ vol: Float, _ seq: [(Double, Double, Int)]) { for (a, l, m) in seq { n.append(Note(at: a, len: l, midi: m, voice: v, vol: vol)) } }
+        // pads: a slow progression under everything (C, Am, F, G — the lamp-lit town)
+        let padC = [48, 52, 55], padAm = [45, 48, 52], padF = [41, 45, 48], padG = [43, 47, 50], padEm = [40, 43, 47]
+        func pads(_ chords: [[Int]], _ vol: Float) { for (i, c) in chords.enumerated() { for m in c { n.append(Note(at: Double(i) * 4, len: 4.3, midi: m, voice: .pad, vol: vol)) } } }
+        // Otto: slow, low, warm — it rises a little and settles, like someone too tired to sing loud
+        let otto: [(Double, Double, Int)] = [(0, 2, 48), (2, 1, 52), (3, 1, 55), (4, 3, 57), (7, 1, 55), (8, 2, 53), (10, 2, 52), (12, 4, 50),
+                                              (16, 2, 48), (18, 1, 52), (19, 1, 55), (20, 2, 60), (22, 2, 59), (24, 3, 57), (27, 1, 55), (28, 4, 48)]
+        // Moss: quick and curious, a little figure that keeps poking at the same note
+        let moss: [(Double, Double, Int)] = [(0, 0.5, 79), (0.5, 0.5, 81), (1, 0.5, 79), (2, 0.5, 76), (3, 1, 79), (4, 0.5, 84), (4.5, 0.5, 83), (5, 1, 81),
+                                              (6, 0.5, 79), (7, 1, 76), (8, 0.5, 79), (8.5, 0.5, 81), (9, 0.5, 84), (10, 1, 86), (11, 0.5, 84), (12, 2, 79),
+                                              (16, 0.5, 79), (16.5, 0.5, 79), (17, 0.5, 81), (18, 1, 76), (20, 0.5, 74), (20.5, 0.5, 76), (21, 1, 79), (22, 2, 81),
+                                              (24, 0.5, 84), (25, 0.5, 81), (26, 0.5, 79), (27, 1, 76), (28, 2, 79), (30, 1, 74)]
+        // Mosto: long tones that slide up into place, in a minor key, with a grin of a half step
+        let mosto: [(Double, Double, Int)] = [(0, 3, 57), (3, 1, 56), (4, 4, 60), (8, 3, 59), (11, 1, 57), (12, 4, 64), (16, 3, 65), (19, 1, 64),
+                                               (20, 4, 60), (24, 2, 62), (26, 2, 63), (28, 4, 57)]
+        switch theme {
+        case 1:
+            pads([padC, padAm, padF, padG, padC, padAm, padF, padC], 0.035)
+            add(.hum, 0.11, otto)
+            return (58, 32, n)
+        case 2:
+            pads([padC, padEm, padF, padC, padAm, padEm, padF, padG], 0.03)
+            add(.pluck, 0.07, moss)
+            add(.hum, 0.05, [(0, 4, 48), (8, 4, 53), (16, 4, 45), (24, 4, 43)])
+            return (76, 32, n)
+        case 3:
+            pads([padAm, padF, padAm, padEm, padAm, padF, padG, padAm], 0.032)
+            add(.glide, 0.08, mosto)
+            add(.pluck, 0.035, [(2, 0.5, 69), (6, 0.5, 68), (14, 0.5, 72), (22, 0.5, 71), (30, 0.5, 69)])
+            return (66, 32, n)
+        case 4:
+            pads([padAm, padF, padC, padG, padAm, padF, padG, padC], 0.035)
+            add(.glide, 0.06, mosto)
+            add(.hum, 0.08, otto)
+            add(.pluck, 0.045, moss.filter { $0.0 >= 16 })
+            return (70, 32, n)
+        default:
+            pads([padC, padAm, padF, padG, padC, padAm, padF, padC], 0.03)
+            add(.hum, 0.08, otto.filter { $0.0 < 16 })
+            add(.pluck, 0.05, moss.filter { $0.0 >= 16 })
+            add(.glide, 0.05, [(28, 4, 59)])   // at the very end, Mosto's tone slides up into Otto's
+            return (56, 32, n)
+        }
+    }
+
     private static func compose(_ theme: Int, sr: Double, fmt: AVAudioFormat) -> AVAudioPCMBuffer? {
-        // per theme: root (Hz), scale steps (semitones), tempo, chord roots (scale degrees), voice colour
-        let roots: [Double] = [146.83, 146.83, 220.0, 164.81, 146.83]
-        let scales: [[Int]] = [[0, 2, 4, 7, 9], [0, 2, 4, 7, 9], [0, 3, 5, 7, 10], [0, 1, 3, 5, 7, 8, 10], [0, 2, 4, 7, 9, 11]]
-        let bpms: [Double] = [56, 60, 72, 66, 64]
-        let progressions: [[Int]] = [[0, 3, 4, 2], [0, 4, 3, 0], [0, 2, 3, 1], [0, 1, 3, 2], [0, 3, 4, 0]]
-        let t = max(0, min(4, theme))
-        let root = roots[t], scale = scales[t], beat = 60 / bpms[t]
-        let bars = 8, beatsPerBar = 4
-        let total = Int(Double(bars * beatsPerBar) * beat * sr)
+        let sc = score(theme)
+        let beat = 60 / sc.bpm
+        let total = Int(sc.beats * beat * sr)
         guard let buf = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: AVAudioFrameCount(total)) else { return nil }
         buf.frameLength = AVAudioFrameCount(total)
         let out = buf.floatChannelData![0]
         for i in 0..<total { out[i] = 0 }
-        func note(_ deg: Int, _ oct: Int) -> Double {
-            let n = scale.count
-            let d = ((deg % n) + n) % n, o = oct + (deg >= 0 ? deg / n : (deg - n + 1) / n)
-            return root * pow(2, Double(scale[d] + 12 * o) / 12)
-        }
-        func add(_ f: Double, _ at: Double, _ dur: Double, _ vol: Float, pluck: Bool) {
-            let s0 = Int(at * sr), n = Int(dur * sr)
+        func hz(_ m: Double) -> Double { 440 * pow(2, (m - 69) / 12) }
+        for note in sc.notes {
+            let s0 = Int(note.at * beat * sr), len = note.len * beat, n = Int((len + (note.voice == .pluck ? 0.6 : 0.25)) * sr)
+            var phase = 0.0, phase2 = 0.0
             for i in 0..<n {
-                let idx = (s0 + i) % total
                 let tt = Double(i) / sr
-                let env: Double = pluck ? exp(-tt * 3.2) * min(1, tt / 0.004) : sin(.pi * Double(i) / Double(n))
-                let w = sin(2 * .pi * f * tt) + (pluck ? 0.25 * sin(4 * .pi * f * tt) : 0.3 * sin(2 * .pi * f * 1.5 * tt))
-                out[idx] += Float(w * env) * vol
-            }
-        }
-        var seed: UInt64 = UInt64(theme * 7919 + 17)
-        func rnd() -> Double { seed = seed &* 6364136223846793005 &+ 1442695040888963407; return Double(seed >> 33) / Double(1 << 31) }
-        let prog = progressions[t]
-        for bar in 0..<bars {
-            let chord = prog[bar % prog.count]
-            let at = Double(bar * beatsPerBar) * beat
-            // pad: root, third and fifth of the chord, an octave down, the whole bar
-            for k in [0, 2, 4] { add(note(chord + k, -1), at, beat * Double(beatsPerBar) * 1.05, 0.045, pluck: false) }
-            // melody: a few plucks on the beat or off, on chord tones mostly
-            for b in 0..<beatsPerBar * 2 {
-                if rnd() < (theme == 2 ? 0.45 : 0.32) {
-                    let deg = chord + [0, 2, 4, 5, 7][Int(rnd() * 5)]
-                    add(note(deg, 1), at + Double(b) * beat / 2, beat * 1.6, theme == 3 ? 0.05 : 0.06, pluck: true)
+                var f = hz(Double(note.midi)), env = 0.0, w = 0.0
+                switch note.voice {
+                case .pluck:
+                    env = exp(-tt * 4.5) * min(1, tt / 0.003)
+                    phase += f / sr; w = sin(2 * .pi * phase) + 0.3 * sin(4 * .pi * phase) * exp(-tt * 9)
+                case .hum:
+                    let a = min(1, tt / 0.25), r = max(0, min(1, (len + 0.2 - tt) / 0.35))
+                    env = a * r
+                    f *= 1 + 0.004 * sin(2 * .pi * 4.6 * tt)
+                    phase += f / sr; phase2 += f * 2 / sr
+                    w = sin(2 * .pi * phase) + 0.28 * sin(2 * .pi * phase2) + 0.12 * sin(2 * .pi * phase * 3)
+                case .glide:
+                    let slide = max(0, 1 - tt / 0.35)          // from a semitone below, up into the note
+                    f = hz(Double(note.midi) - slide)
+                    let a = min(1, tt / 0.3), r = max(0, min(1, (len + 0.2 - tt) / 0.5))
+                    env = a * r
+                    phase += f / sr; phase2 += f * 1.5 / sr
+                    w = sin(2 * .pi * phase) + 0.18 * sin(2 * .pi * phase2)
+                case .pad:
+                    env = sin(.pi * min(1, tt / (len + 0.25)))
+                    phase += f / sr
+                    w = sin(2 * .pi * phase) + 0.2 * sin(2 * .pi * phase * 2.003)
                 }
+                out[(s0 + i) % total] += Float(w * env) * note.vol
             }
-            // Mosto's long tone in his chapter
-            if theme == 3 && bar % 4 == 3 { add(note(chord + 4, 0), at, beat * 4, 0.05, pluck: false) }
         }
+        // a soft limiter, so stacked voices never clip
+        for i in 0..<total { out[i] = tanhf(out[i] * 1.4) / 1.4 }
         return buf
     }
 
