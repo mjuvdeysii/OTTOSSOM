@@ -7,7 +7,7 @@ extension Painter {
     var chapterIndex: Int { max(1, min(4, Theme.chapterOf[f.room.spec.id] ?? 1)) }
     var boardRect: CGRect { CGRect(x: 0, y: 0, width: CGFloat(f.room.w) * T, height: CGFloat(f.room.h) * T) }
     /// Where the horizon sits: just above the room, so the skyline rises behind its top wall.
-    var horizon: CGFloat { boardRect.minY - T * 0.7 }
+    var horizon: CGFloat { boardRect.minY - T * 0.15 }
 
     private func h(_ i: Int, _ k: Int) -> CGFloat { CGFloat(noiseHash(i, k, chapterIndex)) }
 
@@ -43,15 +43,17 @@ extension Painter {
     /// The room's edge carries on for a few tiles and crumbles away, so the room sits in the world instead of floating.
     func rings(_ ctx: inout GraphicsContext, _ E: CGRect) {
         let r = f.room
-        let fade: [Double] = [0.9, 0.6, 0.3]
+        let fade: [Double] = [0.85, 0.5, 0.22]
         for y in -3..<(r.h + 3) {
             for x in -3..<(r.w + 3) {
                 let dx = x < 0 ? -x : (x >= r.w ? x - r.w + 1 : 0)
                 let dy = y < 0 ? -y : (y >= r.h ? y - r.h + 1 : 0)
                 let d = max(dx, dy)
                 guard d >= 1, d <= 3 else { continue }
+                // above the room only one broken course, so the horizon shows; at the sides and below, up to three
+                if y < 0 && d > 1 { continue }
                 let keep: [Double] = [1, 0.72, 0.38]
-                if noiseHash(x, y, 9) > keep[d - 1] { continue }
+                if noiseHash(x, y, 9) > (y < 0 ? 0.55 : keep[d - 1]) { continue }
                 let R = rect(x, y)
                 guard E.intersects(R) else { continue }
                 let edge = r.tile(Pt(min(max(x, 0), r.w - 1), min(max(y, 0), r.h - 1)))

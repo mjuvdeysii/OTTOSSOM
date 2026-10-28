@@ -537,7 +537,19 @@ struct Painter {
         let base = min(0.94, 0.55 + f.dark * 0.4)
         let ls = lights()
         ctx.drawLayer { layer in
-            layer.fill(Path(full), with: .color(Color(0x03040a, base)))
+            if f.extent != nil {
+                // the world around the room sits under a lighter night so it stays readable; the room keeps the full dark,
+                // with a soft edge between the two
+                let outer = base * 0.5
+                layer.fill(Path(full), with: .color(Color(0x03040a, outer)))
+                let inner = 1 - (1 - base) / (1 - outer)
+                layer.drawLayer { l2 in
+                    l2.addFilter(.blur(radius: T * 0.6))
+                    l2.fill(Path(roundedRect: boardRect.insetBy(dx: -T * 0.2, dy: -T * 0.2), cornerRadius: T * 0.5), with: .color(Color(0x03040a, inner)))
+                }
+            } else {
+                layer.fill(Path(full), with: .color(Color(0x03040a, base)))
+            }
             layer.blendMode = .destinationOut
             for (c, rad, k) in ls where rad > 0 {
                 let center = CGPoint(x: (c.x + 0.5) * T, y: (c.y + 0.5) * T)
