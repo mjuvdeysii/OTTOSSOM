@@ -408,7 +408,8 @@ struct Painter {
         func add(_ p: CGPoint, _ rad: Double, _ k: Double) {
             guard rad >= 0 else { return }
             for y in 0..<r.h { for x in 0..<r.w {
-                let d = abs(Double(x) - p.x.rounded()) + abs(Double(y) - p.y.rounded())
+                let px = Double(p.x).rounded(), py = Double(p.y).rounded()
+                let d: Double = abs(Double(x) - px) + abs(Double(y) - py)
                 if d <= rad { M[y][x] = max(M[y][x], k * (1 - d / (rad + 1.2))) }
             } }
         }
