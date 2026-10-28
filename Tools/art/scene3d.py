@@ -570,10 +570,10 @@ def main():
         bpy.context.view_layer.update()
         corner = cell(0, 0) + Vector((-S / 2, S / 2, 0))
         v = world_to_camera_view(s, s.camera, corner)
-        json.dump(dict(pc=PC, tilt=TILT, w=w, h=h, origin=[round(v.x * w, 2), round((1 - v.y) * h, 2)], cols=W, rows=H),
-                  open(os.path.splitext(OUT)[0] + ".json", "w"))
+        META = dict(pc=PC, tilt=TILT, w=w, h=h, origin=[round(v.x * w, 2), round((1 - v.y) * h, 2)], cols=W, rows=H)
     import time; t0 = time.time()
     B.render(OUT, w, h)
+    if BG: json.dump(META, open(os.path.splitext(OUT)[0] + ".json", "w"))   # written last, so a half-done room never shows up
     print("TIMING render", round(time.time() - t0, 1), "s", flush=True)
 
 main()
