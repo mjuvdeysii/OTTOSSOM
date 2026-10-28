@@ -21,6 +21,9 @@ def arg(name, default):
     return type(default)(ARGS[ARGS.index(name) + 1]) if name in ARGS else default
 
 ROOM, OUT = ARGS[0], os.path.abspath(ARGS[1])
+BG = "--bg" in ARGS          # background only: everything that moves or changes is left out (the game draws it)
+PC = arg("--pc", 90)       # pixels per cell in --bg mode
+CW, CH = 15, 24             # --bg canvas in cells (screen units): covers phones and iPads around the room
 S = 1.5            # world units per cell; the figures are about one unit wide
 TILT = 48
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -96,15 +99,15 @@ def water_mat():
     return m
 
 LAND = {   # top, side, top mottle
-    1: ("#3E4A6A", "#232A40", "#465478"),
-    2: ("#4E6E46", "#2A3A28", "#5E7E50"),
-    3: ("#5A4A7A", "#2E2444", "#6A5A8E"),
+    1: ("#7A7262", "#3E3830", "#6A6656"),
+    2: ("#5A7E4E", "#2E3E2A", "#6A8A54"),
+    3: ("#6A5A8A", "#2E2444", "#7A6A9E"),
     4: ("#B88A5A", "#5E3E26", "#8E6A48"),
 }
 THEMES = {
-    1: dict(top=("#46506E", "#2C3248"), floor=("#5A6178", "#3A4058"), wall=("#4A5068", "#262A3A"), ground=("#2E3346", "#1C2030")),
-    2: dict(top=("#5E7A4A", "#3A5030"), floor=("#5E6B55", "#3B4636"), wall=("#4E5A48", "#283024"), ground=("#33402F", "#1E281C")),
-    3: dict(top=("#6A5A8A", "#3E3458"), floor=("#5C5470", "#3A3350"), wall=("#4A4262", "#251F36"), ground=("#2E2840", "#1A1528")),
+    1: dict(top=("#46506E", "#2C3248"), floor=("#A8A294", "#989284"), wall=("#4A5068", "#262A3A"), ground=("#2E3346", "#1C2030")),
+    2: dict(top=("#5E7A4A", "#3A5030"), floor=("#A2AE8E", "#929E7E"), wall=("#4E5A48", "#283024"), ground=("#33402F", "#1E281C")),
+    3: dict(top=("#6A5A8A", "#3E3458"), floor=("#9E94B4", "#8E84A4"), wall=("#4A4262", "#251F36"), ground=("#2E2840", "#1A1528")),
     4: dict(floor=("#E2C89A", "#D4B888"), wall=("#7A5A3E", "#3E2A1C"), top=("#C9A06A", "#8A6A44"), ground=("#9A8064", "#5E4C38")),
 }
 
@@ -218,7 +221,7 @@ def vinyl_land(name, top, side, top2=None):
     nt.links.new(mix.outputs["Result"], p.inputs["Base Color"])
     return m
 
-def remesh_join(objs, name, voxel=0.13, smooth=4):
+def remesh_join(objs, name, voxel=0.19, smooth=3):
     """Fuse blocks into one soft clay mass: join, voxel-remesh, relax the edges."""
     bpy.ops.object.select_all(action="DESELECT")
     for o in objs:
@@ -270,18 +273,20 @@ def build_room(ch):
             if ch_ in "Ll":
                 cyl(f"post_{x}_{y}", c + Vector((0, 0.1, 0.6)), 0.05, 1.2, metal)
                 lit = ch_ == "L"
-                B.sphere(f"lantern_{x}_{y}", c + Vector((0, 0.1, 1.28)), (0.16, 0.16, 0.2), emit("lit", "#FFD27A", 18) if lit else glass_off)
-                cyl(f"lcap_{x}_{y}", c + Vector((0, 0.1, 1.5)), 0.17, 0.06, metal)
-                if lit: point_light(c + Vector((0, 0.0, 1.3)), 160, "#FFC46A", 0.15)
+                if not BG:
+                    B.sphere(f"lantern_{x}_{y}", c + Vector((0, 0.1, 1.28)), (0.16, 0.16, 0.2), emit("lit", "#FFD27A", 18) if lit else glass_off)
+                    cyl(f"lcap_{x}_{y}", c + Vector((0, 0.1, 1.5)), 0.17, 0.06, metal)
+                    if lit: point_light(c + Vector((0, 0.0, 1.3)), 160, "#FFC46A", 0.15)
+                cyl(f"lbase_{x}_{y}", c + Vector((0, 0.1, 0.05)), 0.14, 0.1, metal)
             elif ch_ == "P":
                 cyl(f"plate_{x}_{y}", c + Vector((0, 0, 0.01)), S * 0.32, 0.04, plate_m, verts=6)
             elif ch_ == "D":
-                for k in range(4):
+                for k in range(4 if not BG else 0):
                     cyl(f"bar_{x}_{y}_{k}", c + Vector(((k - 1.5) * S * 0.22, 0, 0.55)), 0.04, 1.1, metal, verts=12)
                 box(f"lintel_{x}_{y}", c + Vector((0, 0, 1.12)), (S * 0.95, 0.12, 0.08), metal, bevel=0.01)
-            elif ch_ == "B":
+            elif ch_ == "B" and not BG:
                 blob(f"boulder_{x}_{y}", c + Vector((0, 0, 0.42)), (0.5, 0.48, 0.42), boulder_m, seed=x * 31 + y)
-            elif ch_ == "S":
+            elif ch_ == "S" and not BG:
                 body = blob(f"shadow_{x}_{y}", c + Vector((0, 0, 0.4)), (0.42, 0.36, 0.5), shadow_m, noise=0.12, seed=x + y * 7)
                 for s in (-1, 1):
                     B.sphere(f"seye_{x}_{y}_{s}", c + Vector((s * 0.13, -0.33, 0.55)), (0.05, 0.02, 0.035), eye_m)
@@ -290,8 +295,21 @@ def build_room(ch):
                 for sx in (-1, 1):
                     cyl(f"jamb_{x}_{y}_{sx}", c + Vector((sx * 0.55, 0.45, 0.55)), 0.12, 1.1, pale_e, verts=20)
                 lt = box(f"arch_{x}_{y}", c + Vector((0, 0.45, 1.15)), (1.4, 0.3, 0.22), pale_e, bevel=0.08); lt.modifiers["bevel"].segments = 3
-                point_light(c + Vector((0, 0.1, 0.8)), 30, "#FFD27A", 0.3)
-                cyl(f"rune_{x}_{y}", c + Vector((0, -0.05, 0.005)), 0.36, 0.012, emit("rune", "#FFC46A", 1.2), verts=24)
+                if not BG: point_light(c + Vector((0, 0.1, 0.8)), 30, "#FFD27A", 0.3)
+                cyl(f"rune_{x}_{y}", c + Vector((0, -0.05, 0.005)), 0.36, 0.012, emit("rune", "#FFC46A", 0.25 if BG else 1.2), verts=24)
+            elif ch_ == "T":
+                tab = B.rubber("tablet", "#9A9AA8", rough=0.65)
+                t = box(f"tablet_{x}_{y}", c + Vector((0, 0.25, 0.5)), (0.8, 0.22, 1.0), tab, bevel=0.12); t.modifiers["bevel"].segments = 4
+                box(f"tabletbase_{x}_{y}", c + Vector((0, 0.25, 0.04)), (1.0, 0.4, 0.08), tab, bevel=0.03)
+                for k in range(3):   # carved lines on its face
+                    box(f"glyph_{x}_{y}_{k}", c + Vector((0, 0.13, 0.75 - k * 0.18)), (0.5 - k * 0.08, 0.02, 0.05), B.mat("glyph", "#5A5A6A", rough=0.8), bevel=0)
+            elif ch_ == "N":
+                nest = B.rubber("nest", "#7A5A3A", rough=0.8)
+                bpy.ops.mesh.primitive_torus_add(major_radius=0.42, minor_radius=0.13, location=c + Vector((0, 0, 0.1))); t = bpy.context.object
+                t.scale = (1, 1, 0.7); t.data.materials.append(nest)
+                for k in range(10):
+                    a = k / 10 * math.tau
+                    cyl(f"twig_{x}_{y}_{k}", c + Vector((math.cos(a) * 0.42, math.sin(a) * 0.42, 0.16)), 0.025, 0.5, nest, verts=8).rotation_euler = (math.radians(80), 0, a)
     return th
 
 def landscape(ch, th):
@@ -368,7 +386,8 @@ def terrain(ch, th):
     room; chapter props stand on the terraces."""
     rockside, toptile, floor = MATS["rockside"], MATS["toptile"], MATS["floor"]
     top2 = stone("top2", th["top"][1], th["wall"][1], scale=3, bump=0.4)
-    X0, X1, Y0, Y1 = -4, W + 4, -10, H + 10
+    mx = max(4, (CW - W) // 2 + 2)
+    X0, X1, Y0, Y1 = -mx, W + mx, -14, H + 14
     cx = W // 2
     lane_n = {y: cx + int(round(math.sin(y * 0.5) * 1.2)) for y in range(Y0, 0)}        # a lane north from the room
     lane_s = {y: cx + int(round(math.sin(y * 0.45 + 1) * 1.5)) for y in range(H, Y1)}    # and one south
@@ -431,21 +450,75 @@ def terrain(ch, th):
         bpy.ops.object.light_add(type="AREA", location=(0, top_y + 2, 7), rotation=(math.radians(-60), 0, 0)); l = bpy.context.object
         l.data.energy = 600; l.data.size = 24; l.data.color = B.hexcol("#FF9A50")[:3]
     elif ch == 1:
-        roofM = stone("roof", "#5A3A3A", "#2E1E22", scale=6, bump=0.6); wallM = stone("house", "#8A8070", "#5A5248", scale=4)
-        win = emit("window", "#FFC46A", 3.0); dark = B.mat("winDark", "#1A1E2A", rough=0.3)
+        # the lighthouse town: toy houses on the terraces, a few windows still lit, the lighthouse up the north lane
+        roofs = [B.rubber(f"roof{i}", c_, rough=0.6) for i, c_ in enumerate(("#8A3A3A", "#4A5A8A", "#6A4A3A"))]
+        walls_ = [B.rubber(f"hw{i}", c_, rough=0.65) for i, c_ in enumerate(("#D8CCB4", "#B8C0CC", "#CCB8A0"))]
+        win = emit("window", "#FFC46A", 2.5); dark = B.mat("winDark", "#1A1E2A", rough=0.3)
+        crate = B.rubber("crate", "#7A5A3A", rough=0.7)
         for (x, y, hgt) in props:
-            if rnd2.random() < 0.3:
-                c = cell(x, y, hgt); hh = 0.7
-                box(f"house_{x}_{y}", c + Vector((0, 0, hh / 2)), (S * 0.8, S * 0.8, hh), wallM, bevel=0.03)
-                bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=S * 0.62, depth=0.6, location=c + Vector((0, 0, hh + 0.3)), rotation=(0, 0, math.radians(45)))
-                rf = bpy.context.object; rf.data.materials.append(roofM)
-                box(f"win_{x}_{y}", c + Vector((0.15, -S * 0.4, hh * 0.55)), (0.18, 0.02, 0.22), win if rnd2.random() < 0.3 else dark, bevel=0)
+            c = cell(x, y, hgt); r = rnd2.random()
+            if r < 0.16:
+                hh = 0.75 + rnd2.random() * 0.35; wm = walls_[rnd2.randrange(3)]
+                hb = box(f"house_{x}_{y}", c + Vector((0, 0.05, hh / 2)), (S * 0.78, S * 0.7, hh), wm, bevel=0.06); hb.modifiers["bevel"].segments = 3
+                bpy.ops.mesh.primitive_cylinder_add(vertices=3, radius=S * 0.48, depth=S * 0.82, location=c + Vector((0, 0.05, hh + 0.2)), rotation=(0, math.radians(90), 0))
+                rf = bpy.context.object; rf.scale = (1, 1, 0.75); rf.data.materials.append(roofs[rnd2.randrange(3)])
+                for wx in (-0.25, 0.25):
+                    box(f"win_{x}_{y}_{wx}", c + Vector((wx, -S * 0.35 + 0.05 - 0.02, hh * 0.55)), (0.2, 0.03, 0.24), win if rnd2.random() < 0.45 else dark, bevel=0.01)
+                if rnd2.random() < 0.5:
+                    box(f"chim_{x}_{y}", c + Vector((0.3, 0.2, hh + 0.45)), (0.16, 0.16, 0.4), walls_[0], bevel=0.03)
+            elif r < 0.22:
+                for k in range(1 + int(rnd2.random() * 2)):
+                    cb = box(f"crate_{x}_{y}_{k}", c + Vector((rnd2.uniform(-0.3, 0.3), rnd2.uniform(-0.3, 0.3), 0.18 + k * 0.33)), (0.36, 0.36, 0.34), crate, bevel=0.05)
+        gy = -6; gx = lane_n[gy]; base = cell(gx + 2, gy, S * 0.42 * 3)
+        tw = B.rubber("tower", "#E8E0D0", rough=0.6); band = B.rubber("band", "#B83A3A", rough=0.6)
+        bpy.ops.mesh.primitive_cone_add(vertices=48, radius1=0.9, radius2=0.6, depth=4.2, location=base + Vector((0, 0, 2.1))); t = bpy.context.object; t.data.materials.append(tw)
+        for k in range(2): cyl(f"band{k}", base + Vector((0, 0, 1.2 + k * 1.4)), 0.84 - k * 0.1, 0.35, band, verts=48)
+        cyl("lantern_room", base + Vector((0, 0, 4.5)), 0.55, 0.6, B.mat("lroom", "#3A3020", rough=0.2, coat=0.6), verts=32)
+        bpy.ops.mesh.primitive_cone_add(vertices=32, radius1=0.7, depth=0.6, location=base + Vector((0, 0, 5.1))); bpy.context.object.data.materials.append(band)
+    elif ch == 2:
+        # ruins in the green dark: broken columns, a fallen arch, round trees, ferns
+        stoneM = B.rubber("ruin", "#B8B8A0", rough=0.65); mossy = B.rubber("mossy", "#4E7A46", rough=0.75)
+        trunk = B.rubber("trunk", "#5A4632", rough=0.7); leaves = [B.rubber(f"leaf{i}", c_, rough=0.7) for i, c_ in enumerate(("#3E6A3E", "#4E7E46", "#35583A"))]
+        for (x, y, hgt) in props:
+            c = cell(x, y, hgt); r = rnd2.random()
+            if r < 0.14:
+                hh = 0.6 + rnd2.random() * 1.6
+                cyl(f"col_{x}_{y}", c + Vector((0, 0, hh / 2)), 0.26, hh, stoneM, verts=20)
+                box(f"colcap_{x}_{y}", c + Vector((0, 0, hh + 0.06)), (0.66, 0.66, 0.14), stoneM, bevel=0.04)
+                blob(f"colmoss_{x}_{y}", c + Vector((0.05, 0, hh + 0.16)), (0.3, 0.28, 0.08), mossy, seed=x * 3 + y, sub=2)
+            elif r < 0.36:
+                th_ = 0.5 + rnd2.random() * 0.4
+                cyl(f"trunk_{x}_{y}", c + Vector((0, 0, th_ / 2)), 0.08, th_, trunk, verts=12)
+                for k in range(3):
+                    blob(f"canopy_{x}_{y}_{k}", c + Vector((rnd2.uniform(-0.2, 0.2), rnd2.uniform(-0.2, 0.2), th_ + 0.25 + k * 0.12)), (0.45 - k * 0.08,) * 3, leaves[rnd2.randrange(3)], noise=0.06, seed=x * 7 + y * 11 + k, sub=3)
+            elif r < 0.5:
+                for k in range(3 + int(rnd2.random() * 3)):
+                    blob(f"fern_{x}_{y}_{k}", c + Vector((rnd2.uniform(-0.45, 0.45), rnd2.uniform(-0.45, 0.45), 0.08)), (0.2, 0.16, 0.1), mossy, seed=x + y * 5 + k, sub=2)
+    elif ch == 3:
+        # the shadow country: violet crystal clusters glowing faintly, thin spires, dead trees
+        crystal = B.mat("crystal", "#8A6AD0", rough=0.15, coat=0.8, emit="#7A5AE0", emit_strength=0.6)
+        spireM = B.rubber("spire", "#3A2E58", rough=0.6); dead = B.rubber("deadtree", "#2A2236", rough=0.8)
+        for (x, y, hgt) in props:
+            c = cell(x, y, hgt); r = rnd2.random()
+            if r < 0.2:
+                for k in range(3 + int(rnd2.random() * 3)):
+                    hh = 0.3 + rnd2.random() * 0.6
+                    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.09 + rnd2.random() * 0.06, depth=hh, location=c + Vector((rnd2.uniform(-0.35, 0.35), rnd2.uniform(-0.35, 0.35), hh / 2)))
+                    o_ = bpy.context.object; o_.rotation_euler = (rnd2.uniform(-0.35, 0.35), rnd2.uniform(-0.35, 0.35), 0); o_.data.materials.append(crystal)
+            elif r < 0.3:
+                hh = 1.5 + rnd2.random() * 2.5
+                bpy.ops.mesh.primitive_cone_add(vertices=10, radius1=0.4, depth=hh, location=c + Vector((0, 0, hh / 2))); bpy.context.object.data.materials.append(spireM)
+            elif r < 0.4:
+                cyl(f"dt_{x}_{y}", c + Vector((0, 0, 0.45)), 0.06, 0.9, dead, verts=8)
+                for k in range(3):
+                    a_ = k * 2.1
+                    cyl(f"br_{x}_{y}_{k}", c + Vector((math.cos(a_) * 0.15, math.sin(a_) * 0.15, 0.75)), 0.03, 0.4, dead, verts=6).rotation_euler = (math.cos(a_) * 0.8, math.sin(a_) * 0.8, 0)
 
 def sky():
     world = bpy.data.worlds.new("night"); bpy.context.scene.world = world; world.use_nodes = True
     bg = world.node_tree.nodes["Background"]; bg.inputs["Color"].default_value = B.hexcol("#1A2040"); bg.inputs["Strength"].default_value = 0.6
     bpy.ops.object.light_add(type="SUN", rotation=(math.radians(50), math.radians(-20), math.radians(25))); m = bpy.context.object
-    m.data.energy = 2.4; m.data.color = B.hexcol("#7F92E8")[:3]; m.data.angle = math.radians(3)
+    m.data.energy = 2.6; m.data.color = B.hexcol("#A4AEDC")[:3]; m.data.angle = math.radians(3)
     star = emit("star", "#E6ECFF", 6)
     for i in range(160):
         B.sphere(f"star{i}", (rnd.uniform(-60, 60), 80, rnd.uniform(8, 70)), (0.06 + rnd.random() * 0.08,) * 3, star, seg=8)
@@ -460,16 +533,24 @@ def camera(w, h):
         zx, zy, zw = (float(v) for v in arg("--zoom", "0,0,3").split(","))
         aim2 = cell(zx, zy, 0.6)
         c.location = aim2 + Vector((0, -d * math.cos(t), d * math.sin(t))); c.data.ortho_scale = zw * S / min(1.0, w / h)
+    if BG:
+        c.data.ortho_scale = CH * S
     c.data.clip_end = 300
     s.camera = c
 
 def main():
-    w, h = arg("--w", 603), arg("--h", 1311)
-    s = B.reset(); s.view_settings.look = "AgX - Punchy"; s.view_settings.exposure = 0.9; s.cycles.samples = arg("--samples", 48)
+    w, h = (int(CW * PC), int(CH * PC)) if BG else (arg("--w", 603), arg("--h", 1311))
+    s = B.reset(); s.view_settings.look = "AgX - Punchy"; s.view_settings.exposure = 1.0; s.cycles.samples = arg("--samples", 48)
+    s.cycles.max_bounces = 4; s.cycles.diffuse_bounces = 2; s.cycles.glossy_bounces = 2; s.cycles.transmission_bounces = 2
+    s.cycles.use_adaptive_sampling = True; s.cycles.adaptive_threshold = 0.03
     B.materials(); MO.mosto_materials()
-    ch = arg("--chapter", 4)
+    chapters = json.load(open(os.path.join(ROOT, "Game", "Resources", "rooms.json")))["chapters"]
+    ch = next((c_["id"] for c_ in chapters for st in c_["steps"] if st.get("room") == ROOM), 4)
+    ch = arg("--chapter", ch)
+    import time; t0 = time.time()
     th = build_room(ch); terrain(ch, th); sky()
-    heroes = {c_: (x, y) for y, row in enumerate(GRID) for x, c_ in enumerate(row) if c_ in "OMX"}
+    print("TIMING build", round(time.time() - t0, 1), "s", flush=True)
+    heroes = {} if BG else {c_: (x, y) for y, row in enumerate(GRID) for x, c_ in enumerate(row) if c_ in "OMX"}
     if "O" in heroes:
         x, y = heroes["O"]
         place(B.build_otto, cell(x, y), turn=20, glow=1.0, lid=0.55, look=(0.5, -0.1), slouch=0.8, droop=0.6, bags=True)
@@ -482,6 +563,17 @@ def main():
         place(MO.build_mosto, cell(x, y), turn=-25, moss_eye=dict(look=(-0.6, -0.1), lid=0.25), otto_eye=dict(look=(-0.6, -0.1), lid=0.35), evil=0.6, perk=0.9)
         spark(cell(x, y) + Vector((-0.08, -0.55, 0.62)), 1.9)
     camera(w, h)
+    if BG:
+        s.render.film_transparent = False
+        s.render.image_settings.file_format = "JPEG"; s.render.image_settings.quality = 86
+        from bpy_extras.object_utils import world_to_camera_view
+        bpy.context.view_layer.update()
+        corner = cell(0, 0) + Vector((-S / 2, S / 2, 0))
+        v = world_to_camera_view(s, s.camera, corner)
+        json.dump(dict(pc=PC, tilt=TILT, w=w, h=h, origin=[round(v.x * w, 2), round((1 - v.y) * h, 2)], cols=W, rows=H),
+                  open(os.path.splitext(OUT)[0] + ".json", "w"))
+    import time; t0 = time.time()
     B.render(OUT, w, h)
+    print("TIMING render", round(time.time() - t0, 1), "s", flush=True)
 
 main()

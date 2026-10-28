@@ -61,26 +61,12 @@ struct TitleView: View {
     private var content: some View {
         VStack(spacing: 18) {
             Spacer(minLength: 24)
-            TimelineView(.animation) { tl in
-                Canvas { ctx, size in
-                    let t = tl.date.timeIntervalSinceReferenceDate
-                    let room = TitleView.trio
-                    let frame = BoardFrame(room: room, state: room.start, prev: nil, e: 1, t: t, active: -1, face: [1, 1, -1], actors: [:],
-                                           mainDim: false, dark: 0, hideHeroes: false, bulbR: 0, doudou: false)
-                    let T = min(size.width / 3.2, 110)
-                    var c = ctx
-                    c.translateBy(x: (size.width - T * 3) / 2 - T, y: -T * 0.3)
-                    let p = Painter(f: frame, T: T)
-                    p.otto(&c, CGPoint(x: 1, y: 1), bulb: true, face: 1)
-                    p.moss(&c, CGPoint(x: 2, y: 1), alpha: 1)
-                    p.mosto(&c, CGPoint(x: 3, y: 1), alpha: 1, carry: true)
-                }
-            }
-            .frame(height: 200)
-            .onTapGesture(count: 5) { allOpen = true; Haptic.success() }
-            .onAppear { Sound.shared.music(0) }
-            Text("长夜").font(.system(size: 44, weight: .semibold, design: .serif)).foregroundStyle(.white).tracking(8)
-            Text("太阳一百天没有升起").font(.callout).foregroundStyle(mutedText)
+            Trio()
+                .frame(height: 190)
+                .onTapGesture(count: 5) { allOpen = true; Haptic.success() }
+                .onAppear { Sound.shared.music(0) }
+            Text("灯台索魔").font(.system(size: 44, weight: .semibold, design: .serif)).foregroundStyle(.white).tracking(10)
+                .shadow(color: .black.opacity(0.6), radius: 10)
             Spacer(minLength: 12)
             VStack(spacing: 10) {
                 ForEach(Content.chapters) { ch in
@@ -89,17 +75,17 @@ struct TitleView: View {
                     Button {
                         router.screen = .chapter(ch.id)
                     } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("第\(["一", "二", "三", "四"][ch.id - 1])章 · \(ch.steps.filter { $0.cut == nil }.count) 间").font(.caption).foregroundStyle(mutedText)
-                                Text(ch.title).font(.system(size: 20, weight: .semibold, design: .serif)).foregroundStyle(open ? .white : mutedText)
-                            }
+                        HStack(spacing: 14) {
+                            Text(["一", "二", "三", "四"][ch.id - 1]).font(.system(size: 15, weight: .semibold, design: .serif))
+                                .foregroundStyle(open ? gold : mutedText).frame(width: 22)
+                            Text(ch.title).font(.system(size: 20, weight: .semibold, design: .serif)).foregroundStyle(open ? .white : mutedText)
                             Spacer()
-                            Text(done ? "已完成" : open ? (Progress.shared.step(ch.id) > 0 ? "继续" : "开始") : "未解锁")
-                                .font(.subheadline.weight(.semibold)).foregroundStyle(open ? gold : mutedText)
+                            ChapterFaces(hero: ch.hero).opacity(open ? 1 : 0.35)
+                            Image(systemName: done ? "checkmark.circle.fill" : open ? "play.circle.fill" : "lock.fill")
+                                .font(.title3).foregroundStyle(open ? gold : mutedText)
                         }
-                        .padding(.horizontal, 18).padding(.vertical, 14)
-                        .background(panelBG, in: RoundedRectangle(cornerRadius: 14))
+                        .padding(.horizontal, 18).padding(.vertical, 10)
+                        .background(panelBG.opacity(0.88), in: RoundedRectangle(cornerRadius: 14))
                         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.08)))
                     }
                     .disabled(!open)
@@ -110,6 +96,52 @@ struct TitleView: View {
             Spacer(minLength: 24)
         }
         .frame(maxWidth: 560)
+    }
+}
+
+/// The three of them on the title, breathing, blinking now and then.
+struct Trio: View {
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
+            let t = tl.date.timeIntervalSinceReferenceDate
+            HStack(alignment: .bottom, spacing: -18) {
+                sprite((t + 0.4).truncatingRemainder(dividingBy: 4.2) < 0.13 ? "otto_blink_E_n" : "otto_idle_E_n", t, 0)
+                sprite((t + 1.3).truncatingRemainder(dividingBy: 3.7) < 0.13 ? "moss_blink_n" : "moss_right_n", t, 1)
+                sprite((t + 2.1).truncatingRemainder(dividingBy: 4.4) < 0.13 ? "mosto_blink_n" : "mosto_left_n", t, 2)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+    private func sprite(_ name: String, _ t: Double, _ i: Int) -> some View {
+        Group {
+            if let ui = Art.uiImage(name) {
+                Image(uiImage: ui).resizable().aspectRatio(contentMode: .fit)
+                    .frame(width: 150).scaleEffect(x: 1, y: 1 + 0.02 * sin(t * 2.2 + Double(i)), anchor: .bottom)
+            }
+        }
+    }
+}
+
+/// Who a chapter belongs to, as small faces.
+struct ChapterFaces: View {
+    let hero: String
+    var body: some View {
+        HStack(spacing: -10) {
+            ForEach(names, id: \.self) { n in
+                if let ui = Art.uiImage(n) {
+                    Image(uiImage: ui).resizable().aspectRatio(contentMode: .fit).frame(width: 46, height: 60).offset(y: 4)
+                }
+            }
+        }
+        .frame(height: 40).clipped()
+    }
+    private var names: [String] {
+        switch hero {
+        case "otto": return ["otto_idle_E_n"]
+        case "moss": return ["moss_idle_n"]
+        case "mosto": return ["mosto_idle_n"]
+        default: return ["otto_idle_E_n", "moss_idle_n"]
+        }
     }
 }
 
@@ -149,7 +181,7 @@ struct GameView: View {
     /// Height kept free at the bottom for the hint line, hero chips, actions and the small links.
     private let panelH: CGFloat = 214
     /// Height kept free at the top for the title row and progress.
-    private let headH: CGFloat = 70
+    private let headH: CGFloat = 56
 
     var body: some View {
         GeometryReader { outer in
@@ -190,49 +222,44 @@ struct GameView: View {
     }
 
     private var header: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 10) {
-                Button { Sound.shared.hum(false); router.screen = .title } label: {
-                    Image(systemName: "chevron.left").font(.headline).frame(width: 36, height: 36)
-                        .background(.black.opacity(0.35), in: Circle())
-                }
-                .accessibilityLabel("回到标题")
-                Text("第\(["一", "二", "三", "四"][model.chapter.id - 1])章 · \(model.chapter.title)")
-                    .font(.system(size: 17, weight: .semibold, design: .serif)).lineLimit(1).minimumScaleFactor(0.8)
-                Spacer(minLength: 8)
-                Text("第 \(model.room.spec.day) 天 · \(model.room.spec.name)").font(.caption).foregroundStyle(mutedText).lineLimit(1)
+        HStack(spacing: 12) {
+            Button { Sound.shared.hum(false); router.screen = .title } label: {
+                Image(systemName: "chevron.left").font(.headline).frame(width: 40, height: 40)
+                    .background(.black.opacity(0.35), in: Circle())
             }
             .foregroundStyle(.white)
+            .accessibilityLabel("回到标题")
             HStack(spacing: 6) {
                 ForEach(Array(model.chapter.steps.enumerated()).filter { $0.element.cut == nil }, id: \.offset) { i, _ in
                     Capsule().fill(i < model.stepIndex ? gold : i == model.stepIndex ? Color.white.opacity(0.85) : Color.white.opacity(0.15))
                         .frame(height: 4)
                 }
-                Text("\(model.state.steps) 步 · 最少 \(model.room.spec.par ?? 0)").font(.caption.monospacedDigit()).foregroundStyle(mutedText)
-                    .fixedSize()
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("本章第 \(model.chapter.steps[0..<min(model.stepIndex + 1, model.chapter.steps.count)].filter { $0.cut == nil }.count) 间，已走 \(model.state.steps) 步，最少 \(model.room.spec.par ?? 0) 步")
+            HStack(spacing: 4) {
+                Image(systemName: "shoeprints.fill").font(.caption)
+                Text("\(model.state.steps)").font(.callout.monospacedDigit().weight(.semibold)).foregroundStyle(.white)
+                Text("/ \(model.room.spec.par ?? 0)").font(.caption.monospacedDigit())
+            }
+            .foregroundStyle(mutedText)
+            .fixedSize()
         }
-        .frame(height: headH - 6, alignment: .top)
+        .frame(height: headH - 6, alignment: .center)
+        .accessibilityElement(children: .contain)
     }
 
     private var bottomPanel: some View {
-        VStack(spacing: 10) {
-            Text(model.hint).font(.footnote).foregroundStyle(mutedText).frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 18)
-                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.updatesFrequently)
+        VStack(spacing: 12) {
             if let d = model.dialog { dialogView(d) } else { controls }
             HStack {
-                Button { showSettings = true } label: { Label("设置", systemImage: "gearshape") }
+                Button { showSettings = true } label: { Image(systemName: "gearshape").frame(width: 40, height: 32) }
+                    .accessibilityLabel("设置")
                 Spacer()
-                Button { model.requestHint() } label: { Label("提示", systemImage: "lightbulb") }
+                Button { model.requestHint() } label: { Image(systemName: "questionmark.circle").frame(width: 40, height: 32) }
+                    .accessibilityLabel("提示")
                     .disabled(!model.canPlay || model.dialog != nil)
-                Spacer()
-                Button("怎么玩") { showRules = true }
             }
-            .font(.footnote).foregroundStyle(mutedText)
-            .padding(.bottom, 4)
+            .font(.title3).foregroundStyle(mutedText)
+            .padding(.bottom, 2)
         }
         .frame(height: panelH, alignment: .bottom)
     }
@@ -242,9 +269,11 @@ struct GameView: View {
         let r = model.room
         let top = ins.top + headH, bottom = size.height - ins.bottom - panelH - 6
         let left = ins.leading + 8, right = size.width - ins.trailing - 8
-        let T = max(20, min(72, floor(min((right - left) / CGFloat(r.w), (bottom - top) / CGFloat(r.h)))))
+        // a room is W cells wide and H·k deep on screen; the top row's figures stand up to a cell above it
+        let K = Art.k, head: CGFloat = 0.9
+        let T = max(20, min(72, floor(min((right - left) / CGFloat(r.w), (bottom - top) / (CGFloat(r.h) * K + head)))))
         let ox = floor((size.width - T * CGFloat(r.w)) / 2)
-        let oy = floor(top + max(0, (bottom - top - T * CGFloat(r.h)) / 2))
+        let oy = floor(top + head * T + max(0, (bottom - top - T * (CGFloat(r.h) * K + head)) / 2))
         return (T, CGPoint(x: ox, y: oy))
     }
 
@@ -264,7 +293,7 @@ struct GameView: View {
             Canvas { ctx, _ in
                 var c = ctx
                 c.translateBy(x: o.x, y: o.y)
-                Painter(f: frame, T: T).draw(&c)
+                Stage(f: frame, T: T).draw(&c)
                 // panels read better over a darker floor of the scene
                 let fade = Gradient(colors: [.black.opacity(0), .black.opacity(0.7)])
                 ctx.fill(Path(CGRect(x: 0, y: size.height - ins.bottom - panelH - 30, width: size.width, height: ins.bottom + panelH + 30)),
@@ -275,7 +304,7 @@ struct GameView: View {
         }
         .contentShape(Rectangle())
         .gesture(SpatialTapGesture().onEnded { v in
-            let x = Int(floor((v.location.x - o.x) / T)), y = Int(floor((v.location.y - o.y) / T))
+            let x = Int(floor((v.location.x - o.x) / T)), y = Int(floor((v.location.y - o.y) / (T * Art.k)))
             if x >= 0, y >= 0, x < r.w, y < r.h { model.tap(Pt(x, y)) }
         })
         .overlay(alignment: .topLeading) {
@@ -295,7 +324,7 @@ struct GameView: View {
                     .padding(.horizontal, 26).padding(.vertical, 16)
                     .background(.black.opacity(0.72), in: RoundedRectangle(cornerRadius: 16))
                     .transition(.scale(scale: 0.85).combined(with: .opacity))
-                    .position(x: size.width / 2, y: o.y + T * CGFloat(r.h) / 2)
+                    .position(x: size.width / 2, y: o.y + T * Art.k * CGFloat(r.h) / 2)
                 }
             }
             .frame(width: size.width, height: size.height)
@@ -309,39 +338,62 @@ struct GameView: View {
     }
 
     private var controls: some View {
-        VStack(spacing: 8) {
+        HStack(spacing: 10) {
             if model.room.heroes.count > 1 {
-                HStack(spacing: 8) {
-                    ForEach(Array(model.room.heroes.enumerated()), id: \.offset) { i, h in
-                        Button { model.select(i) } label: {
-                            Text(h == .otto ? "Otto" : h == .moss ? "Moss" : "Mosto")
-                                .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(.vertical, 9)
-                                .background(i == model.active ? gold : panelBG.opacity(0.92), in: RoundedRectangle(cornerRadius: 10))
-                                .foregroundStyle(i == model.active ? Color.black : .white)
-                        }
+                ForEach(Array(model.room.heroes.enumerated()), id: \.offset) { i, h in
+                    Button { model.select(i) } label: { heroChip(h, on: i == model.active) }
+                        .accessibilityLabel(h == .otto ? "Otto" : h == .moss ? "Moss" : "Mosto")
                         .accessibilityAddTraits(i == model.active ? .isSelected : [])
-                    }
                 }
+                Spacer(minLength: 0)
             }
-            HStack(spacing: 8) {
-                if model.hero == .otto {
-                    ctl(model.state.bulb ? "灯珠：亮" : "灯珠", on: model.state.bulb, enabled: model.canPlay && !model.room.lockBulb) { _ = model.apply(.bulb) }
-                }
-                ctl(model.actionLabel ?? "互动", on: false, enabled: model.canPlay && model.actionLabel != nil) { model.interact() }
-                ctl("撤回", on: false, enabled: model.canPlay && !model.hist.isEmpty) { model.undo() }
-                ctl("重来", on: false, enabled: model.canPlay && !model.hist.isEmpty) { model.reset() }
+            if model.hero == .otto {
+                iconButton(model.state.bulb ? "lightbulb.max.fill" : "lightbulb", on: model.state.bulb,
+                           enabled: model.canPlay && !model.room.lockBulb, label: "灯珠") { _ = model.apply(.bulb) }
             }
+            iconButton(actionIcon, on: false, enabled: model.canPlay && model.actionLabel != nil, label: model.actionLabel ?? "互动") { model.interact() }
+            iconButton("arrow.uturn.backward", on: false, enabled: model.canPlay && !model.hist.isEmpty, label: "撤回") { model.undo() }
+            iconButton("arrow.counterclockwise", on: false, enabled: model.canPlay && !model.hist.isEmpty, label: "重来") { model.reset() }
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+
+    /// What the action button does here, as a picture.
+    private var actionIcon: String {
+        switch model.actionLabel {
+        case "点灯": return "lamp.floor.fill"
+        case "摸": return "hand.point.up.left.fill"
+        case "抓光": return "hand.raised.fill"
+        case "放光": return "flame.fill"
+        case "说话": return "ellipsis.bubble.fill"
+        default: return "hand.tap"
         }
     }
 
-    private func ctl(_ title: String, on: Bool, enabled: Bool, _ act: @escaping () -> Void) -> some View {
-        Button(action: act) {
-            Text(title).font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 48)
-                .background(on ? gold : panelBG.opacity(0.92), in: RoundedRectangle(cornerRadius: 12))
-                .foregroundStyle(on ? Color.black : .white)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.08)))
+    private func heroChip(_ h: Hero, on: Bool) -> some View {
+        let name = h == .otto ? "otto_idle_E_n" : h == .moss ? "moss_idle_n" : "mosto_idle_n"
+        return ZStack {
+            Circle().fill(on ? gold.opacity(0.9) : panelBG.opacity(0.92))
+            if let ui = Art.uiImage(name) {
+                Image(uiImage: ui).resizable().aspectRatio(contentMode: .fit)
+                    .frame(width: 92, height: 92 * 1.3).offset(y: h == .otto ? 4 : -6)
+            }
         }
-        .disabled(!enabled).opacity(enabled ? 1 : 0.4)
+        .frame(width: 54, height: 54)
+        .clipShape(Circle())
+        .overlay(Circle().stroke(on ? gold : Color.white.opacity(0.1), lineWidth: on ? 2.5 : 1))
+    }
+
+    private func iconButton(_ symbol: String, on: Bool, enabled: Bool, label: String, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            Image(systemName: symbol).font(.system(size: 21, weight: .semibold))
+                .frame(width: 54, height: 54)
+                .background(on ? gold : panelBG.opacity(0.92), in: Circle())
+                .foregroundStyle(on ? Color.black : .white)
+                .overlay(Circle().stroke(Color.white.opacity(0.08)))
+        }
+        .disabled(!enabled).opacity(enabled ? 1 : 0.35)
+        .accessibilityLabel(label)
     }
 
     private func dialogView(_ d: Dialog) -> some View {
