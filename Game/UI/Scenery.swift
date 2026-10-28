@@ -13,7 +13,7 @@ extension Painter {
 
     // MARK: back
 
-    func sceneryBack(_ ctx: inout GraphicsContext) {
+    func sceneryBack(_ ctx: inout GraphicsContext, rings withRings: Bool = true) {
         guard let E = f.extent else { return }
         let ch = chapterIndex, B = boardRect, th = Theme.of(f.room.spec.id)
         let skies: [[UInt32]] = [[0x070b1c, 0x141c3a, 0x1d2850], [0x060b09, 0x111d17, 0x1b2c22], [0x08050f, 0x150f26, 0x251a3e], [0x0b0706, 0x2a1a12, 0x4a2a17]]
@@ -37,7 +37,7 @@ extension Painter {
         case 3: pools(&ctx, E, B)
         default: dunes(&ctx, E, B)
         }
-        rings(&ctx, E)
+        if withRings { rings(&ctx, E) }
     }
 
     /// The room's edge carries on for a few tiles and crumbles away, so the room sits in the world instead of floating.

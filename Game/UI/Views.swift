@@ -53,6 +53,12 @@ struct TitleView: View {
     @State private var tick = 0
     @State private var allOpen = false
     var body: some View {
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background { TitleWorld().ignoresSafeArea() }
+    }
+
+    private var content: some View {
         VStack(spacing: 18) {
             Spacer(minLength: 24)
             TimelineView(.animation) { tl in
@@ -107,6 +113,32 @@ struct TitleView: View {
     }
 }
 
+/// The title's backdrop: the lighthouse town under the long night, drawn by the same painter as the rooms.
+struct TitleWorld: View {
+    var body: some View {
+        GeometryReader { g in
+            TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
+                Canvas { ctx, size in
+                    let room = TitleView.trio
+                    let T = max(28, min(size.width, size.height) / 9)
+                    let o = CGPoint(x: (size.width - T * 5) / 2, y: size.height * 0.36)
+                    let frame = BoardFrame(room: room, state: room.start, prev: nil, e: 1, t: tl.date.timeIntervalSinceReferenceDate, active: -1,
+                                           face: [1, 1, -1], actors: [:], mainDim: false, dark: 0, hideHeroes: true, bulbR: 0, doudou: false,
+                                           extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height))
+                    var c = ctx
+                    c.translateBy(x: o.x, y: o.y)
+                    let p = Painter(f: frame, T: T)
+                    p.sceneryBack(&c, rings: false)
+                    c.fill(Path(frame.extent!), with: .color(Color(.sRGB, red: 0.01, green: 0.015, blue: 0.04, opacity: 0.45)))
+                    p.sceneryFront(&c)
+                }
+            }
+            .frame(width: g.size.width, height: g.size.height)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 struct GameView: View {
     @StateObject var model: GameModel
     @EnvironmentObject var router: Router
@@ -134,6 +166,7 @@ struct GameView: View {
                 .frame(maxWidth: .infinity)
             }
         }
+        .persistentSystemOverlays(.hidden)
         .onAppear { model.begin() }
         .sheet(isPresented: $showRules) { RulesView() }
         .sheet(isPresented: $showSettings) { SettingsView() }
