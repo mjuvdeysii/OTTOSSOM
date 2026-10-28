@@ -18,11 +18,10 @@ targets:
     platform: iOS
     sources:
       - path: Game
-        excludes: ["Resources/Art/**", "Resources/levels.json"]
-      - path: Game/Resources/Art
-        type: folder
+        excludes: ["Resources/rooms.json", "Resources/story.json"]
+      - path: Game/Resources/rooms.json
         buildPhase: resources
-      - path: Game/Resources/levels.json
+      - path: Game/Resources/story.json
         buildPhase: resources
     settings:
       base:

@@ -1,12 +1,10 @@
-# OTTOSSOM
+# 长夜 · OTTOSSOM
 
-Moss & Otto 的 iOS 游戏。无对白、回合制的光影解谜：Moss 只走被照亮的地方，Otto 掌灯，Mosto 是两人性格另一面的合体，总在暗处反着学 Moss 走路。
+Moss、Otto、Mosto 的 iOS 游戏：太阳一百天没有升起，三个角色各走一章，第四章汇合。俯视角格子冒险解谜，原生 SwiftUI，没有网页。
 
-- 故事正典与游戏设计：见项目文档《OTTOSSOM · IP 故事正典与游戏设计》
-- 规则参考实现：`Tools/engine.py`（Swift 引擎 `Game/Engine/Engine.swift` 与之逐条一致）
-- 关卡：`Tools/levels.txt` → `python3 Tools/build_levels.py` → `Game/Resources/levels.json`
-- 验证：CI 先用 Python 参考实现重解全部关卡（`Tools/check_levels.py`），再由 Swift 测试目标独立求解，两者的最短解必须完全一致
-- 美术：`Tools/art/characters.py`（三位角色，3D）、`Tools/art/props.py`（道具与桌面）；2D 版由 `Game/IP/Flat2D.swift` 绘制
-- 构建：推送到 main 后由 GitHub Actions 构建、测试、截图并上传 TestFlight；报告在 `ci-logs` 分支
-
-隐藏彩蛋：标题页连点三位角色 5 下切换为平面 2D；按住 3 秒回到 3D。
+- 四章 21 个房间：守灯人（Otto · 照）、摸（Moss · 摸与推石）、影子大盗（Mosto · 抓光、飞过水）、让太阳睡一觉（三人轮换）
+- 规则：`Game/Engine/Rules.swift`；参考实现 `Tools/rooms/core.js`（房间设计与校验用，两者逐条一致）
+- 房间：`Tools/rooms/rooms.src.json` → `node Tools/rooms/build.js` → `Game/Resources/rooms.json`（带最短解）
+- 剧情：`Game/Resources/story.json`
+- 验证：CI 先用参考规则重解全部房间（`Tools/rooms/check.js`），再由 Swift 测试回放每个参考解、独立求解较小的房间，最短步数与搜索状态数必须一致
+- 构建：推送到 main 后构建、测试、给每个房间截图并上传 TestFlight；`dev/**` 分支只构建与测试。报告在 `ci-logs-<分支>` 分支

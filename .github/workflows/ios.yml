@@ -1,10 +1,11 @@
 name: iOS
-# Every push to main: check the levels with the Python reference, build and test the game in the iPhone simulator
-# (the Swift engine must solve every level to the same shortest solution), take screenshots of every screen, then
-# archive, sign and upload the build to TestFlight. Reports go to the ci-logs branch, screenshots to screens.
+# Every push: check the rooms with the reference rules (Tools/rooms/core.js), build and test the game in the iPhone
+# simulator (the Swift engine must replay every reference solution and solve the rooms to the same shortest length),
+# take a screenshot of every room. Pushes to main are then archived, signed and uploaded to TestFlight.
+# Reports go to the ci-logs branch.
 on:
   push:
-    branches: [main]
+    branches: [main, 'dev/**']
     paths-ignore: ["README.md", "docs/**"]
   workflow_dispatch:
 permissions:
@@ -18,8 +19,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Levels (Python reference)
-        run: python3 Tools/check_levels.py Game/Resources/levels.json | tee levels-python.txt
+      - name: Rooms (reference rules)
+        run: node --max-old-space-size=6000 Tools/rooms/check.js | tee levels-js.txt
       - name: Xcode
         run: |
           X=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1); sudo xcode-select -s "$X"; xcodebuild -version
@@ -72,14 +73,14 @@ jobs:
             echo "-- test failures --"; grep -E "XCTAssert|failed" build.log 2>/dev/null | sed "s#$PWD/##" | sort -u | head -40
             echo "-- warnings (project files) --"; grep -E "warning:" build.log 2>/dev/null | grep "/Game/" | sed "s#$PWD/##" | sort -u | head -40
           } > report/build.txt
-          cp levels-python.txt levels-swift.txt report/ 2>/dev/null || true
+          cp levels-js.txt levels-swift.txt report/ 2>/dev/null || true
           cp -r shots report/ 2>/dev/null || true
           head -60 report/build.txt
           grep -E "error:" build.log 2>/dev/null | sort -u | head -30 | while IFS= read -r l; do echo "::error::$l"; done
           cp -r report /tmp/report
           git config user.name "github-actions"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -q --orphan logs-tmp && git rm -rqf --cached . && find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -r /tmp/report/. . && git add -A && git commit -qm "ci report ${GITHUB_SHA}" && git push -qf origin logs-tmp:ci-logs
+          cp -r /tmp/report/. . && git add -A && git commit -qm "ci report ${GITHUB_SHA}" && git push -qf origin logs-tmp:ci-logs-${GITHUB_REF_NAME//\//-}
 
   testflight:
     needs: build

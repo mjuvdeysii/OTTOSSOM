@@ -1,0 +1,886 @@
+{
+ "chapters": [
+  {
+   "id": 1,
+   "title": "守灯人",
+   "hero": "otto",
+   "steps": [
+    {
+     "room": "top",
+     "intro": "c1_prologue"
+    },
+    {
+     "room": "street",
+     "intro": "c1_street"
+    },
+    {
+     "room": "alley",
+     "intro": "c1_alley"
+    },
+    {
+     "room": "dock",
+     "intro": "c1_dock"
+    },
+    {
+     "cut": "c1_d30",
+     "room": "top"
+    },
+    {
+     "room": "tower",
+     "intro": "c1_tower"
+    },
+    {
+     "cut": "c1_d60",
+     "room": "street"
+    },
+    {
+     "room": "gate",
+     "intro": "c1_gate"
+    },
+    {
+     "room": "outside",
+     "intro": "c1_outside",
+     "outro": "c1_end"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "title": "摸",
+   "hero": "moss",
+   "steps": [
+    {
+     "room": "sunset",
+     "intro": "c2_sunset"
+    },
+    {
+     "room": "ruins",
+     "intro": "c2_ruins"
+    },
+    {
+     "room": "deep",
+     "intro": "c2_deep"
+    },
+    {
+     "cut": "c2_d30",
+     "room": "lamp"
+    },
+    {
+     "room": "trace",
+     "intro": "c2_trace"
+    },
+    {
+     "room": "dark",
+     "intro": "c2_dark",
+     "outro": "c2_end"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "title": "影子大盗",
+   "hero": "mosto",
+   "steps": [
+    {
+     "room": "hive",
+     "intro": "c3_hive",
+     "outro": "c3_hive_out"
+    },
+    {
+     "room": "rim",
+     "intro": "c3_rim"
+    },
+    {
+     "room": "city",
+     "intro": "c3_city"
+    },
+    {
+     "room": "back",
+     "intro": "c3_back"
+    },
+    {
+     "room": "rest",
+     "intro": "c3_rest",
+     "outro": "c3_end"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "title": "让太阳睡一觉",
+   "hero": "all",
+   "steps": [
+    {
+     "room": "meet",
+     "intro": "c4_meet"
+    },
+    {
+     "room": "road",
+     "intro": "c4_road"
+    },
+    {
+     "room": "sun",
+     "intro": "c4_sun",
+     "outro": "c4_end"
+    }
+   ]
+  }
+ ],
+ "rooms": {
+  "top": {
+   "name": "灯塔顶",
+   "day": 1,
+   "map": [
+    "#######",
+    "#..E..#",
+    "#.....#",
+    "#..l..#",
+    "#.....#",
+    "#.h.O.#",
+    "#######"
+   ],
+   "id": "top",
+   "par": 5,
+   "solution": [
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:left"
+   ],
+   "states": 26
+  },
+  "street": {
+   "name": "北街",
+   "day": 1,
+   "map": [
+    "#########",
+    "#...E...#",
+    "#.L...L.#",
+    "#.......#",
+    "#...d...#",
+    "#.......#",
+    "#..L....#",
+    "#.......#",
+    "#...O...#",
+    "#########"
+   ],
+   "id": "street",
+   "par": 14,
+   "solution": [
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:left",
+    "0:light",
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:light",
+    "0:right",
+    "0:right",
+    "0:light",
+    "0:up",
+    "0:left"
+   ],
+   "states": 492
+  },
+  "alley": {
+   "name": "窄巷",
+   "day": 1,
+   "map": [
+    "#########",
+    "###E#####",
+    "###.#####",
+    "###S#####",
+    "#.......#",
+    "#.......#",
+    "#.......#",
+    "#...O...#",
+    "#########"
+   ],
+   "id": "alley",
+   "par": 10,
+   "solution": [
+    "0:up",
+    "0:up",
+    "0:bulb",
+    "0:down",
+    "0:up",
+    "0:up",
+    "0:left",
+    "0:up",
+    "0:up",
+    "0:up"
+   ],
+   "states": 455
+  },
+  "dock": {
+   "name": "码头",
+   "day": 12,
+   "map": [
+    "#########",
+    "#...E...#",
+    "#.......#",
+    "#...L...#",
+    "#..S.S..#",
+    "#.......#",
+    "#~~...~~#",
+    "#...O.n.#",
+    "#########"
+   ],
+   "id": "dock",
+   "par": 11,
+   "solution": [
+    "0:up",
+    "0:bulb",
+    "0:up",
+    "0:up",
+    "0:left",
+    "0:up",
+    "0:bulb",
+    "0:up",
+    "0:right",
+    "0:light",
+    "0:up"
+   ],
+   "states": 3083
+  },
+  "tower": {
+   "name": "灯塔下层",
+   "day": 30,
+   "rOtto": 2,
+   "map": [
+    "#########",
+    "##..E..##",
+    "#....SS.#",
+    "#.L.S.L.#",
+    "#.......#",
+    "#...#...#",
+    "#.......#",
+    "#.......#",
+    "##..O..##",
+    "#########"
+   ],
+   "id": "tower",
+   "par": 21,
+   "solution": [
+    "0:up",
+    "0:up",
+    "0:left",
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:bulb",
+    "0:light",
+    "0:down",
+    "0:right",
+    "0:up",
+    "0:down",
+    "0:bulb",
+    "0:right",
+    "0:up",
+    "0:bulb",
+    "0:bulb",
+    "0:light",
+    "0:up",
+    "0:up",
+    "0:left"
+   ],
+   "states": 23066
+  },
+  "gate": {
+   "name": "城门",
+   "day": 60,
+   "rOtto": 2,
+   "needKey": true,
+   "map": [
+    "#########",
+    "#...E..h#",
+    "#.L.#.L.#",
+    "#...#...#",
+    "#.#S..#.#",
+    "#..SSS..#",
+    "#..#L#..#",
+    "#.......#",
+    "#...O...#",
+    "#########"
+   ],
+   "id": "gate",
+   "par": 28,
+   "solution": [
+    "0:up",
+    "0:left",
+    "0:left",
+    "0:up",
+    "0:up",
+    "0:left",
+    "0:bulb",
+    "0:up",
+    "0:bulb",
+    "0:up",
+    "0:right",
+    "0:bulb",
+    "0:bulb",
+    "0:light",
+    "0:right",
+    "0:down",
+    "0:bulb",
+    "0:bulb",
+    "0:right",
+    "0:down",
+    "0:light",
+    "0:up",
+    "0:right",
+    "0:up",
+    "0:up",
+    "0:light",
+    "0:up",
+    "0:left"
+   ],
+   "states": 115759
+  },
+  "outside": {
+   "name": "城外的暗处",
+   "day": 100,
+   "bulbOn": true,
+   "lockBulb": true,
+   "map": [
+    "#########",
+    "#~~~E~~~#",
+    "#S.~.~.S#",
+    "#.S~.~S.#",
+    "#S.~.~.S#",
+    "#.S~.~S.#",
+    "#S.~.~.S#",
+    "#~~~.~~~#",
+    "#...O...#",
+    "#########"
+   ],
+   "id": "outside",
+   "par": 7,
+   "solution": [
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:up"
+   ],
+   "states": 30
+  },
+  "sunset": {
+   "name": "日落崖",
+   "day": 1,
+   "goal": "none",
+   "needKey": true,
+   "map": [
+    "#########",
+    "#~~~E~~~#",
+    "#~~...~~#",
+    "#...T...#",
+    "#.......#",
+    "#...M...#",
+    "#########"
+   ],
+   "id": "sunset",
+   "par": 6,
+   "solution": [
+    "0:up",
+    "0:left",
+    "0:up",
+    "0:up",
+    "0:right",
+    "0:up"
+   ],
+   "states": 24
+  },
+  "ruins": {
+   "name": "废墟",
+   "day": 9,
+   "goal": "none",
+   "map": [
+    "#########",
+    "#...E...#",
+    "####D####",
+    "#.......#",
+    "#.P...B.#",
+    "#.......#",
+    "#...M...#",
+    "#########"
+   ],
+   "id": "ruins",
+   "par": 13,
+   "solution": [
+    "0:up",
+    "0:right",
+    "0:right",
+    "0:right",
+    "0:up",
+    "0:left",
+    "0:left",
+    "0:left",
+    "0:left",
+    "0:up",
+    "0:right",
+    "0:up",
+    "0:up"
+   ],
+   "states": 504
+  },
+  "deep": {
+   "name": "废墟深处",
+   "day": 17,
+   "goal": "none",
+   "map": [
+    "#########",
+    "#T..E..T#",
+    "####D####",
+    "#.P...#.#",
+    "#.#B#...#",
+    "#...B.P.#",
+    "#.#...#.#",
+    "#...M...#",
+    "#########"
+   ],
+   "id": "deep",
+   "par": 14,
+   "solution": [
+    "0:up",
+    "0:left",
+    "0:up",
+    "0:up",
+    "0:down",
+    "0:right",
+    "0:right",
+    "0:up",
+    "0:up",
+    "0:left",
+    "0:left",
+    "0:right",
+    "0:up",
+    "0:up"
+   ],
+   "states": 596
+  },
+  "lamp": {
+   "name": "灯塔顶",
+   "day": 30,
+   "goal": "none",
+   "map": [
+    "#######",
+    "#..E..#",
+    "#.....#",
+    "#..l..#",
+    "#.....#",
+    "#.h.M.#",
+    "#######"
+   ],
+   "id": "lamp",
+   "par": 5,
+   "solution": [
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:left"
+   ],
+   "states": 16
+  },
+  "trace": {
+   "name": "城外的脚印",
+   "day": 60,
+   "goal": "none",
+   "map": [
+    "#########",
+    "#..#E#..#",
+    "#..#D#..#",
+    "#.S...S.#",
+    "#.B.l.B.#",
+    "#.......#",
+    "#P.....P#",
+    "#...M...#",
+    "#########"
+   ],
+   "id": "trace",
+   "par": 48,
+   "solution": [
+    "0:up",
+    "0:up",
+    "0:left",
+    "0:left",
+    "0:left",
+    "0:up",
+    "0:right",
+    "0:down",
+    "0:right",
+    "0:right",
+    "0:right",
+    "0:up",
+    "0:up",
+    "0:left",
+    "0:left",
+    "0:down",
+    "0:down",
+    "0:right",
+    "0:right",
+    "0:right",
+    "0:right",
+    "0:up",
+    "0:left",
+    "0:down",
+    "0:down",
+    "0:left",
+    "0:left",
+    "0:left",
+    "0:left",
+    "0:up",
+    "0:up",
+    "0:right",
+    "0:up",
+    "0:right",
+    "0:right",
+    "0:down",
+    "0:down",
+    "0:left",
+    "0:down",
+    "0:right",
+    "0:right",
+    "0:up",
+    "0:up",
+    "0:left",
+    "0:up",
+    "0:left",
+    "0:up",
+    "0:up"
+   ],
+   "states": 21223
+  },
+  "dark": {
+   "name": "最深的暗处",
+   "day": 100,
+   "goal": "none",
+   "map": [
+    "#########",
+    "#.......#",
+    "#..oE...#",
+    "#.......#",
+    "#.T...T.#",
+    "#...M...#",
+    "#########"
+   ],
+   "id": "dark",
+   "par": 3,
+   "solution": [
+    "0:up",
+    "0:up",
+    "0:up"
+   ],
+   "states": 10
+  },
+  "hive": {
+   "name": "日巢",
+   "day": 1,
+   "goal": "carry",
+   "sun": true,
+   "map": [
+    "#########",
+    "#~~~E~~~#",
+    "#~~~.~~~#",
+    "#~~...~~#",
+    "#~~.l.~~#",
+    "#~~...~~#",
+    "#~~~~~~~#",
+    "#...X...#",
+    "#########"
+   ],
+   "id": "hive",
+   "par": 9,
+   "solution": [
+    "0:up",
+    "0:up",
+    "0:left",
+    "0:up",
+    "0:up",
+    "0:right",
+    "0:take",
+    "0:up",
+    "0:up"
+   ],
+   "states": 88
+  },
+  "rim": {
+   "name": "影子国边上",
+   "day": 30,
+   "goal": "nests",
+   "map": [
+    "#########",
+    "#.l~~~E.#",
+    "#..~.~..#",
+    "#.S.N.S.#",
+    "#~~~.~~~#",
+    "#.S...l.#",
+    "#...X...#",
+    "#########"
+   ],
+   "id": "rim",
+   "par": 11,
+   "solution": [
+    "0:up",
+    "0:up",
+    "0:right",
+    "0:right",
+    "0:take",
+    "0:up",
+    "0:left",
+    "0:give",
+    "0:up",
+    "0:up",
+    "0:right"
+   ],
+   "states": 372
+  },
+  "city": {
+   "name": "灯塔城",
+   "day": 60,
+   "goal": "nests",
+   "map": [
+    "#########",
+    "#l..E..l#",
+    "#.S...S.#",
+    "#..N.N..#",
+    "#.S...S.#",
+    "#...l...#",
+    "#...X...#",
+    "#########"
+   ],
+   "id": "city",
+   "par": 19,
+   "solution": [
+    "0:right",
+    "0:up",
+    "0:up",
+    "0:right",
+    "0:up",
+    "0:up",
+    "0:right",
+    "0:take",
+    "0:down",
+    "0:down",
+    "0:left",
+    "0:left",
+    "0:give",
+    "0:left",
+    "0:take",
+    "0:up",
+    "0:give",
+    "0:up",
+    "0:up"
+   ],
+   "states": 27051
+  },
+  "back": {
+   "name": "回影子国",
+   "day": 80,
+   "goal": "nests",
+   "map": [
+    "#########",
+    "#l~.E.~l#",
+    "#~S...S~#",
+    "#.~N~N~.#",
+    "#.S.~.S.#",
+    "#~~.l.~~#",
+    "#...X...#",
+    "#########"
+   ],
+   "id": "back",
+   "par": 19,
+   "solution": [
+    "0:left",
+    "0:up",
+    "0:take",
+    "0:down",
+    "0:left",
+    "0:up",
+    "0:up",
+    "0:up",
+    "0:give",
+    "0:up",
+    "0:up",
+    "0:take",
+    "0:down",
+    "0:right",
+    "0:right",
+    "0:down",
+    "0:give",
+    "0:up",
+    "0:up"
+   ],
+   "states": 19195
+  },
+  "rest": {
+   "name": "最深的暗处",
+   "day": 100,
+   "goal": "nests",
+   "carry": true,
+   "map": [
+    "#######",
+    "#..E..#",
+    "#.....#",
+    "#.oNm.#",
+    "#.....#",
+    "#..X..#",
+    "#######"
+   ],
+   "id": "rest",
+   "par": 9,
+   "solution": [
+    "0:up",
+    "0:left",
+    "0:left",
+    "0:up",
+    "0:up",
+    "0:right",
+    "0:right",
+    "0:give",
+    "0:up"
+   ],
+   "states": 43
+  },
+  "meet": {
+   "name": "相遇",
+   "day": 101,
+   "map": [
+    "#########",
+    "#.E.E.E.#",
+    "####D####",
+    "#.L....N#",
+    "#.P..B..#",
+    "#~~~.~~~#",
+    "#.O.M.X.#",
+    "#########"
+   ],
+   "id": "meet",
+   "par": 45,
+   "solution": [
+    "0:right",
+    "1:up",
+    "0:right",
+    "1:up",
+    "0:up",
+    "1:up",
+    "0:up",
+    "0:left",
+    "0:up",
+    "0:light",
+    "0:down",
+    "1:right",
+    "1:right",
+    "1:down",
+    "1:left",
+    "2:up",
+    "2:up",
+    "2:up",
+    "2:left",
+    "2:left",
+    "2:left",
+    "2:take",
+    "2:right",
+    "0:up",
+    "0:light",
+    "1:left",
+    "1:left",
+    "1:right",
+    "2:right",
+    "0:right",
+    "0:up",
+    "1:up",
+    "2:right",
+    "2:give",
+    "0:up",
+    "0:left",
+    "0:left",
+    "1:up",
+    "1:up",
+    "1:right",
+    "1:right",
+    "2:left",
+    "2:left",
+    "2:up",
+    "2:up"
+   ],
+   "states": 1255551
+  },
+  "road": {
+   "name": "旧路",
+   "day": 102,
+   "map": [
+    "#######",
+    "#E.E.E#",
+    "##D#.~#",
+    "#.S.L.#",
+    "#B..P.#",
+    "#O.M.X#",
+    "#######"
+   ],
+   "id": "road",
+   "par": 22,
+   "solution": [
+    "0:right",
+    "0:up",
+    "0:bulb",
+    "1:up",
+    "1:up",
+    "0:right",
+    "1:left",
+    "0:up",
+    "0:light",
+    "2:up",
+    "2:left",
+    "1:up",
+    "0:left",
+    "1:up",
+    "0:up",
+    "1:left",
+    "0:up",
+    "0:right",
+    "2:right",
+    "2:up",
+    "2:up",
+    "2:up"
+   ],
+   "states": 496790
+  },
+  "sun": {
+   "name": "日巢",
+   "day": 103,
+   "goal": "none",
+   "sun": true,
+   "map": [
+    "#########",
+    "#~~~l~~~#",
+    "#~.E.E.~#",
+    "#~..E..~#",
+    "#~~...~~#",
+    "#.O.M.X.#",
+    "#########"
+   ],
+   "id": "sun",
+   "par": 10,
+   "solution": [
+    "0:right",
+    "0:up",
+    "0:up",
+    "0:up",
+    "1:up",
+    "1:up",
+    "2:up",
+    "2:up",
+    "2:up",
+    "2:left"
+   ],
+   "states": 7517
+  }
+ }
+}
