@@ -60,16 +60,16 @@ struct Painter {
         for (i, p) in r.lampPos.enumerated() { items.append((Double(p.y), { c in self.lamp(&c, i) })) }
         for (p, ch) in r.npcs { items.append((Double(p.y), { c in self.npc(&c, p, ch) })) }
         for (p, _) in r.tablets.map({ ($0, 0) }) { items.append((Double(p.y), { c in self.tablet(&c, p) })) }
-        for i in f.state.boulders.indices { let p = boulderPos(i); items.append((p.y, { c in self.boulder(&c, p) })) }
+        for i in f.state.boulders.indices { let p = boulderPos(i); items.append((Double(p.y), { c in self.boulder(&c, p) })) }
         for i in f.state.shadows.indices {
             let p = shadowPos(i)
             let crowd = r.lampPos.contains { $0.dist(f.state.shadows[i]) == 1 }
-            items.append((p.y, { c in self.shadow(&c, p, i, crowd) }))
+            items.append((Double(p.y), { c in self.shadow(&c, p, i, crowd) }))
         }
         if !f.hideHeroes {
             for (i, h) in r.heroes.enumerated() {
                 let p = pos(i)
-                items.append((p.y + 0.01, { c in
+                items.append((Double(p.y) + 0.01, { c in
                     if r.heroes.count > 1 && i == self.f.active { self.marker(&c, p) }
                     switch h {
                     case .otto: self.otto(&c, p, bulb: self.f.state.bulb, face: self.f.face[i])
@@ -102,7 +102,7 @@ struct Painter {
         case .water:
             ctx.fill(Path(R), with: .color(Pal.water))
             var p = Path()
-            let o = sin(f.t * 1.1 + Double(x + y)) * Double(T) * 0.08
+            let o = CGFloat(sin(f.t * 1.1 + Double(x + y))) * T * 0.08
             p.move(to: CGPoint(x: R.minX + T * 0.15, y: R.minY + T * 0.45 + o))
             p.addQuadCurve(to: CGPoint(x: R.minX + T * 0.85, y: R.minY + T * 0.45 + o), control: CGPoint(x: R.midX, y: R.minY + T * 0.35 + o))
             ctx.stroke(p, with: .color(Color(0x78a0ff, 0.14)), lineWidth: 1)
