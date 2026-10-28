@@ -114,14 +114,60 @@ struct GameView: View {
     @State private var showSettings = false
     @State private var revealed = 0
 
+    /// Height kept free at the bottom for the hint line, hero chips, actions and the small links.
+    private let panelH: CGFloat = 214
+    /// Height kept free at the top for the title row and progress.
+    private let headH: CGFloat = 70
+
     var body: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Button { Sound.shared.hum(false); router.screen = .title } label: { Image(systemName: "chevron.left").font(.headline) }
-                    .accessibilityLabel("回到标题")
-                Text("第\(["一", "二", "三", "四"][model.chapter.id - 1])章 · \(model.chapter.title)").font(.system(size: 17, weight: .semibold, design: .serif))
-                Spacer()
-                Text("第 \(model.room.spec.day) 天 · \(model.room.spec.name)").font(.caption).foregroundStyle(mutedText)
+        GeometryReader { outer in
+            let ins = outer.safeAreaInsets
+            ZStack {
+                GeometryReader { g in scene(g.size, ins) }.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    header.padding(.top, 6)
+                    Spacer(minLength: 0)
+                    bottomPanel
+                }
+                .padding(.horizontal, 16)
+                .frame(maxWidth: 600)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .onAppear { model.begin() }
+        .sheet(isPresented: $showRules) { RulesView() }
+        .sheet(isPresented: $showSettings) { SettingsView() }
+        .overlay {
+            if let c = model.card {
+                VStack(spacing: 8) {
+                    Text(c.title).font(.system(size: 28, weight: .semibold, design: .serif)).foregroundStyle(.white).tracking(4)
+                        .multilineTextAlignment(.center)
+                    if !c.sub.isEmpty { Text(c.sub).font(.callout).foregroundStyle(mutedText).multilineTextAlignment(.center) }
+                }
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black.opacity(0.9).ignoresSafeArea())
+                .transition(.opacity)
+            }
+        }
+        .overlay {
+            if model.finished { finishedView }
+        }
+        .animation(.easeInOut(duration: 0.45), value: model.card)
+    }
+
+    private var header: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                Button { Sound.shared.hum(false); router.screen = .title } label: {
+                    Image(systemName: "chevron.left").font(.headline).frame(width: 36, height: 36)
+                        .background(.black.opacity(0.35), in: Circle())
+                }
+                .accessibilityLabel("回到标题")
+                Text("第\(["一", "二", "三", "四"][model.chapter.id - 1])章 · \(model.chapter.title)")
+                    .font(.system(size: 17, weight: .semibold, design: .serif)).lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 8)
+                Text("第 \(model.room.spec.day) 天 · \(model.room.spec.name)").font(.caption).foregroundStyle(mutedText).lineLimit(1)
             }
             .foregroundStyle(.white)
             HStack(spacing: 6) {
@@ -134,8 +180,14 @@ struct GameView: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("本章第 \(model.chapter.steps[0..<min(model.stepIndex + 1, model.chapter.steps.count)].filter { $0.cut == nil }.count) 间，已走 \(model.state.steps) 步，最少 \(model.room.spec.par ?? 0) 步")
-            board
-            Text(model.hint).font(.footnote).foregroundStyle(mutedText).frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 20)
+        }
+        .frame(height: headH - 6, alignment: .top)
+    }
+
+    private var bottomPanel: some View {
+        VStack(spacing: 10) {
+            Text(model.hint).font(.footnote).foregroundStyle(mutedText).frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 18)
+                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.updatesFrequently)
             if let d = model.dialog { dialogView(d) } else { controls }
             HStack {
@@ -147,81 +199,80 @@ struct GameView: View {
                 Button("怎么玩") { showRules = true }
             }
             .font(.footnote).foregroundStyle(mutedText)
-            Spacer(minLength: 0)
+            .padding(.bottom, 4)
         }
-        .padding(.horizontal, 16).padding(.top, 8)
-        .frame(maxWidth: 560)
-        .onAppear { model.begin() }
-        .sheet(isPresented: $showRules) { RulesView() }
-        .sheet(isPresented: $showSettings) { SettingsView() }
-        .overlay {
-            if model.finished { finishedView }
-        }
+        .frame(height: panelH, alignment: .bottom)
     }
 
-    private var board: some View {
+    /// Where the room goes on this screen: tiles stay a readable size, centred in the space between header and panel.
+    private func layout(_ size: CGSize, _ ins: EdgeInsets) -> (T: CGFloat, origin: CGPoint) {
         let r = model.room
-        return GeometryReader { geo in
-            let T = floor(min(geo.size.width / CGFloat(r.w), geo.size.height / CGFloat(r.h)))
-            TimelineView(.animation) { tl in
-                let now = tl.date
-                let e = min(1, now.timeIntervalSince(model.animStart) / model.animDur)
-                let eased = 1 - pow(1 - e, 3)
-                let frame = BoardFrame(room: r, state: model.state, prev: model.prev, e: eased, t: now.timeIntervalSinceReferenceDate,
-                                       active: model.active, face: model.face, actors: model.actors, mainDim: model.mainDim, dark: model.dark,
-                                       hideHeroes: model.hideHeroes, bulbR: model.bulbR, doudou: Progress.shared.flags.contains("doudou"),
-                                       hint: model.hintMark, dots: model.pathDots,
-                                       tap: model.tapMark.map { ($0.p, now.timeIntervalSince($0.at)) })
-                Canvas { ctx, _ in
-                    var c = ctx
-                    c.translateBy(x: (geo.size.width - T * CGFloat(r.w)) / 2, y: 0)
-                    Painter(f: frame, T: T).draw(&c)
-                }
+        let top = ins.top + headH, bottom = size.height - ins.bottom - panelH - 6
+        let left = ins.leading + 8, right = size.width - ins.trailing - 8
+        let T = max(20, min(72, floor(min((right - left) / CGFloat(r.w), (bottom - top) / CGFloat(r.h)))))
+        let ox = floor((size.width - T * CGFloat(r.w)) / 2)
+        let oy = floor(top + max(0, (bottom - top - T * CGFloat(r.h)) / 2))
+        return (T, CGPoint(x: ox, y: oy))
+    }
+
+    private func scene(_ size: CGSize, _ ins: EdgeInsets) -> some View {
+        let r = model.room
+        let (T, o) = layout(size, ins)
+        return TimelineView(.animation) { tl in
+            let now = tl.date
+            let e = min(1, now.timeIntervalSince(model.animStart) / model.animDur)
+            let eased = 1 - pow(1 - e, 3)
+            let frame = BoardFrame(room: r, state: model.state, prev: model.prev, e: eased, t: now.timeIntervalSinceReferenceDate,
+                                   active: model.active, face: model.face, actors: model.actors, mainDim: model.mainDim, dark: model.dark,
+                                   hideHeroes: model.hideHeroes, bulbR: model.bulbR, doudou: Progress.shared.flags.contains("doudou"),
+                                   hint: model.hintMark, dots: model.pathDots,
+                                   tap: model.tapMark.map { ($0.p, now.timeIntervalSince($0.at)) },
+                                   extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height))
+            Canvas { ctx, _ in
+                var c = ctx
+                c.translateBy(x: o.x, y: o.y)
+                Painter(f: frame, T: T).draw(&c)
+                // panels read better over a darker floor of the scene
+                let fade = Gradient(colors: [.black.opacity(0), .black.opacity(0.7)])
+                ctx.fill(Path(CGRect(x: 0, y: size.height - ins.bottom - panelH - 30, width: size.width, height: ins.bottom + panelH + 30)),
+                         with: .linearGradient(fade, startPoint: CGPoint(x: 0, y: size.height - ins.bottom - panelH - 30), endPoint: CGPoint(x: 0, y: size.height - ins.bottom - panelH + 40)))
+                ctx.fill(Path(CGRect(x: 0, y: 0, width: size.width, height: ins.top + headH)),
+                         with: .linearGradient(Gradient(colors: [.black.opacity(0.55), .black.opacity(0)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: ins.top + headH)))
             }
-            .contentShape(Rectangle())
-            .gesture(SpatialTapGesture().onEnded { v in
-                let ox = (geo.size.width - T * CGFloat(r.w)) / 2
-                let x = Int(floor((v.location.x - ox) / T)), y = Int(floor(v.location.y / T))
-                if x >= 0, y >= 0, x < r.w, y < r.h { model.tap(Pt(x, y)) }
-            })
-            .overlay {
-                if let c = model.card {
-                    VStack(spacing: 8) {
-                        Text(c.title).font(.system(size: 28, weight: .semibold, design: .serif)).foregroundStyle(.white).tracking(4)
-                        if !c.sub.isEmpty { Text(c.sub).font(.callout).foregroundStyle(mutedText) }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.black.opacity(0.86))
-                    .transition(.opacity)
-                }
-            }
-            .overlay(alignment: .top) {
+        }
+        .contentShape(Rectangle())
+        .gesture(SpatialTapGesture().onEnded { v in
+            let x = Int(floor((v.location.x - o.x) / T)), y = Int(floor((v.location.y - o.y) / T))
+            if x >= 0, y >= 0, x < r.w, y < r.h { model.tap(Pt(x, y)) }
+        })
+        .overlay(alignment: .topLeading) {
+            ZStack {
                 if let b = model.banner, model.card == nil {
                     Text(b).font(.system(size: 15, weight: .semibold, design: .serif)).foregroundStyle(.white).tracking(3)
                         .padding(.horizontal, 16).padding(.vertical, 7)
-                        .background(.black.opacity(0.55), in: Capsule())
-                        .padding(.top, 10)
+                        .background(.black.opacity(0.6), in: Capsule())
                         .transition(.move(edge: .top).combined(with: .opacity))
+                        .position(x: size.width / 2, y: o.y + 22)
                 }
-            }
-            .overlay {
                 if let c = model.cleared {
                     VStack(spacing: 6) {
                         Text(c.steps <= c.par ? "完美" : "过关").font(.system(size: 30, weight: .semibold, design: .serif)).foregroundStyle(gold)
                         Text(c.steps <= c.par ? "\(c.steps) 步，正好是最少步数" : "\(c.steps) 步 · 最少 \(c.par) 步").font(.callout).foregroundStyle(.white)
                     }
                     .padding(.horizontal, 26).padding(.vertical, 16)
-                    .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 16))
+                    .background(.black.opacity(0.72), in: RoundedRectangle(cornerRadius: 16))
                     .transition(.scale(scale: 0.85).combined(with: .opacity))
+                    .position(x: size.width / 2, y: o.y + T * CGFloat(r.h) / 2)
                 }
             }
-            .animation(.easeInOut(duration: 0.45), value: model.card)
+            .frame(width: size.width, height: size.height)
+            .allowsHitTesting(false)
             .animation(.spring(duration: 0.4), value: model.banner)
             .animation(.spring(duration: 0.4), value: model.cleared)
         }
-        .aspectRatio(CGFloat(r.w) / CGFloat(r.h), contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("游戏画面：点地面让角色走过去")
+        .accessibilityAddTraits(.allowsDirectInteraction)
     }
 
     private var controls: some View {
@@ -232,7 +283,7 @@ struct GameView: View {
                         Button { model.select(i) } label: {
                             Text(h == .otto ? "Otto" : h == .moss ? "Moss" : "Mosto")
                                 .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(.vertical, 9)
-                                .background(i == model.active ? gold : panelBG, in: RoundedRectangle(cornerRadius: 10))
+                                .background(i == model.active ? gold : panelBG.opacity(0.92), in: RoundedRectangle(cornerRadius: 10))
                                 .foregroundStyle(i == model.active ? Color.black : .white)
                         }
                         .accessibilityAddTraits(i == model.active ? .isSelected : [])
@@ -253,7 +304,7 @@ struct GameView: View {
     private func ctl(_ title: String, on: Bool, enabled: Bool, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
             Text(title).font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 48)
-                .background(on ? gold : panelBG, in: RoundedRectangle(cornerRadius: 12))
+                .background(on ? gold : panelBG.opacity(0.92), in: RoundedRectangle(cornerRadius: 12))
                 .foregroundStyle(on ? Color.black : .white)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.08)))
         }
@@ -293,7 +344,7 @@ struct GameView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(panelBG, in: RoundedRectangle(cornerRadius: 14))
+        .background(panelBG.opacity(0.94), in: RoundedRectangle(cornerRadius: 14))
         .contentShape(Rectangle())
         .onTapGesture {
             if !done { revealed = full } else if d.options.isEmpty { model.answer(0) }

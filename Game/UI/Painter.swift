@@ -18,9 +18,11 @@ struct BoardFrame {
     var hint: HintMark? = nil
     var dots: [Pt] = []
     var tap: (Pt, Double)? = nil
+    /// The whole screen in board coordinates (points, board origin at 0,0). When set, the world around the room is drawn too.
+    var extent: CGRect? = nil
 }
 
-private extension Color {
+extension Color {
     init(_ hex: UInt32, _ a: Double = 1) {
         self.init(.sRGB, red: Double((hex >> 16) & 0xff) / 255, green: Double((hex >> 8) & 0xff) / 255, blue: Double(hex & 0xff) / 255, opacity: a)
     }
@@ -50,7 +52,7 @@ struct Theme {
     static func of(_ roomID: String) -> Theme { all[max(0, min(3, (chapterOf[roomID] ?? 1) - 1))] }
 }
 
-private func noiseHash(_ x: Int, _ y: Int, _ k: Int = 0) -> Double {
+func noiseHash(_ x: Int, _ y: Int, _ k: Int = 0) -> Double {
     var h = UInt64(truncatingIfNeeded: x &* 73856093 ^ y &* 19349663 ^ k &* 83492791)
     h ^= h >> 13; h = h &* 0x5bd1e995; h ^= h >> 15
     return Double(h % 1000) / 1000
@@ -80,6 +82,7 @@ struct Painter {
 
     func draw(_ ctx: inout GraphicsContext) {
         let r = f.room
+        if f.extent != nil { sceneryBack(&ctx) }
         for y in 0..<r.h { for x in 0..<r.w { tile(&ctx, x, y) } }
         // y-sorted figures
         var items: [(Double, (inout GraphicsContext) -> Void)] = []
@@ -126,6 +129,7 @@ struct Painter {
         darkness(&ctx)
         glow(&ctx)
         motes(&ctx)
+        if f.extent != nil { sceneryFront(&ctx) }
         hintMarks(&ctx)
     }
 
@@ -158,8 +162,8 @@ struct Painter {
     // MARK: tiles
     func rect(_ x: Int, _ y: Int) -> CGRect { CGRect(x: CGFloat(x) * T, y: CGFloat(y) * T, width: T, height: T) }
 
-    func tile(_ ctx: inout GraphicsContext, _ x: Int, _ y: Int) {
-        let r = f.room, t = r.tile(Pt(x, y)), R = rect(x, y), th = Theme.of(r.spec.id)
+    func tile(_ ctx: inout GraphicsContext, _ x: Int, _ y: Int, as kind: Tile? = nil) {
+        let r = f.room, t = kind ?? r.tile(Pt(x, y)), R = rect(x, y), th = Theme.of(r.spec.id)
         switch t {
         case .wall:
             ctx.fill(Path(R), with: .color(th.wall))
@@ -529,7 +533,7 @@ struct Painter {
     /// The night: a dark veil with soft holes where light reaches, plus the exact reach of Otto's bulb outlined.
     func darkness(_ ctx: inout GraphicsContext) {
         let r = f.room
-        let full = CGRect(x: 0, y: 0, width: CGFloat(r.w) * T, height: CGFloat(r.h) * T)
+        let full = f.extent ?? CGRect(x: 0, y: 0, width: CGFloat(r.w) * T, height: CGFloat(r.h) * T)
         let base = min(0.94, 0.55 + f.dark * 0.4)
         let ls = lights()
         ctx.drawLayer { layer in
