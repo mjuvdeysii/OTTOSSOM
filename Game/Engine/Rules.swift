@@ -58,6 +58,8 @@ struct GameState: Hashable {
     var boulders: [Pt]
     var lit: [Bool]
     var steps: Int = 0
+    /// Mosto as the thief (chapter 4): he moves on his own after every action
+    var thief: Pt? = nil
 
     /// the solver's identity for a state (step count and shadow order don't matter)
     var key: String {
@@ -66,11 +68,12 @@ struct GameState: Hashable {
         s += shadows.map { "\($0.x),\($0.y)" }.sorted().joined(separator: ";") + "|"
         s += boulders.map { "\($0.x),\($0.y)" }.sorted().joined(separator: ";") + "|"
         s += lit.map { $0 ? "1" : "0" }.joined()
+        if let t = thief { s += "|\(t.x),\(t.y)" }
         return s
     }
 }
 
-enum Event { case drift(Int), dim(Int), light(Int), take(Int), give(Int, nest: Bool), bulb(Bool), push }
+enum Event { case drift(Int), dim(Int), light(Int), take(Int), give(Int, nest: Bool), bulb(Bool), push, steal(Int), thief }
 
 final class Room {
     let spec: RoomSpec
@@ -97,6 +100,7 @@ final class Room {
         h = H; w = W
         var grid: [[Tile]] = [], lamps: [(Pt, Bool, Bool)] = [], shadows: [Pt] = [], boulders: [Pt] = []
         var plates: [Pt] = [], exits: [Pt] = [], npcs: [Pt: Character] = [:], tablets = Set<Pt>(), chars: [Hero: Pt] = [:]
+        var thief: Pt? = nil
         for y in 0..<H {
             var row: [Tile] = []
             for x in 0..<W {
@@ -117,6 +121,7 @@ final class Room {
                 case "O": chars[.otto] = p
                 case "M": chars[.moss] = p
                 case "X": chars[.mosto] = p
+                case "W": thief = p
                 case ".": break
                 default:
                     if ch.isLowercase && ch.isLetter { t = .npc; npcs[p] = ch }
@@ -133,7 +138,7 @@ final class Room {
         rOtto = spec.rOtto ?? 3; rCarry = spec.rCarry ?? 2; rLamp = spec.rLamp ?? 2
         goal = spec.goal ?? "allLamps"; lockBulb = spec.lockBulb ?? false; needKey = spec.needKey ?? false
         start = GameState(c: hs.map { chars[$0]! }, bulb: spec.bulbOn ?? false, carry: spec.carry ?? false,
-                          shadows: shadows, boulders: boulders, lit: lamps.map { $0.1 })
+                          shadows: shadows, boulders: boulders, lit: lamps.map { $0.1 }, thief: thief)
     }
 
     func tile(_ p: Pt) -> Tile { (p.y < 0 || p.y >= h || p.x < 0 || p.x >= w) ? .wall : grid[p.y][p.x] }
@@ -142,7 +147,7 @@ final class Room {
     func platesDown(_ s: GameState) -> Bool { plates.allSatisfy { s.boulders.contains($0) || s.c.contains($0) } }
     func lampsOK(_ s: GameState) -> Bool {
         switch goal {
-        case "none": return true
+        case "none", "trap": return true
         case "carry": return s.carry
         case "nests": return s.lit.indices.allSatisfy { !nest[$0] || s.lit[$0] }
         default: return s.lit.allSatisfy { $0 }
@@ -159,14 +164,61 @@ final class Room {
         case .exit: if !exitOpen(s) { return false }
         default: break
         }
-        if s.c.contains(p) || s.boulders.contains(p) { return false }
+        if s.c.contains(p) || s.boulders.contains(p) || s.thief == p { return false }
         if s.shadows.contains(p) && who != .mosto { return false }
         return true
     }
     private func shadowFree(_ s: GameState, _ p: Pt) -> Bool {
         let t = tile(p)
         let ok = t == .floor || t == .plate || t == .exit || (t == .door && platesDown(s))
-        return ok && !s.shadows.contains(p) && !s.boulders.contains(p) && !s.c.contains(p)
+        return ok && !s.shadows.contains(p) && !s.boulders.contains(p) && !s.c.contains(p) && s.thief != p
+    }
+
+    // MARK: the thief
+    static let tdirs = [Pt(0, -1), Pt(1, 0), Pt(0, 1), Pt(-1, 0)]   // up, right, down, left
+    func thiefFree(_ s: GameState, _ p: Pt) -> Bool {
+        let t = tile(p)
+        guard t == .floor || t == .plate || t == .exit || t == .water || (t == .door && platesDown(s)) else { return false }
+        return !s.boulders.contains(p) && !s.c.contains(p)
+    }
+    /// A side that holds him for good — not a character, who can always step away.
+    func thiefWall(_ s: GameState, _ p: Pt) -> Bool {
+        let t = tile(p)
+        return t == .wall || t == .lamp || t == .npc || t == .tablet || (t == .door && !platesDown(s)) || s.boulders.contains(p)
+    }
+    func trapped(_ s: GameState) -> Bool {
+        guard let t = s.thief else { return false }
+        return Room.tdirs.allSatisfy { thiefWall(s, t + $0) }
+    }
+    /// Takes the light of a lit lamp next to him, or steps along a shortest path toward the nearest cell next to one.
+    func thiefMove(_ s: inout GameState, _ ev: inout [Event]) {
+        guard let t = s.thief, !trapped(s) else { return }
+        if let i = lampPos.indices.first(where: { s.lit[$0] && !nest[$0] && lampPos[$0].dist(t) == 1 }) {
+            s.lit[i] = false; ev.append(.steal(i)); return
+        }
+        var dist: [Pt: Int] = [:], q: [Pt] = []
+        for (i, lp) in lampPos.enumerated() where s.lit[i] && !nest[i] {
+            for d in Room.tdirs {
+                let c = lp + d
+                if dist[c] == nil && (thiefFree(s, c) || c == t) { dist[c] = 0; q.append(c) }
+            }
+        }
+        var h = 0
+        while h < q.count {
+            let c = q[h]; h += 1
+            let d = dist[c]!
+            for m in Room.tdirs {
+                let n = c + m
+                if dist[n] != nil { continue }
+                if !(thiefFree(s, n) || n == t) { continue }
+                dist[n] = d + 1; q.append(n)
+            }
+        }
+        guard let here = dist[t] else { return }
+        for m in Room.tdirs {
+            let n = t + m
+            if let d = dist[n], d < here, thiefFree(s, n) { s.thief = n; ev.append(.thief); return }
+        }
     }
 
     /// Lost shadows are cold: each drifts one tile toward the nearest light within reach; then crowded lamps go out.
@@ -213,7 +265,7 @@ final class Room {
                 guard who == .moss else { return nil }
                 let b2 = n + d, t = tile(b2)
                 guard t == .floor || t == .plate || (t == .door && platesDown(s)) else { return nil }
-                if s.boulders.contains(b2) || s.c.contains(b2) || s.shadows.contains(b2) { return nil }
+                if s.boulders.contains(b2) || s.c.contains(b2) || s.shadows.contains(b2) || s.thief == b2 { return nil }
                 s.boulders[bi] = b2; ev.append(.push); s.c[ci] = n
             } else {
                 guard canEnter(s, ci, n) else { return nil }
@@ -243,11 +295,17 @@ final class Room {
         }
         s.steps += 1
         drift(&s, &ev)
+        thiefMove(&s, &ev)
+        // a door can't close on the thief either
+        if let t = s.thief, !platesDown(s), tile(t) == .door { return nil }
         return s
     }
     func step(_ s: GameState, _ ci: Int, _ v: Verb) -> GameState? { var ev: [Event] = []; return step(s, ci, v, &ev) }
 
-    func won(_ s: GameState) -> Bool { lampsOK(s) && s.c.allSatisfy { tile($0) == .exit } }
+    func won(_ s: GameState) -> Bool {
+        if goal == "trap" { return trapped(s) }
+        return lampsOK(s) && s.c.allSatisfy { tile($0) == .exit }
+    }
 
     /// Why can't this lamp be lit? (for the hint line)
     func crowdedLampNear(_ s: GameState, _ ci: Int) -> Bool {

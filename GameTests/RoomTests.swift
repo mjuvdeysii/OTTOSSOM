@@ -53,5 +53,15 @@ final class RoomTests: XCTestCase {
         let r2 = Room(RoomSpec(id: "t2", name: "", day: 1, map: ["######", "#.B.O#", "#M...#", "######"], goal: "none"))
         XCTAssertNil(r2.step(r2.start, 0, .left).flatMap { r2.step($0, 0, .left) })
         XCTAssertNotNil(r2.step(r2.start, 1, .up).flatMap { r2.step($0, 1, .right) })
+        // the thief walks to a lit lamp and takes its light; walls, the lamp and a boulder then hold him
+        let r3 = Room(RoomSpec(id: "t3", name: "", day: 1, map: ["#######", "###L###", "###.###", "#W....#", "#O...M#", "#######"], goal: "trap"))
+        var s3 = r3.start
+        XCTAssertNil(r3.step(s3, 0, .light))                          // Otto isn't next to the lamp
+        s3.c[0] = Pt(3, 2); s3.lit[0] = true
+        let a = r3.step(s3, 0, .down)                                  // Otto blocks the only way in: the thief waits
+        XCTAssertEqual(a?.thief, Pt(1, 3))
+        let b = a.flatMap { r3.step($0, 0, .right) }                   // the way is clear: one step toward the lamp
+        XCTAssertEqual(b?.thief, Pt(2, 3))
+        XCTAssertEqual(b.flatMap { r3.step($0, 0, .right) }?.thief, Pt(3, 3))
     }
 }

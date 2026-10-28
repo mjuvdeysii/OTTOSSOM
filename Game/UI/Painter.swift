@@ -20,6 +20,7 @@ struct BoardFrame {
     var tap: (Pt, Double)? = nil
     /// The whole screen in board coordinates (points, board origin at 0,0). When set, the world around the room is drawn too.
     var extent: CGRect? = nil
+    var emotes: [String: Emote] = [:]
 }
 
 extension Color {

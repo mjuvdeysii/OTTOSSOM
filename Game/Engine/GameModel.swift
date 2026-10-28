@@ -23,6 +23,8 @@ struct CardInfo: Equatable {
 struct ClearInfo: Equatable { var steps: Int; var par: Int }
 struct HintMark: Equatable { var hero: Int; var verb: Verb; var target: Pt? }
 struct TapMark: Equatable { var p: Pt; var at: Date }
+/// A feeling shown over someone's head, in a picture instead of words.
+struct Emote: Equatable { var icon: String; var at: Date }
 
 /// One chapter being played: the room, its state, the story scripts and the player's taps.
 @MainActor
@@ -54,6 +56,10 @@ final class GameModel: ObservableObject {
     @Published var pathDots: [Pt] = []
     @Published var tapMark: TapMark?
     @Published var hintsUsed = 0
+    @Published var emotes: [String: Emote] = [:]
+    @Published var vision: String?
+    private var guided = false
+    private var lastInput = Date()
     private var dialogCont: CheckedContinuation<Int, Never>?
     private var started = false
 
@@ -92,7 +98,7 @@ final class GameModel: ObservableObject {
         let r = Room(spec)
         room = r; state = r.start; prev = nil; hist = []; active = 0; actors = [:]
         hintMark = nil; pathDots = []; cleared = nil
-        dark = 0; bulbR = Double(r.rOtto); hint = ""; hideHeroes = false
+        dark = 0; bulbR = Double(r.rOtto); hint = ""; hideHeroes = false; emotes = [:]; guided = false
         mainDim = (id == "top" && chapter.id == 1 && stepIndex > 4)
         Sound.shared.hum(state.bulb)
     }
@@ -109,7 +115,6 @@ final class GameModel: ObservableObject {
             return
         }
         load(st.room ?? "top")
-        showBanner(room.spec.name)
         if let i = st.intro { await run(i) }
         busy = false
     }
@@ -176,7 +181,7 @@ final class GameModel: ObservableObject {
             } else if let ms = c["wait"] as? Int {
                 try? await Task.sleep(for: .milliseconds(ms))
             } else if let k = c["actor"] as? String, let at = c["at"] as? [Int], at.count == 2 {
-                actors[k] = Figure(kind: k, x: Double(at[0]), y: Double(at[1]))
+                actors[k] = Figure(kind: k, x: Double(at[0]), y: Double(at[1]), carry: c["carry"] as? Bool ?? false)
             } else if let k = c["walk"] as? String, let path = c["path"] as? [[Int]] {
                 await walkActor(k, path, c["ms"] as? Int ?? 400)
             } else if let k = c["remove"] as? String {
@@ -204,6 +209,24 @@ final class GameModel: ObservableObject {
                 room.keyGiven = true; objectWillChange.send(); Sound.shared.light(); Haptic.success()
             } else if c["fade"] != nil {
                 await fadeOut()
+            } else if let who = c["emote"] as? String, let icon = c["icon"] as? String {
+                emotes[who] = Emote(icon: icon, at: Date())
+                Sound.shared.talk()
+                try? await Task.sleep(for: .milliseconds(c["ms"] as? Int ?? 1000))
+                emotes[who] = nil
+                try? await Task.sleep(for: .milliseconds(120))
+            } else if let v = c["vision"] as? String {
+                if Art.uiImage(v, ext: "jpg") != nil {
+                    vision = v
+                    Sound.shared.touch()
+                    try? await Task.sleep(for: .milliseconds(c["ms"] as? Int ?? 3000))
+                    vision = nil
+                    try? await Task.sleep(for: .milliseconds(500))
+                }
+            } else if c["guide"] != nil {
+                guide()
+            } else if let f = c["set"] as? String {
+                var fl = Progress.shared.flags; fl.insert(f); Progress.shared.flags = fl
             }
         }
     }
@@ -252,6 +275,22 @@ final class GameModel: ObservableObject {
         state.bulb = false
         Sound.shared.hum(false)
     }
+
+    /// Early rooms teach by showing, not telling: when the player hasn't moved for a while, the next move glows.
+    private func guide() {
+        guided = true
+        lastInput = Date()
+        let roomID = room.spec.id
+        Task {
+            while guided && room.spec.id == roomID && !finished {
+                try? await Task.sleep(for: .milliseconds(500))
+                if canPlay && !walking && hintMark == nil && Date().timeIntervalSince(lastInput) > 4.5 {
+                    requestHint(); lastInput = Date()
+                }
+            }
+        }
+    }
+    func touched() { lastInput = Date() }
 
     // MARK: hints
     func verbText(_ v: Verb) -> String {
@@ -310,6 +349,7 @@ final class GameModel: ObservableObject {
 
     @discardableResult
     func apply(_ v: Verb) -> Bool {
+        lastInput = Date()
         var ev: [Event] = []
         guard let n = room.step(state, active, v, &ev) else { return false }
         hintMark = nil
@@ -328,7 +368,8 @@ final class GameModel: ObservableObject {
             case .take: Sound.shared.take(); Haptic.light()
             case .push: Sound.shared.push(); Haptic.light()
             case .bulb(let on): Sound.shared.hum(on)
-            case .drift: break
+            case .steal: Sound.shared.dim(); Haptic.warn()
+            case .thief, .drift: break
             }
         }
         if room.spec.id == "outside" {
@@ -340,12 +381,14 @@ final class GameModel: ObservableObject {
     }
 
     func undo() {
+        lastInput = Date()
         guard canPlay, let last = hist.popLast() else { return }
         prev = nil; state = last; hint = ""
         Sound.shared.hum(state.bulb)
     }
 
     func reset() {
+        lastInput = Date()
         guard canPlay, !hist.isEmpty else { return }
         prev = nil; state = room.start; hist = []; hint = "重来了。"
         bulbR = Double(room.rOtto)
@@ -354,6 +397,7 @@ final class GameModel: ObservableObject {
     }
 
     func select(_ i: Int) {
+        lastInput = Date()
         guard i < room.heroes.count else { return }
         active = i
         Haptic.light()
@@ -428,6 +472,7 @@ final class GameModel: ObservableObject {
 
     /// A tap on the board, in tile coordinates.
     func tap(_ p: Pt) {
+        lastInput = Date()
         guard canPlay, !walking else { return }
         tapMark = TapMark(p: p, at: Date())
         if let i = state.c.firstIndex(of: p), room.heroes.count > 1 { select(i); return }

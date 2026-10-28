@@ -1,73 +1,59 @@
 {
  "c1_prologue": [
   {
-   "card": "第 1 天",
-   "sub": "太阳该升起来了"
+   "vision": "v_prologue",
+   "ms": 4200
   },
   {
-   "say": "h",
-   "text": "天该亮了。"
+   "card": "一 · 灯塔城"
   },
   {
-   "say": "h",
-   "text": "……地平线还是黑的。"
+   "emote": "h",
+   "icon": "...",
+   "ms": 900
   },
   {
-   "say": "o",
-   "text": "（嗡——）"
+   "emote": "o",
+   "icon": "!",
+   "ms": 800
   },
   {
-   "say": "h",
-   "text": "城里的灯，得你一盏一盏去点了。"
-  },
-  {
-   "hint": "点地面，Otto 就会走过去。楼梯在上面。"
+   "guide": true
   }
  ],
  "c1_street": [
   {
-   "hint": "站到灯旁边，按「点灯」。三盏都点亮，才能往前走。"
+   "guide": true
   }
  ],
  "c1_alley": [
   {
-   "say": "",
-   "text": "巷口蹲着一个迷路的影子。它不坏，只是冷。"
+   "emote": "o",
+   "icon": "?",
+   "ms": 900
   },
   {
-   "hint": "按「灯珠」。灯珠亮着，够得着的影子每一步都朝 Otto 挪一格。"
+   "guide": true
   }
  ],
  "c1_dock": [
   {
-   "card": "第 12 天"
-  },
-  {
-   "say": "n",
-   "text": "灯一亮，影子就往灯边上挤。"
-  },
-  {
-   "say": "n",
-   "text": "挤上两个，灯就被压暗了。"
-  },
-  {
-   "hint": "先把一个影子引远，再点灯。"
+   "emote": "n",
+   "icon": "!",
+   "ms": 900
   }
  ],
  "c1_d30": [
   {
-   "card": "第 30 天",
-   "sub": "Otto 已经三十天没睡"
-  },
-  {
-   "actor": "moss",
+   "actor": "mosto",
    "at": [
     3,
     1
-   ]
+   ],
+   "carry": false
   },
   {
-   "walk": "moss",
+   "walk": "mosto",
    "path": [
     [
      3,
@@ -77,24 +63,26 @@
    "ms": 380
   },
   {
-   "wait": 300
-  },
-  {
-   "say": "m",
-   "text": "（伸出手，摸了一下主灯）"
+   "emote": "mosto",
+   "icon": "grin",
+   "ms": 700
   },
   {
    "mainDim": true
   },
   {
-   "wait": 600
+   "carry": "mosto"
   },
   {
-   "say": "h",
-   "text": "贼！"
+   "wait": 300
   },
   {
-   "walk": "moss",
+   "emote": "h",
+   "icon": "anger",
+   "ms": 900
+  },
+  {
+   "walk": "mosto",
    "path": [
     [
      3,
@@ -104,26 +92,16 @@
    "ms": 200
   },
   {
-   "remove": "moss"
+   "remove": "mosto"
   },
   {
-   "say": "h",
-   "text": "主灯暗了一截。"
-  },
-  {
-   "say": "h",
-   "text": "你的光，也只照得到两格远了。"
+   "emote": "o",
+   "icon": "...",
+   "ms": 1100
   }
  ],
- "c1_tower": [
-  {
-   "hint": "灯珠现在只能照两格远。"
-  }
- ],
+ "c1_tower": [],
  "c1_d60": [
-  {
-   "card": "第 60 天"
-  },
   {
    "hideHeroes": true
   },
@@ -131,8 +109,9 @@
    "lampsAll": true
   },
   {
-   "say": "d",
-   "text": "Otto 先生，你看——"
+   "emote": "d",
+   "icon": "!",
+   "ms": 800
   },
   {
    "actor": "mosto",
@@ -157,6 +136,11 @@
   },
   {
    "carry": "mosto"
+  },
+  {
+   "emote": "mosto",
+   "icon": "note",
+   "ms": 700
   },
   {
    "walk": "mosto",
@@ -204,50 +188,25 @@
    "remove": "mosto"
   },
   {
-   "say": "d",
-   "text": "它把光抱走了。"
+   "emote": "d",
+   "icon": "sweat",
+   "ms": 900
   },
   {
-   "say": "d",
-   "text": "它……好像也很冷。"
-  },
-  {
-   "say": "h",
-   "text": "一晚上丢了三盏。再这样下去，城撑不住。"
-  },
-  {
-   "say": "h",
-   "text": "Otto，城门我来守。"
+   "emote": "h",
+   "icon": "anger",
+   "ms": 1000
   }
  ],
- "c1_gate": [
-  {
-   "hint": "三盏灯都点亮，再把城门钥匙交给老韩。"
-  }
- ],
+ "c1_gate": [],
  "c1_outside": [
   {
-   "card": "第 100 天",
-   "sub": "城外没有灯"
-  },
-  {
    "dark": 0.35
-  },
-  {
-   "hint": "往前走。"
   }
  ],
  "c1_end": [
   {
    "fade": true
-  },
-  {
-   "say": "",
-   "text": "灯珠熄了。"
-  },
-  {
-   "say": "",
-   "text": "Otto 倒在最深的暗处。"
   },
   {
    "actor": "moss",
@@ -271,18 +230,25 @@
    "ms": 500
   },
   {
-   "say": "",
-   "text": "远处，一个石头小孩停下了脚步。"
+   "emote": "moss",
+   "icon": "?",
+   "ms": 1200
   },
   {
-   "card": "第一章 · 守灯人",
-   "sub": "完"
+   "card": "一 · 灯塔城",
+   "sub": "✓"
   }
  ],
  "talk:top:h": [
   {
-   "say": "h",
-   "text": "你多久没合眼了？"
+   "emote": "h",
+   "icon": "zzz",
+   "ms": 1000
+  },
+  {
+   "emote": "o",
+   "icon": "...",
+   "ms": 900
   }
  ],
  "talk:street:d": [
@@ -290,45 +256,33 @@
    "if": "doudou",
    "then": [
     {
-     "say": "d",
-     "text": "我的灯笼亮着呢。"
+     "emote": "d",
+     "icon": "heart",
+     "ms": 900
     }
    ],
    "else": [
     {
-     "say": "d",
-     "text": "Otto 先生，我的纸灯笼也想要一点光。"
+     "emote": "d",
+     "icon": "?",
+     "ms": 800
     },
     {
-     "ask": "",
-     "options": [
-      "给她点一点",
-      "现在顾不上"
-     ],
      "set": "doudou"
     },
     {
-     "if": "doudou",
-     "then": [
-      {
-       "say": "d",
-       "text": "谢谢你！"
-      }
-     ],
-     "else": [
-      {
-       "say": "d",
-       "text": "……嗯。"
-      }
-     ]
+     "emote": "d",
+     "icon": "heart",
+     "ms": 1000
     }
    ]
   }
  ],
  "talk:dock:n": [
   {
-   "say": "n",
-   "text": "两个影子挨着一盏灯，那灯就亮不起来。"
+   "emote": "n",
+   "icon": "sweat",
+   "ms": 900
   }
  ],
  "talk:gate:h": [
@@ -339,515 +293,339 @@
      "ifKey": true,
      "then": [
       {
-       "say": "h",
-       "text": "去吧。"
+       "emote": "h",
+       "icon": "!",
+       "ms": 800
       }
      ],
      "else": [
       {
-       "say": "h",
-       "text": "城我守着。你去追。"
+       "emote": "h",
+       "icon": "...",
+       "ms": 800
       },
       {
-       "ask": "Otto 握着城门钥匙。",
-       "options": [
-        "把钥匙交给老韩",
-        "再握一会儿"
-       ],
-       "set": "letgo"
+       "emote": "o",
+       "icon": "...",
+       "ms": 900
       },
       {
-       "if": "letgo",
-       "then": [
-        {
-         "key": true
-        },
-        {
-         "say": "",
-         "text": "一百天来，Otto 第一次把城交给别人。"
-        },
-        {
-         "hint": "城门开了。"
-        }
-       ],
-       "else": [
-        {
-         "say": "h",
-         "text": "……我等你。"
-        }
-       ]
+       "key": true
+      },
+      {
+       "emote": "h",
+       "icon": "!",
+       "ms": 900
       }
      ]
     }
    ],
    "else": [
     {
-     "say": "h",
-     "text": "先把城门的灯点上。"
+     "emote": "h",
+     "icon": "?",
+     "ms": 900
     }
    ]
   }
  ],
  "c2_sunset": [
   {
-   "card": "第 1 天",
-   "sub": "日落崖"
+   "card": "二 · 摸"
   },
   {
-   "say": "",
-   "text": "Moss 是一块会走路的石头。什么东西，他都要摸一下。"
+   "emote": "m",
+   "icon": "?",
+   "ms": 900
   },
   {
-   "say": "",
-   "text": "太阳落下去以后，就再也没上来。"
-  },
-  {
-   "hint": "走到石碑旁边，按「摸」。"
+   "guide": true
   }
  ],
  "touch:sunset:4,3": [
   {
-   "say": "",
-   "text": "石碑记得：一个戴歪王冠的影子，抱着一团光，从这里跑过去。"
+   "vision": "v_thief",
+   "ms": 3200
   },
   {
-   "say": "m",
-   "text": "……要追上它。"
+   "emote": "m",
+   "icon": "!",
+   "ms": 900
   },
   {
    "key": true
-  },
-  {
-   "hint": "往前走。"
   }
  ],
- "c2_ruins": [
-  {
-   "card": "第 9 天",
-   "sub": "废墟"
-  },
-  {
-   "hint": "推石头到压板上，门就开。Moss 推得动石头。"
-  }
- ],
- "c2_deep": [
-  {
-   "card": "第 17 天"
-  },
-  {
-   "hint": "两块压板都压住，门才开。推错了就撤回。"
-  }
- ],
+ "c2_ruins": [],
+ "c2_deep": [],
  "touch:deep:1,1": [
   {
-   "say": "",
-   "text": "石碑记得：太阳每天升起来。它从没歇过一天。"
+   "vision": "v_sun",
+   "ms": 3200
   }
  ],
  "touch:deep:7,1": [
   {
-   "say": "",
-   "text": "石碑记得：人们在它下面点灯、种麦、吵架、和好。没人问过它累不累。"
+   "vision": "v_town",
+   "ms": 3200
   }
  ],
  "c2_d30": [
   {
-   "card": "第 30 天",
-   "sub": "灯塔城"
-  },
-  {
-   "say": "",
-   "text": "Moss 爬上灯塔，摸了一下主灯。"
-  },
-  {
-   "say": "",
-   "text": "主灯记得：它的光，是从太阳那儿借来的。"
-  },
-  {
-   "say": "",
-   "text": "主灯还记得：守着它的人，三十天没睡了。"
+   "vision": "v_lamp",
+   "ms": 3200
   },
   {
    "mainDim": true
   },
   {
-   "say": "h",
-   "text": "贼！"
+   "emote": "h",
+   "icon": "anger",
+   "ms": 900
   },
   {
-   "hint": "快跑。"
+   "emote": "m",
+   "icon": "sweat",
+   "ms": 800
   }
  ],
  "talk:lamp:h": [
   {
-   "say": "h",
-   "text": "站住！"
+   "emote": "h",
+   "icon": "anger",
+   "ms": 900
   }
  ],
  "c2_trace": [
   {
-   "card": "第 60 天",
-   "sub": "城外"
-  },
-  {
-   "say": "",
-   "text": "地上有一串很小的脚印，旁边落着光屑。"
-  },
-  {
-   "hint": "影子会往亮着的灯挪。推开石头，给它们让出路。"
+   "emote": "m",
+   "icon": "spark",
+   "ms": 900
   }
  ],
  "c2_dark": [
   {
-   "card": "第 100 天",
-   "sub": "最深的暗处"
-  },
-  {
    "dark": 0.7
   },
   {
-   "say": "m",
-   "text": "……"
-  },
-  {
-   "hint": "这里太黑了。"
+   "emote": "m",
+   "icon": "...",
+   "ms": 1100
   }
  ],
  "touch:dark:2,4": [
   {
-   "say": "",
-   "text": "什么也摸不到。"
+   "emote": "m",
+   "icon": "...",
+   "ms": 900
   }
  ],
  "touch:dark:6,4": [
   {
-   "say": "",
-   "text": "什么也摸不到。"
-  },
-  {
-   "say": "m",
-   "text": "这里没有人在。"
+   "emote": "m",
+   "icon": "sweat",
+   "ms": 900
   }
  ],
  "talk:dark:o": [
   {
-   "say": "",
-   "text": "Moss 摸到了一个人。是灯塔的守灯人。"
+   "emote": "m",
+   "icon": "!",
+   "ms": 800
   },
   {
-   "say": "",
-   "text": "他还是热的。"
+   "emote": "o",
+   "icon": "zzz",
+   "ms": 1100
   }
  ],
  "c2_end": [
   {
-   "say": "",
-   "text": "Moss 在他身边坐下。"
+   "vision": "v_shadow",
+   "ms": 4200
   },
   {
-   "say": "",
-   "text": "有人在。"
+   "emote": "m",
+   "icon": "!",
+   "ms": 1000
   },
   {
-   "card": "第二章 · 摸",
-   "sub": "完"
+   "card": "二 · 摸",
+   "sub": "✓"
   }
  ],
  "c3_hive": [
   {
-   "card": "第 1 天",
-   "sub": "日巢"
+   "card": "三 · 影子大盗"
   },
   {
-   "say": "",
-   "text": "太阳一直在烧。烧了太久了。"
+   "emote": "x",
+   "icon": "grin",
+   "ms": 900
   },
   {
-   "say": "x",
-   "text": "再烧下去，你会烧坏的。"
-  },
-  {
-   "say": "",
-   "text": "没有太阳，所有影子都会消失。Mosto 也是影子。"
-  },
-  {
-   "hint": "站到太阳旁边，按「抓光」。Mosto 有翅膀，能飞过水。"
+   "guide": true
   }
  ],
  "c3_hive_out": [
   {
-   "say": "",
-   "text": "Mosto 抱着太阳最后一点火星，飞走了。"
+   "emote": "x",
+   "icon": "note",
+   "ms": 900
   },
   {
-   "say": "",
-   "text": "那天，天没有亮。"
+   "vision": "v_dark",
+   "ms": 3000
   }
  ],
  "c3_rim": [
   {
-   "card": "第 30 天",
-   "sub": "影子国边上"
-  },
-  {
-   "say": "",
-   "text": "火星越来越弱。得喂它一点光。"
-  },
-  {
-   "hint": "从别的灯里抓光，放进窝里。抱着光的时候，影子会跟着你。"
+   "emote": "x",
+   "icon": "spark",
+   "ms": 800
   }
  ],
  "c3_city": [
   {
-   "card": "第 60 天",
-   "sub": "灯塔城"
-  },
-  {
-   "say": "",
-   "text": "灯塔城的光最多。"
-  },
-  {
-   "say": "x",
-   "text": "……那个守灯人的眼袋，跟太阳一样。"
-  },
-  {
-   "hint": "两个窝都要放进光。"
+   "emote": "x",
+   "icon": "grin",
+   "ms": 900
   }
  ],
  "c3_back": [
   {
-   "card": "第 80 天"
-  },
-  {
-   "say": "",
-   "text": "偷得越多，越不肯放手。交出去，太阳就会被叫醒，接着烧。"
+   "emote": "x",
+   "icon": "note",
+   "ms": 800
   }
  ],
  "c3_rest": [
   {
-   "card": "第 100 天",
-   "sub": "最深的暗处"
-  },
-  {
    "dark": 0.6
   },
   {
-   "say": "",
-   "text": "一个守灯人倒在这里。一个石头小孩坐在他旁边。"
-  },
-  {
-   "say": "x",
-   "text": "……"
-  },
-  {
-   "hint": "把火星放进窝里。"
+   "emote": "x",
+   "icon": "grin",
+   "ms": 900
   }
  ],
  "talk:rest:o": [
   {
-   "say": "",
-   "text": "他睡着了。灯珠是凉的。"
+   "emote": "o",
+   "icon": "zzz",
+   "ms": 1000
   }
  ],
  "talk:rest:m": [
   {
-   "say": "m",
-   "text": "你是那个偷光的。"
+   "emote": "m",
+   "icon": "anger",
+   "ms": 900
   },
   {
-   "say": "x",
-   "text": "……我是在让它歇着。"
+   "emote": "x",
+   "icon": "note",
+   "ms": 900
   }
  ],
  "c3_end": [
   {
-   "say": "",
-   "text": "Mosto 把火星放进窝里，松开了手。"
+   "emote": "x",
+   "icon": "note",
+   "ms": 900
   },
   {
-   "say": "x",
-   "text": "睡吧。就睡一会儿。"
+   "emote": "x",
+   "icon": "zzz",
+   "ms": 1300
   },
   {
-   "say": "",
-   "text": "他在窝边蜷起来，打了一个大大的哈欠。"
-  },
-  {
-   "card": "第三章 · 影子大盗",
-   "sub": "完"
+   "card": "三 · 影子大盗",
+   "sub": "✓"
   }
  ],
  "c4_meet": [
   {
-   "card": "第 101 天"
+   "card": "四 · 索魔"
   },
   {
-   "say": "m",
-   "text": "你醒了。"
+   "emote": "x",
+   "icon": "grin",
+   "ms": 900
   },
   {
-   "say": "o",
-   "text": "（嗡……）"
+   "emote": "o",
+   "icon": "anger",
+   "ms": 800
   },
   {
-   "say": "",
-   "text": "Otto 看着窝里那一点火星。那是太阳的光，城里的灯都靠它。"
+   "emote": "m",
+   "icon": "!",
+   "ms": 800
   },
   {
-   "say": "x",
-   "text": "别碰。让它歇着。"
-  },
-  {
-   "say": "",
-   "text": "Otto 想把它带回城里。Mosto 不让。"
-  },
-  {
-   "say": "m",
-   "text": "去日巢吧。问问太阳自己。"
-  },
-  {
-   "hint": "点下面的名字换人，或者直接点那个角色。三个人都要走到出口。"
+   "guide": true
   }
  ],
  "c4_road": [
   {
-   "card": "第 102 天",
-   "sub": "旧路"
-  },
-  {
-   "say": "m",
-   "text": "石头记得这条路。太阳以前每天走一遍。"
-  },
-  {
-   "hint": "Otto 照路，Moss 推石，Mosto 飞过水。"
+   "emote": "x",
+   "icon": "note",
+   "ms": 900
   }
  ],
  "c4_sun": [
   {
-   "card": "第 103 天",
-   "sub": "日巢"
+   "emote": "x",
+   "icon": "grin",
+   "ms": 900
   },
   {
-   "say": "",
-   "text": "太阳是一盏巨大的、累坏了的灯。眼袋和 Otto 一模一样。"
-  },
-  {
-   "hint": "三个人都走到太阳跟前。"
+   "emote": "o",
+   "icon": "...",
+   "ms": 800
   }
  ],
  "c4_end": [
   {
-   "ask": "Mosto 抱着火星，看着另外两个人。",
-   "options": [
-    "把火星还回去",
-    "让它睡够这一夜"
-   ],
-   "set": "sleep_choice_return"
+   "emote": "x",
+   "icon": "sweat",
+   "ms": 1000
   },
   {
-   "if": "sleep_choice_return",
-   "then": [
-    {
-     "say": "",
-     "text": "火星回到日巢，天一下子亮了。"
-    },
-    {
-     "say": "",
-     "text": "太阳眨了眨眼，接着烧。"
-    },
-    {
-     "say": "",
-     "text": "Otto 回城点灯，还是没睡。"
-    },
-    {
-     "card": "长夜 · 完",
-     "sub": "结局一：天亮了"
-    }
-   ],
-   "else": [
-    {
-     "say": "",
-     "text": "太阳睡着了。三个人守在它旁边。"
-    },
-    {
-     "if": "doudou",
-     "then": [
-      {
-       "say": "",
-       "text": "Otto 只留了一盏小灯 —— 是豆豆的纸灯笼。"
-      }
-     ],
-     "else": [
-      {
-       "say": "",
-       "text": "Otto 只留了一盏小灯。"
-      }
-     ]
-    },
-    {
-     "say": "",
-     "text": "过了很久，天自己一点点亮起来。"
-    },
-    {
-     "say": "",
-     "text": "太阳升起的那一刻，Otto 终于睡着了。"
-    },
-    {
-     "card": "长夜 · 完",
-     "sub": "结局二：让太阳睡一觉"
-    }
-   ]
-  }
- ],
- "c1_market": [
-  {
-   "card": "第 20 天"
+   "emote": "m",
+   "icon": "!",
+   "ms": 800
   },
   {
-   "hint": "集市的两盏灯都要点亮。影子挡着路时，用灯珠把它引开，再关掉。"
+   "emote": "o",
+   "icon": "...",
+   "ms": 900
+  },
+  {
+   "vision": "v_dawn",
+   "ms": 5200
+  },
+  {
+   "card": "灯台索魔",
+   "sub": "✓"
   }
  ],
+ "c1_market": [],
  "c1_wall": [
   {
-   "card": "第 45 天"
-  },
-  {
-   "say": "",
-   "text": "城墙下的影子越来越多了。"
-  },
-  {
-   "hint": "灯珠只照两格。一个一个地引。"
+   "emote": "o",
+   "icon": "sweat",
+   "ms": 900
   }
  ],
- "c2_well": [
-  {
-   "card": "第 24 天",
-   "sub": "枯井"
-  },
-  {
-   "hint": "两块压板都要压住。石头只能推，不能拉。"
-  }
- ],
- "c3_canal": [
-  {
-   "card": "第 45 天",
-   "sub": "黑水河"
-  },
-  {
-   "hint": "抱着光时影子会跟着你。别让两个影子挤到要放光的窝边。"
-  }
- ],
+ "c2_well": [],
+ "c3_canal": [],
  "c4_gate": [
   {
-   "card": "第 103 天",
-   "sub": "日巢外的门"
-  },
-  {
-   "say": "x",
-   "text": "门后面就是日巢。"
-  },
-  {
-   "hint": "Otto 点灯，Mosto 把光送进窝，Moss 把石头推上压板。"
+   "emote": "x",
+   "icon": "grin",
+   "ms": 900
   }
  ]
 }

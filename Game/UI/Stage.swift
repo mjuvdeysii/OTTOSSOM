@@ -112,6 +112,17 @@ struct Stage {
             let wob = CGFloat(sin(f.t * 3 + Double(i) * 1.7)) * 0.025
             items.append((Double(p.y), { c in self.sprite(&c, blink ? "shadow_blink" : "shadow", at: CGPoint(x: p.x + lean.x + wob, y: p.y + lean.y), warm: false) }))
         }
+        if let t = f.state.thief {
+            var p = CGPoint(x: t.x, y: t.y)
+            if let q = f.prev?.thief { p = CGPoint(x: lerp(Double(q.x), Double(t.x)), y: lerp(Double(q.y), Double(t.y))) }
+            let caught = r.trapped(f.state)
+            let dx = (f.prev?.thief).map { t.x - $0.x } ?? 0
+            let st = caught ? "caught" : blinking(2.1, 4.4) ? "blink" : dx < 0 ? "left" : dx > 0 ? "right" : "glee"
+            items.append((Double(p.y) + 0.005, { c in
+                self.figure(&c, "mosto", st, at: p)
+                if !caught { self.spark(&c, "mosto_\(st)", at: p) }
+            }))
+        }
         if !f.hideHeroes {
             for (i, h) in r.heroes.enumerated() {
                 let p = pos(i)
@@ -136,6 +147,48 @@ struct Stage {
         glows(&ctx)
         motes(&ctx)
         hintMarks(&ctx)
+        bubbles(&ctx)
+    }
+
+    // MARK: feelings
+
+    /// Where someone's head is, for a speech-free bubble: heroes by their letter, story actors by name, townsfolk by theirs.
+    func head(_ who: String) -> CGPoint? {
+        let tall: [String: CGFloat] = ["o": 1.75, "m": 1.15, "x": 1.35, "moss": 1.15, "mosto": 1.35]
+        let heroKey: [String: Hero] = ["o": .otto, "m": .moss, "x": .mosto]
+        var at: CGPoint? = nil
+        if who == "x", let t = f.state.thief { at = CGPoint(x: t.x, y: t.y) }
+        else if let h = heroKey[who], let i = f.room.index(of: h), !f.hideHeroes { at = pos(i) }
+        else if let a = f.actors[who] { at = CGPoint(x: a.x, y: a.y) }
+        else if let c = who.first, who.count == 1, let p = f.room.npcs.first(where: { $0.value == c })?.key { at = CGPoint(x: p.x, y: p.y) }
+        if at == nil, who == "m", let p = f.room.npcs.first(where: { $0.value == "m" })?.key { at = CGPoint(x: p.x, y: p.y) }
+        if at == nil, who == "o", let p = f.room.npcs.first(where: { $0.value == "o" })?.key { at = CGPoint(x: p.x, y: p.y) }
+        guard let p = at else { return nil }
+        let g = ground(p)
+        return CGPoint(x: g.x, y: g.y - (tall[who] ?? 1.2) * T * 0.78)
+    }
+
+    func bubbles(_ ctx: inout GraphicsContext) {
+        let symbols: [String: String] = ["!": "exclamationmark", "?": "questionmark", "...": "ellipsis", "note": "music.note",
+                                         "anger": "bolt.fill", "zzz": "zzz", "heart": "heart.fill", "sweat": "drop.fill",
+                                         "spark": "sparkles", "grin": "theatermasks.fill"]
+        let tints: [String: Color] = ["anger": Color(0xe8503a), "heart": Color(0xe86a8a), "sweat": Color(0x5a9ae8), "spark": Color(0xe8a030), "grin": Color(0x7b4bb3)]
+        for (who, e) in f.emotes {
+            guard let h = head(who) else { continue }
+            let age = Date().timeIntervalSince(e.at)
+            let pop = min(1, age / 0.18)
+            let k = CGFloat(0.6 + 0.4 * pop + 0.08 * sin(min(1, age / 0.3) * .pi))
+            let w = T * 0.62 * k, hh = T * 0.5 * k
+            let r = CGRect(x: h.x - w / 2, y: h.y - hh - T * 0.12, width: w, height: hh)
+            var b = Path(roundedRect: r, cornerRadius: hh * 0.45)
+            b.move(to: CGPoint(x: h.x - T * 0.06, y: r.maxY - 1)); b.addLine(to: CGPoint(x: h.x, y: r.maxY + T * 0.12)); b.addLine(to: CGPoint(x: h.x + T * 0.08, y: r.maxY - 1))
+            ctx.fill(b, with: .color(Color(0xfbf7ee, 0.96 * pop)))
+            ctx.stroke(b, with: .color(.black.opacity(0.25 * pop)), lineWidth: 1)
+            var img = ctx.resolve(Image(systemName: symbols[e.icon] ?? "ellipsis"))
+            img.shading = .color(tints[e.icon] ?? Color(0x1a1e2e))
+            let isz = hh * 0.62
+            ctx.draw(img, in: CGRect(x: r.midX - isz / 2, y: r.midY - isz / 2, width: isz, height: isz))
+        }
     }
 
     // MARK: layers
@@ -300,6 +353,7 @@ struct Stage {
         }
         if let oi = r.index(of: .otto), f.state.bulb, !f.hideHeroes { out.append((pos(oi), f.bulbR, 1)) }
         if let xi = r.index(of: .mosto), f.state.carry, !f.hideHeroes { out.append((pos(xi), Double(r.rCarry), 0.9)) }
+        if let t = f.state.thief, !r.trapped(f.state) { out.append((CGPoint(x: t.x, y: t.y), 1.2, 0.8)) }
         for (_, a) in f.actors where a.carry { out.append((CGPoint(x: a.x, y: a.y), 1, 0.8)) }
         return out
     }

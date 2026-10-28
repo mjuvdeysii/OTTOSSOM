@@ -55,7 +55,18 @@ struct TitleView: View {
     var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background { TitleWorld().ignoresSafeArea() }
+            .background {
+                if let bg = Art.background("top") {
+                    GeometryReader { g in
+                        Image(uiImage: bg.image).resizable().aspectRatio(contentMode: .fill)
+                            .frame(width: g.size.width, height: g.size.height).clipped()
+                            .overlay(LinearGradient(colors: [.black.opacity(0.35), .black.opacity(0.75)], startPoint: .top, endPoint: .bottom))
+                    }
+                    .ignoresSafeArea()
+                } else {
+                    TitleWorld().ignoresSafeArea()
+                }
+            }
     }
 
     private var content: some View {
@@ -96,6 +107,23 @@ struct TitleView: View {
             Spacer(minLength: 24)
         }
         .frame(maxWidth: 560)
+    }
+}
+
+/// A memory read from a stone, or a moment the story needs: one picture, full screen, drifting slowly closer.
+struct Vision: View {
+    let image: UIImage
+    @State private var zoom = 1.0
+    var body: some View {
+        GeometryReader { g in
+            Image(uiImage: image).resizable().aspectRatio(contentMode: .fill)
+                .frame(width: g.size.width, height: g.size.height)
+                .scaleEffect(zoom).clipped()
+                .overlay(RadialGradient(colors: [.clear, .black.opacity(0.55)], center: .center, startRadius: g.size.width * 0.35, endRadius: g.size.height * 0.75))
+        }
+        .ignoresSafeArea()
+        .onAppear { withAnimation(.linear(duration: 6)) { zoom = 1.08 } }
+        .accessibilityHidden(true)
     }
 }
 
@@ -156,7 +184,7 @@ struct TitleWorld: View {
                     let o = CGPoint(x: (size.width - T * 5) / 2, y: size.height * 0.36)
                     let frame = BoardFrame(room: room, state: room.start, prev: nil, e: 1, t: tl.date.timeIntervalSinceReferenceDate, active: -1,
                                            face: [1, 1, -1], actors: [:], mainDim: false, dark: 0, hideHeroes: true, bulbR: 0, doudou: false,
-                                           extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height))
+                                           extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height), emotes: model.emotes)
                     var c = ctx
                     c.translateBy(x: o.x, y: o.y)
                     let p = Painter(f: frame, T: T)
@@ -215,6 +243,12 @@ struct GameView: View {
                 .transition(.opacity)
             }
         }
+        .overlay {
+            if let v = model.vision, let ui = Art.uiImage(v, ext: "jpg") {
+                Vision(image: ui).transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.5), value: model.vision)
         .overlay {
             if model.finished { finishedView }
         }
@@ -289,7 +323,7 @@ struct GameView: View {
                                    hideHeroes: model.hideHeroes, bulbR: model.bulbR, doudou: Progress.shared.flags.contains("doudou"),
                                    hint: model.hintMark, dots: model.pathDots,
                                    tap: model.tapMark.map { ($0.p, now.timeIntervalSince($0.at)) },
-                                   extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height))
+                                   extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height), emotes: model.emotes)
             Canvas { ctx, _ in
                 var c = ctx
                 c.translateBy(x: o.x, y: o.y)
@@ -317,12 +351,17 @@ struct GameView: View {
                         .position(x: size.width / 2, y: o.y + 22)
                 }
                 if let c = model.cleared {
-                    VStack(spacing: 6) {
-                        Text(c.steps <= c.par ? "完美" : "过关").font(.system(size: 30, weight: .semibold, design: .serif)).foregroundStyle(gold)
-                        Text(c.steps <= c.par ? "\(c.steps) 步，正好是最少步数" : "\(c.steps) 步 · 最少 \(c.par) 步").font(.callout).foregroundStyle(.white)
+                    HStack(spacing: 12) {
+                        Image(systemName: c.steps <= c.par ? "star.circle.fill" : "checkmark.circle.fill").font(.system(size: 34)).foregroundStyle(gold)
+                        HStack(spacing: 4) {
+                            Image(systemName: "shoeprints.fill").font(.caption)
+                            Text("\(c.steps)").font(.title3.monospacedDigit().weight(.semibold))
+                            Text("/ \(c.par)").font(.callout.monospacedDigit()).foregroundStyle(mutedText)
+                        }
+                        .foregroundStyle(.white)
                     }
-                    .padding(.horizontal, 26).padding(.vertical, 16)
-                    .background(.black.opacity(0.72), in: RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal, 22).padding(.vertical, 14)
+                    .background(.black.opacity(0.72), in: Capsule())
                     .transition(.scale(scale: 0.85).combined(with: .opacity))
                     .position(x: size.width / 2, y: o.y + T * Art.k * CGFloat(r.h) / 2)
                 }
@@ -447,18 +486,20 @@ struct GameView: View {
     }
 
     private var finishedView: some View {
-        VStack(spacing: 16) {
-            Text(model.chapter.id == 4 ? "长夜 · 完" : "第\(["一", "二", "三", "四"][model.chapter.id - 1])章 · \(model.chapter.title)")
-                .font(.system(size: 26, weight: .semibold, design: .serif)).foregroundStyle(.white)
-            Text(model.chapter.id < 4 ? "下一章已经打开" : "谢谢你陪他们走完这一夜").foregroundStyle(mutedText)
+        VStack(spacing: 22) {
+            Trio().frame(height: 170)
+            Text(model.chapter.id == 4 ? "灯台索魔" : "\(["一", "二", "三", "四"][model.chapter.id - 1]) · \(model.chapter.title)")
+                .font(.system(size: 28, weight: .semibold, design: .serif)).foregroundStyle(.white).tracking(4)
+            Image(systemName: "checkmark.seal.fill").font(.system(size: 36)).foregroundStyle(gold)
             Button {
                 router.screen = .title
             } label: {
-                Text("回到标题").font(.headline).padding(.horizontal, 28).padding(.vertical, 12).background(gold, in: Capsule()).foregroundStyle(.black)
+                Image(systemName: "house.fill").font(.title2).frame(width: 64, height: 64).background(gold, in: Circle()).foregroundStyle(.black)
             }
+            .accessibilityLabel("回到标题")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(nightBG.opacity(0.96))
+        .background(nightBG.opacity(0.96).ignoresSafeArea())
     }
 }
 
