@@ -72,6 +72,7 @@ struct TitleView: View {
             }
             .frame(height: 200)
             .onTapGesture(count: 5) { allOpen = true; Haptic.success() }
+            .onAppear { Sound.shared.music(0) }
             Text("长夜").font(.system(size: 44, weight: .semibold, design: .serif)).foregroundStyle(.white).tracking(8)
             Text("太阳一百天没有升起").font(.callout).foregroundStyle(mutedText)
             Spacer(minLength: 12)
@@ -109,8 +110,9 @@ struct TitleView: View {
 struct GameView: View {
     @StateObject var model: GameModel
     @EnvironmentObject var router: Router
-    @State private var soundOn = Sound.shared.enabled
     @State private var showRules = false
+    @State private var showSettings = false
+    @State private var revealed = 0
 
     var body: some View {
         VStack(spacing: 10) {
@@ -137,7 +139,7 @@ struct GameView: View {
                 .accessibilityAddTraits(.updatesFrequently)
             if let d = model.dialog { dialogView(d) } else { controls }
             HStack {
-                Button(soundOn ? "声音：开" : "声音：关") { soundOn.toggle(); Sound.shared.enabled = soundOn }
+                Button { showSettings = true } label: { Label("设置", systemImage: "gearshape") }
                 Spacer()
                 Button { model.requestHint() } label: { Label("提示", systemImage: "lightbulb") }
                     .disabled(!model.canPlay || model.dialog != nil)
@@ -151,6 +153,7 @@ struct GameView: View {
         .frame(maxWidth: 560)
         .onAppear { model.begin() }
         .sheet(isPresented: $showRules) { RulesView() }
+        .sheet(isPresented: $showSettings) { SettingsView() }
         .overlay {
             if model.finished { finishedView }
         }
@@ -258,19 +261,33 @@ struct GameView: View {
     }
 
     private func dialogView(_ d: Dialog) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if !d.who.isEmpty { Text(d.who).font(.caption.weight(.bold)).foregroundStyle(gold) }
-            if !d.text.isEmpty { Text(d.text).font(.body).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true) }
-            if d.options.isEmpty {
-                Text("点一下继续").font(.caption2).foregroundStyle(mutedText).frame(maxWidth: .infinity, alignment: .trailing)
-            } else {
-                ForEach(Array(d.options.enumerated()), id: \.offset) { i, o in
-                    Button { model.answer(i) } label: {
-                        Text(o).frame(maxWidth: .infinity, alignment: .leading).padding(12)
-                            .background(nightBG, in: RoundedRectangle(cornerRadius: 10))
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.1)))
+        let full = d.text.count
+        let done = revealed >= full
+        return HStack(alignment: .top, spacing: 12) {
+            if let kind = Portrait.kind(d.who) { Portrait(kind: kind).frame(width: 54, height: 54) }
+            VStack(alignment: .leading, spacing: 10) {
+                if !d.who.isEmpty { Text(d.who).font(.caption.weight(.bold)).foregroundStyle(gold) }
+                if !d.text.isEmpty {
+                    ZStack(alignment: .topLeading) {
+                        Text(d.text).font(.body).opacity(0)   // reserves the final height so the box doesn't grow
+                        Text(String(d.text.prefix(revealed))).font(.body).foregroundStyle(.white)
                     }
-                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(d.text)
+                }
+                if d.options.isEmpty {
+                    Text(done ? "点一下继续" : " ").font(.caption2).foregroundStyle(mutedText).frame(maxWidth: .infinity, alignment: .trailing)
+                } else {
+                    ForEach(Array(d.options.enumerated()), id: \.offset) { i, o in
+                        Button { model.answer(i) } label: {
+                            Text(o).frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                                .background(nightBG, in: RoundedRectangle(cornerRadius: 10))
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.1)))
+                        }
+                        .foregroundStyle(.white)
+                        .disabled(!done)
+                        .opacity(done ? 1 : 0.4)
+                    }
                 }
             }
         }
@@ -278,7 +295,18 @@ struct GameView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(panelBG, in: RoundedRectangle(cornerRadius: 14))
         .contentShape(Rectangle())
-        .onTapGesture { if d.options.isEmpty { model.answer(0) } }
+        .onTapGesture {
+            if !done { revealed = full } else if d.options.isEmpty { model.answer(0) }
+        }
+        .task(id: d.id) {
+            revealed = 0
+            for k in 1...max(1, full) {
+                try? await Task.sleep(for: .milliseconds(38))
+                if Task.isCancelled { return }
+                if revealed >= full { return }
+                revealed = k
+            }
+        }
         .accessibilityAddTraits(.isButton)
     }
 
@@ -314,5 +342,67 @@ struct RulesView: View {
             .toolbar { Button("好") { dismiss() } }
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+struct SettingsView: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var sound = Sound.shared.enabled
+    @State private var music = Sound.shared.musicOn
+    @State private var haptics = Haptic.on
+    @State private var confirmReset = false
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Toggle("音效", isOn: $sound).onChange(of: sound) { _, v in Sound.shared.enabled = v; Sound.shared.save() }
+                    Toggle("音乐", isOn: $music).onChange(of: music) { _, v in Sound.shared.musicOn = v; Sound.shared.save() }
+                    Toggle("震动", isOn: $haptics).onChange(of: haptics) { _, v in Haptic.on = v }
+                }
+                Section {
+                    Button("清除全部进度", role: .destructive) { confirmReset = true }
+                } footer: {
+                    Text("进度只保存在这台设备上。")
+                }
+                Section("关于") {
+                    Text("《长夜》—— Otto、Moss 与 Mosto 的故事。本作在开发过程中使用了 AI 辅助。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("设置")
+            .toolbar { Button("好") { dismiss() } }
+            .confirmationDialog("清除全部进度？", isPresented: $confirmReset, titleVisibility: .visible) {
+                Button("清除", role: .destructive) { Progress.shared.resetAll(); dismiss() }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
+/// A speaker's face next to their line, drawn with the same painter as the board.
+struct Portrait: View {
+    enum Kind { case otto, moss, mosto }
+    let kind: Kind
+    static func kind(_ who: String) -> Kind? { who == "Otto" ? .otto : who == "Moss" ? .moss : who == "Mosto" ? .mosto : nil }
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
+            Canvas { ctx, size in
+                let room = TitleView.trio
+                let frame = BoardFrame(room: room, state: room.start, prev: nil, e: 1, t: tl.date.timeIntervalSinceReferenceDate, active: -1,
+                                       face: [1, 1, -1], actors: [:], mainDim: false, dark: 0, hideHeroes: false, bulbR: 0, doudou: false)
+                let T = size.width * (kind == .otto ? 0.95 : 1.15)
+                var c = ctx
+                c.translateBy(x: (size.width - T) / 2 - T, y: size.height - T * (kind == .otto ? 1.9 : 1.92))
+                let p = Painter(f: frame, T: T)
+                switch kind {
+                case .otto: p.otto(&c, CGPoint(x: 1, y: 1), bulb: true, face: 1)
+                case .moss: p.moss(&c, CGPoint(x: 1, y: 1), alpha: 1)
+                case .mosto: p.mosto(&c, CGPoint(x: 1, y: 1), alpha: 1, carry: false)
+                }
+            }
+        }
+        .background(nightBG, in: RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .accessibilityHidden(true)
     }
 }

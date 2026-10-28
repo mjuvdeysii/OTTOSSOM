@@ -82,6 +82,7 @@ final class GameModel: ObservableObject {
     func begin() {
         guard !started, !isPreview else { return }
         started = true
+        Sound.shared.music(chapter.id)
         Task { await enterStep() }
     }
 

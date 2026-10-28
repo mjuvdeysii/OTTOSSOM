@@ -8,7 +8,7 @@ import XCTest
 final class RoomTests: XCTestCase {
     func testContentLoads() {
         XCTAssertEqual(Content.chapters.count, 4)
-        XCTAssertEqual(Content.rooms.count, 21)
+        XCTAssertEqual(Content.rooms.count, 26)
         for ch in Content.chapters { for st in ch.steps {
             if let r = st.room { XCTAssertNotNil(Content.rooms[r], "missing room \(r)") }
             for s in [st.intro, st.outro, st.cut].compactMap({ $0 }) { XCTAssertNotNil(Content.story[s], "missing script \(s)") }

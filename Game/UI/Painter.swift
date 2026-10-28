@@ -33,6 +33,29 @@ enum Pal {
     static let mostoViolet = Color(0x7b4bb3), mostoWing = Color(0x4b2a73), cream = Color(0xefe3c8), night = Color(0x05060c)
 }
 
+/// Per-chapter materials: the lighthouse town, the ruins, the shadow land, the road to the sun.
+struct Theme {
+    let floorA: Color, floorB: Color, stone: Color, seam: Color, wall: Color, wallTop: Color, brick: Color
+    static let all: [Theme] = [
+        Theme(floorA: Color(0x1b2136), floorB: Color(0x1e2540), stone: Color(0x262e4c), seam: Color(0x12162a), wall: Color(0x0b0e19), wallTop: Color(0x2a3152), brick: Color(0x161b2e)),
+        Theme(floorA: Color(0x1b221d), floorB: Color(0x1e2620), stone: Color(0x28332b), seam: Color(0x111712), wall: Color(0x0d120e), wallTop: Color(0x34413a), brick: Color(0x17201a)),
+        Theme(floorA: Color(0x1d1a2b), floorB: Color(0x201c31), stone: Color(0x2b2542), seam: Color(0x13101e), wall: Color(0x0e0b17), wallTop: Color(0x3a2f55), brick: Color(0x1a1529)),
+        Theme(floorA: Color(0x241e19), floorB: Color(0x28211b), stone: Color(0x352c23), seam: Color(0x16120e), wall: Color(0x13100c), wallTop: Color(0x4a3c2c), brick: Color(0x1f1914))
+    ]
+    static let chapterOf: [String: Int] = {
+        var m: [String: Int] = [:]
+        for ch in Content.chapters { for st in ch.steps { if let r = st.room, m[r] == nil { m[r] = ch.id } } }
+        return m
+    }()
+    static func of(_ roomID: String) -> Theme { all[max(0, min(3, (chapterOf[roomID] ?? 1) - 1))] }
+}
+
+private func noiseHash(_ x: Int, _ y: Int, _ k: Int = 0) -> Double {
+    var h = UInt64(truncatingIfNeeded: x &* 73856093 ^ y &* 19349663 ^ k &* 83492791)
+    h ^= h >> 13; h = h &* 0x5bd1e995; h ^= h >> 15
+    return Double(h % 1000) / 1000
+}
+
 /// Draws one frame of a room. T = tile size in points.
 struct Painter {
     let f: BoardFrame
@@ -66,18 +89,27 @@ struct Painter {
         for i in f.state.boulders.indices { let p = boulderPos(i); items.append((Double(p.y), { c in self.boulder(&c, p) })) }
         for i in f.state.shadows.indices {
             let p = shadowPos(i)
-            let crowd = r.lampPos.contains { $0.dist(f.state.shadows[i]) == 1 }
-            items.append((Double(p.y), { c in self.shadow(&c, p, i, crowd) }))
+            let sp = f.state.shadows[i]
+            let lampNear = r.lampPos.enumerated().first { f.state.lit[$0.offset] && $0.element.dist(sp) == 1 }?.element
+            let crowd = r.lampPos.contains { $0.dist(sp) == 1 }
+            var lean = CGPoint.zero
+            if let l = lampNear { lean = CGPoint(x: CGFloat(l.x - sp.x) * 0.1, y: CGFloat(l.y - sp.y) * 0.1) }
+            let drawAt = CGPoint(x: p.x + lean.x, y: p.y + lean.y)
+            items.append((Double(p.y), { c in self.shadow(&c, drawAt, i, crowd) }))
         }
         if !f.hideHeroes {
             for (i, h) in r.heroes.enumerated() {
                 let p = pos(i)
+                let moving = f.e < 1 && (f.prev.map { i < $0.c.count && $0.c[i] != f.state.c[i] } ?? false)
+                let hop = moving ? CGFloat(sin(f.e * .pi)) * T * 0.09 : 0
                 items.append((Double(p.y) + 0.01, { c in
                     if r.heroes.count > 1 && i == self.f.active { self.marker(&c, p) }
+                    var g = c
+                    g.translateBy(x: 0, y: -hop)
                     switch h {
-                    case .otto: self.otto(&c, p, bulb: self.f.state.bulb, face: self.f.face[i])
-                    case .moss: self.moss(&c, p, alpha: 1)
-                    case .mosto: self.mosto(&c, p, alpha: 1, carry: self.f.state.carry)
+                    case .otto: self.otto(&g, p, bulb: self.f.state.bulb, face: self.f.face[i])
+                    case .moss: self.moss(&g, p, alpha: 1)
+                    case .mosto: self.mosto(&g, p, alpha: 1, carry: self.f.state.carry)
                     }
                 }))
             }
@@ -88,10 +120,12 @@ struct Painter {
                 if a.kind == "moss" { self.moss(&c, p, alpha: a.alpha) } else { self.mosto(&c, p, alpha: a.alpha, carry: a.carry) }
             }))
         }
+        wallShadows(&ctx)
         guides(&ctx)
         for it in items.sorted(by: { $0.0 < $1.0 }) { it.1(&ctx) }
         darkness(&ctx)
         glow(&ctx)
+        motes(&ctx)
         hintMarks(&ctx)
     }
 
@@ -125,22 +159,49 @@ struct Painter {
     func rect(_ x: Int, _ y: Int) -> CGRect { CGRect(x: CGFloat(x) * T, y: CGFloat(y) * T, width: T, height: T) }
 
     func tile(_ ctx: inout GraphicsContext, _ x: Int, _ y: Int) {
-        let r = f.room, t = r.tile(Pt(x, y)), R = rect(x, y)
+        let r = f.room, t = r.tile(Pt(x, y)), R = rect(x, y), th = Theme.of(r.spec.id)
         switch t {
         case .wall:
-            ctx.fill(Path(R), with: .color(Pal.wall))
-            ctx.fill(Path(CGRect(x: R.minX, y: R.minY, width: T, height: T * 0.22)), with: .color(Pal.wallTop))
+            ctx.fill(Path(R), with: .color(th.wall))
+            // brick courses on the face, a lit cap on top
+            for row in 0..<3 {
+                let yy = R.minY + T * (0.3 + CGFloat(row) * 0.23)
+                let off = row % 2 == 0 ? 0 : T * 0.25
+                var k: CGFloat = -1
+                while k < 2 {
+                    let bx = R.minX + off + k * T * 0.5
+                    let br = CGRect(x: bx + 1, y: yy, width: T * 0.5 - 2, height: T * 0.2).intersection(R)
+                    if !br.isNull && br.width > 1 { ctx.fill(Path(roundedRect: br, cornerRadius: 1.5), with: .color(th.brick)) }
+                    k += 1
+                }
+            }
+            ctx.fill(Path(CGRect(x: R.minX, y: R.minY, width: T, height: T * 0.24)), with: .color(th.wallTop))
+            ctx.fill(Path(CGRect(x: R.minX, y: R.minY, width: T, height: 1.2)), with: .color(.white.opacity(0.08)))
         case .water:
-            ctx.fill(Path(R), with: .color(Pal.water))
-            var p = Path()
-            let o = CGFloat(sin(f.t * 1.1 + Double(x + y))) * T * 0.08
-            p.move(to: CGPoint(x: R.minX + T * 0.15, y: R.minY + T * 0.45 + o))
-            p.addQuadCurve(to: CGPoint(x: R.minX + T * 0.85, y: R.minY + T * 0.45 + o), control: CGPoint(x: R.midX, y: R.minY + T * 0.35 + o))
-            ctx.stroke(p, with: .color(Color(0x78a0ff, 0.14)), lineWidth: 1)
+            ctx.fill(Path(R), with: .linearGradient(Gradient(colors: [Color(0x0e1a3a), Color(0x081129)]), startPoint: CGPoint(x: R.midX, y: R.minY), endPoint: CGPoint(x: R.midX, y: R.maxY)))
+            for k in 0..<2 {
+                var p = Path()
+                let ph = f.t * (0.9 + Double(k) * 0.4) + Double(x) * 0.7 + Double(y + k) * 1.3
+                let o = CGFloat(sin(ph)) * T * 0.07
+                let yy = R.minY + T * (0.35 + CGFloat(k) * 0.3) + o
+                p.move(to: CGPoint(x: R.minX + T * 0.12, y: yy))
+                p.addQuadCurve(to: CGPoint(x: R.minX + T * 0.88, y: yy), control: CGPoint(x: R.midX, y: yy - T * 0.08))
+                ctx.stroke(p, with: .color(Color(0x8fb4ff, 0.10 + 0.06 * (0.5 + 0.5 * sin(ph * 1.7)))), lineWidth: 1)
+            }
+            // foam where water meets floor above
+            if r.tile(Pt(x, y - 1)) != .water && r.tile(Pt(x, y - 1)) != .wall {
+                ctx.fill(Path(CGRect(x: R.minX, y: R.minY, width: T, height: 2)), with: .color(Color(0xb8ccff, 0.18)))
+            }
         default:
-            ctx.fill(Path(R), with: .color((x + y) % 2 == 0 ? Pal.floorB : Pal.floorA))
-            let n = CGFloat(((x * 73856093) ^ (y * 19349663)) & 7)
-            ctx.fill(Path(CGRect(x: R.minX + T * (0.15 + n * 0.06), y: R.minY + T * 0.22, width: T * 0.3, height: 1.5)), with: .color(.white.opacity(0.03)))
+            ctx.fill(Path(R), with: .color((x + y) % 2 == 0 ? th.floorB : th.floorA))
+            // three cobbles per tile, each a little different
+            let cells: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [(0.06, 0.06, 0.52, 0.42), (0.6, 0.06, 0.34, 0.42), (0.06, 0.52, 0.88, 0.42)]
+            for (k, c) in cells.enumerated() {
+                let h = noiseHash(x, y, k)
+                let cr = CGRect(x: R.minX + T * c.0, y: R.minY + T * c.1, width: T * c.2, height: T * c.3)
+                ctx.fill(Path(roundedRect: cr, cornerRadius: T * 0.08), with: .color(th.stone.opacity(0.55 + 0.45 * h)))
+                ctx.fill(Path(CGRect(x: cr.minX + T * 0.05, y: cr.minY + 1, width: cr.width - T * 0.1, height: 1)), with: .color(.white.opacity(0.035 + 0.03 * h)))
+            }
             if t == .plate {
                 let pressed = f.state.boulders.contains(Pt(x, y)) || f.state.c.contains(Pt(x, y))
                 let pr = R.insetBy(dx: T * 0.16, dy: T * 0.16)
@@ -161,7 +222,8 @@ struct Painter {
             if t == .exit {
                 let open = r.exitOpen(f.state)
                 let ar = CGRect(x: R.minX + T * 0.18, y: R.minY + T * 0.12, width: T * 0.64, height: T * 0.76)
-                ctx.fill(Path(roundedRect: ar, cornerRadius: T * 0.3), with: .color(open ? Pal.gold.opacity(0.22) : .white.opacity(0.05)))
+                let breathe = 0.16 + 0.1 * (0.5 + 0.5 * sin(f.t * 2.2))
+                ctx.fill(Path(roundedRect: ar, cornerRadius: T * 0.3), with: .color(open ? Pal.gold.opacity(breathe) : .white.opacity(0.05)))
                 ctx.stroke(Path(roundedRect: ar, cornerRadius: T * 0.3), with: .color(open ? Pal.gold : Color(0x4a5174)), lineWidth: 2)
                 for i in 0..<3 {
                     ctx.fill(Path(CGRect(x: R.minX + T * 0.3, y: R.minY + T * (0.5 + CGFloat(i) * 0.12), width: T * 0.4, height: 2)), with: .color(open ? Pal.gold.opacity(0.5) : .white.opacity(0.12)))
@@ -333,8 +395,16 @@ struct Painter {
         c.fill(Path(ellipseIn: CGRect(x: X - w * 0.33, y: cy - h * 0.3, width: w * 0.36, height: h * 0.24)), with: .color(.white.opacity(0.08)))
         c.fill(Path(ellipseIn: CGRect(x: X - w * 0.57, y: cy + h * 0.1 - T * 0.05, width: T * 0.1, height: T * 0.1)), with: .color(Pal.mossGreen))
         c.fill(Path(ellipseIn: CGRect(x: X + w * 0.47, y: cy + h * 0.1 - T * 0.05, width: T * 0.1, height: T * 0.1)), with: .color(Pal.mossGreen))
-        c.fill(Path(ellipseIn: CGRect(x: X - w * 0.15 - T * 0.045, y: cy - T * 0.07, width: T * 0.09, height: T * 0.14)), with: .color(Color(0x1d2318)))
-        c.fill(Path(ellipseIn: CGRect(x: X + w * 0.15 - T * 0.045, y: cy - T * 0.07, width: T * 0.09, height: T * 0.14)), with: .color(Color(0x1d2318)))
+        let mossBlink = (f.t + 1.3).truncatingRemainder(dividingBy: 3.7) < 0.13
+        for sx: CGFloat in [-1, 1] {
+            let ex = X + sx * w * 0.15
+            if mossBlink {
+                c.fill(Path(CGRect(x: ex - T * 0.045, y: cy - 1, width: T * 0.09, height: 2)), with: .color(Color(0x1d2318)))
+            } else {
+                c.fill(Path(ellipseIn: CGRect(x: ex - T * 0.045, y: cy - T * 0.07, width: T * 0.09, height: T * 0.14)), with: .color(Color(0x1d2318)))
+                c.fill(Path(ellipseIn: CGRect(x: ex - T * 0.01, y: cy - T * 0.05, width: T * 0.03, height: T * 0.03)), with: .color(.white.opacity(0.8)))
+            }
+        }
         var stem = Path(); stem.move(to: CGPoint(x: X, y: cy - h / 2)); stem.addLine(to: CGPoint(x: X, y: cy - h / 2 - T * 0.2))
         c.stroke(stem, with: .color(Color(0x4c6a3e)), lineWidth: T * 0.03)
         for (s, k) in [(-1.0, 0.08), (1.0, 0.08), (-1.0, 0.17), (1.0, 0.17)] {
@@ -383,8 +453,15 @@ struct Painter {
         brows.move(to: CGPoint(x: X - r * 0.5, y: cy - r * 0.32)); brows.addLine(to: CGPoint(x: X - r * 0.18, y: cy - r * 0.2))
         brows.move(to: CGPoint(x: X + r * 0.5, y: cy - r * 0.32)); brows.addLine(to: CGPoint(x: X + r * 0.18, y: cy - r * 0.2))
         c.stroke(brows, with: .color(Color(0x2a1640)), lineWidth: 1.6)
-        c.fill(Path(ellipseIn: CGRect(x: X - r * 0.3 - T * 0.035, y: cy - T * 0.035, width: T * 0.07, height: T * 0.07)), with: .color(Color(0x160b26)))
-        c.fill(Path(ellipseIn: CGRect(x: X + r * 0.3 - T * 0.035, y: cy - T * 0.035, width: T * 0.07, height: T * 0.07)), with: .color(Color(0x160b26)))
+        let mostoBlink = (f.t + 2.1).truncatingRemainder(dividingBy: 4.4) < 0.12
+        for sx: CGFloat in [-1, 1] {
+            let ex = X + sx * r * 0.3
+            if mostoBlink {
+                c.fill(Path(CGRect(x: ex - T * 0.035, y: cy - 1, width: T * 0.07, height: 2)), with: .color(Color(0x160b26)))
+            } else {
+                c.fill(Path(ellipseIn: CGRect(x: ex - T * 0.035, y: cy - T * 0.035, width: T * 0.07, height: T * 0.07)), with: .color(Color(0x160b26)))
+            }
+        }
         var fang = Path()
         fang.move(to: CGPoint(x: X + r * 0.05, y: cy + r * 0.35)); fang.addLine(to: CGPoint(x: X + r * 0.15, y: cy + r * 0.55)); fang.addLine(to: CGPoint(x: X + r * 0.25, y: cy + r * 0.35)); fang.closeSubpath()
         c.fill(fang, with: .color(.white))
@@ -433,40 +510,73 @@ struct Painter {
     }
 
     // MARK: light
-    func lightMap() -> [[Double]] {
+    /// Light sources in tile units: centre, reach (tiles), strength.
+    func lights() -> [(CGPoint, Double, Double)] {
         let r = f.room
-        var M = Array(repeating: Array(repeating: 0.0, count: r.w), count: r.h)
-        func add(_ p: CGPoint, _ rad: Double, _ k: Double) {
-            guard rad >= 0 else { return }
-            for y in 0..<r.h { for x in 0..<r.w {
-                let px = Double(p.x).rounded(), py = Double(p.y).rounded()
-                let d: Double = abs(Double(x) - px) + abs(Double(y) - py)
-                if d <= rad { M[y][x] = max(M[y][x], k * (1 - d / (rad + 1.2))) }
-            } }
-        }
+        var out: [(CGPoint, Double, Double)] = []
         let main = r.spec.id == "top" || r.spec.id == "lamp"
         for (i, p) in r.lampPos.enumerated() where f.state.lit[i] {
             let rad = r.spec.sun == true ? 3.0 : Double(main ? 2 : r.rLamp)
-            add(CGPoint(x: p.x, y: p.y), rad, main && f.mainDim ? 0.6 : 1)
+            let flick = 0.94 + 0.06 * sin(f.t * 7.3 + Double(i) * 2.1)
+            out.append((CGPoint(x: p.x, y: p.y), rad, (main && f.mainDim ? 0.6 : 1) * flick))
         }
-        if let oi = r.index(of: .otto), f.state.bulb, !f.hideHeroes { add(pos(oi), f.bulbR.rounded(), 1) }
-        if let xi = r.index(of: .mosto), f.state.carry, !f.hideHeroes { add(pos(xi), Double(r.rCarry), 0.9) }
-        for (_, a) in f.actors where a.carry { add(CGPoint(x: a.x, y: a.y), 1, 0.8) }
-        return M
+        if let oi = r.index(of: .otto), f.state.bulb, !f.hideHeroes { out.append((pos(oi), f.bulbR, 1)) }
+        if let xi = r.index(of: .mosto), f.state.carry, !f.hideHeroes { out.append((pos(xi), Double(r.rCarry), 0.9)) }
+        for (_, a) in f.actors where a.carry { out.append((CGPoint(x: a.x, y: a.y), 1, 0.8)) }
+        return out
     }
 
+    /// The night: a dark veil with soft holes where light reaches, plus the exact reach of Otto's bulb outlined.
     func darkness(_ ctx: inout GraphicsContext) {
-        let r = f.room, M = lightMap(), base = 0.5 + f.dark * 0.4
-        for y in 0..<r.h { for x in 0..<r.w {
-            let a = max(0, base * (1 - M[y][x] * 1.05))
-            if a > 0.01 { ctx.fill(Path(rect(x, y)), with: .color(Color(0x03040a, a))) }
-        } }
-        // the bulb's reach, outlined — it's exactly where shadows get pulled from
+        let r = f.room
+        let full = CGRect(x: 0, y: 0, width: CGFloat(r.w) * T, height: CGFloat(r.h) * T)
+        let base = min(0.94, 0.55 + f.dark * 0.4)
+        let ls = lights()
+        ctx.drawLayer { layer in
+            layer.fill(Path(full), with: .color(Color(0x03040a, base)))
+            layer.blendMode = .destinationOut
+            for (c, rad, k) in ls where rad > 0 {
+                let center = CGPoint(x: (c.x + 0.5) * T, y: (c.y + 0.5) * T)
+                let R = CGFloat(rad + 0.9) * T
+                layer.fill(Path(ellipseIn: CGRect(x: center.x - R, y: center.y - R, width: R * 2, height: R * 2)),
+                           with: .radialGradient(Gradient(stops: [.init(color: .white.opacity(0.92 * k), location: 0),
+                                                                  .init(color: .white.opacity(0.7 * k), location: 0.45),
+                                                                  .init(color: .white.opacity(0), location: 1)]),
+                                                 center: center, startRadius: 0, endRadius: R))
+            }
+        }
         if let oi = r.index(of: .otto), f.state.bulb, !f.hideHeroes, f.bulbR > 0 {
             let o = f.state.c[oi], rad = Int(f.bulbR.rounded())
             var p = Path()
             for y in 0..<r.h { for x in 0..<r.w where abs(x - o.x) + abs(y - o.y) == rad { p.addRect(rect(x, y).insetBy(dx: 3, dy: 3)) } }
-            ctx.stroke(p, with: .color(Pal.gold.opacity(0.28)), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
+            ctx.stroke(p, with: .color(Pal.gold.opacity(0.3)), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
+        }
+    }
+
+    /// Soft shadow on the floor under every wall.
+    func wallShadows(_ ctx: inout GraphicsContext) {
+        let r = f.room
+        for y in 1..<r.h { for x in 0..<r.w where r.tile(Pt(x, y - 1)) == .wall && r.tile(Pt(x, y)) != .wall && r.tile(Pt(x, y)) != .water {
+            let R = rect(x, y)
+            ctx.fill(Path(CGRect(x: R.minX, y: R.minY, width: T, height: T * 0.3)),
+                     with: .linearGradient(Gradient(colors: [.black.opacity(0.35), .black.opacity(0)]), startPoint: CGPoint(x: R.midX, y: R.minY), endPoint: CGPoint(x: R.midX, y: R.minY + T * 0.3)))
+        } }
+    }
+
+    /// Dust drifting in the light.
+    func motes(_ ctx: inout GraphicsContext) {
+        var c = ctx
+        c.blendMode = .plusLighter
+        for (li, l) in lights().enumerated() {
+            for k in 0..<6 {
+                let seed = Double(li * 31 + k * 7)
+                let ang = f.t * (0.25 + 0.05 * Double(k)) + seed
+                let rr = (0.4 + 0.5 * (0.5 + 0.5 * sin(seed * 3.1))) * min(l.1, 2)
+                let px = (l.0.x + 0.5 + CGFloat(cos(ang) * rr)) * T
+                let py = (l.0.y + 0.5 + CGFloat(sin(ang * 0.8) * rr * 0.7)) * T - CGFloat((f.t * 0.12 + seed).truncatingRemainder(dividingBy: 1.0)) * T * 0.4
+                let a = 0.25 * l.2 * (0.5 + 0.5 * sin(f.t * 2 + seed))
+                c.fill(Path(ellipseIn: CGRect(x: px - 1.2, y: py - 1.2, width: 2.4, height: 2.4)), with: .color(Pal.gold.opacity(a)))
+            }
         }
     }
 
