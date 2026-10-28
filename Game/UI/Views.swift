@@ -63,14 +63,14 @@ struct TitleView: View {
                                            mainDim: false, dark: 0, hideHeroes: false, bulbR: 0, doudou: false)
                     let T = min(size.width / 3.2, 110)
                     var c = ctx
-                    c.translateBy(x: (size.width - T * 3) / 2 - T, y: -T * 0.2)
+                    c.translateBy(x: (size.width - T * 3) / 2 - T, y: -T * 0.3)
                     let p = Painter(f: frame, T: T)
                     p.otto(&c, CGPoint(x: 1, y: 1), bulb: true, face: 1)
                     p.moss(&c, CGPoint(x: 2, y: 1), alpha: 1)
                     p.mosto(&c, CGPoint(x: 3, y: 1), alpha: 1, carry: true)
                 }
             }
-            .frame(height: 150)
+            .frame(height: 200)
             .onTapGesture(count: 5) { allOpen = true; Haptic.success() }
             Text("长夜").font(.system(size: 44, weight: .semibold, design: .serif)).foregroundStyle(.white).tracking(8)
             Text("太阳一百天没有升起").font(.callout).foregroundStyle(mutedText)

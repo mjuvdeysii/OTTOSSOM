@@ -425,7 +425,7 @@ struct Painter {
     }
 
     func darkness(_ ctx: inout GraphicsContext) {
-        let r = f.room, M = lightMap(), base = 0.62 + f.dark * 0.3
+        let r = f.room, M = lightMap(), base = 0.5 + f.dark * 0.4
         for y in 0..<r.h { for x in 0..<r.w {
             let a = max(0, base * (1 - M[y][x] * 1.05))
             if a > 0.01 { ctx.fill(Path(rect(x, y)), with: .color(Color(0x03040a, a))) }
