@@ -22,9 +22,9 @@ enum Dir: Int, CaseIterable, Codable, Sendable {
 
 enum Ground: UInt8, Sendable { case floor, gap, tall, bridge }
 
-enum MostoMode: String, Codable, Sendable { case none, shadow, pair }
+enum MostoMode: String, Codable, Sendable { case none, shadow, pair, mirror }
 
-enum Actor: Character, Sendable { case moss = "M", otto = "O" }
+enum Actor: Character, Sendable { case moss = "M", otto = "O", mosto = "X" }
 
 struct Move: Hashable, Sendable, CustomStringConvertible {
     let actor: Actor
@@ -93,7 +93,7 @@ final class Board: @unchecked Sendable {
         guard moss >= 0, otto >= 0 else { throw BoardError.bad("Moss and Otto must be on the board") }
         guard (mosto >= 0) == (mode != .none) else { throw BoardError.bad("Mosto and mode disagree") }
         guard mode == .shadow || bead >= 0 else { throw BoardError.bad("no bead") }
-        guard (mode == .pair) == (crown >= 0) else { throw BoardError.bad("crown and mode disagree") }
+        guard (mode == .pair || mode == .mirror) == (crown >= 0) else { throw BoardError.bad("crown and mode disagree") }
         ground = g; self.bead = bead; self.crown = crown
         start = GameState(moss: moss, otto: otto, facing: facing, mosto: mosto, blocks: blocks, filled: 0)
     }
@@ -176,9 +176,30 @@ final class Board: @unchecked Sendable {
         return s
     }
 
+    /// Moss's mirrored step on the other side: only onto a lit cell; if he cannot, he stays.
+    private func mossFollow(_ s: GameState, _ d: Dir) -> GameState {
+        guard let q = neighbour(s.moss, d), q != s.otto, q != s.mosto, lit(s) & bit(q) != 0 else { return s }
+        var n = s
+        if s.blocks & bit(q) != 0 {
+            guard let (b, f) = push(s, from: q, d, occupied: [s.otto, s.mosto]) else { return s }
+            n.blocks = b; n.filled = f; n.moss = q
+            return n
+        }
+        guard groundAt(s, q) == .floor else { return s }
+        n.moss = q
+        return n
+    }
+
     /// The state after one swipe, or nil when the swipe does nothing.
     func step(_ s: GameState, _ m: Move) -> GameState? {
         let d = m.dir
+        if m.actor == .mosto {
+            guard mode == .mirror else { return nil }
+            let n = mostoStep(s, d)
+            if n == s { return nil }
+            return mossFollow(n, d.mirrored)
+        }
+        if m.actor == .moss && mode == .mirror { return nil }
         if m.actor == .otto {
             if d != s.facing { var n = s; n.facing = d; return n }
             guard let q = neighbour(s.otto, d), q != s.moss, q != s.mosto, s.blocks & bit(q) == 0, groundAt(s, q) == .floor else { return nil }
@@ -205,15 +226,18 @@ final class Board: @unchecked Sendable {
     func won(_ s: GameState) -> Bool {
         switch mode {
         case .shadow: return s.mosto < 0
-        case .pair: return s.moss == bead && s.mosto == crown
+        case .pair, .mirror: return s.moss == bead && s.mosto == crown
         case .none: return s.moss == bead
         }
     }
 
-    static let allMoves: [Move] = [Actor.moss, .otto].flatMap { a in Dir.allCases.map { Move(actor: a, dir: $0) } }
+    static let storyMoves: [Move] = [Actor.moss, .otto].flatMap { a in Dir.allCases.map { Move(actor: a, dir: $0) } }
+    static let mirrorMoves: [Move] = [Actor.mosto, .otto].flatMap { a in Dir.allCases.map { Move(actor: a, dir: $0) } }
+    /// The one the player walks: Moss, or Mosto on the other side.
+    var walker: Actor { mode == .mirror ? .mosto : .moss }
 
     func moves(_ s: GameState) -> [(Move, GameState)] {
-        Board.allMoves.compactMap { m in
+        (mode == .mirror ? Board.mirrorMoves : Board.storyMoves).compactMap { m in
             guard let n = step(s, m), n != s else { return nil }
             return (m, n)
         }

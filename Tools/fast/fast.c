@@ -7,7 +7,7 @@
 
 typedef struct { int8_t moss, otto, face, mosto; uint64_t blocks, filled; } S;
 
-static int W, H, N, MODE, BEAD, CROWN;      // MODE 0 none 1 shadow 2 pair
+static int W, H, N, MODE, BEAD, CROWN;      // MODE 0 none 1 shadow 2 pair 3 mirror
 static char G[64];                           // '.', '_', 'T', '='
 static const int DX[4] = {0, 1, 0, -1}, DY[4] = {-1, 0, 1, 0};
 static const int MIRROR[4] = {0, 3, 2, 1};
@@ -94,9 +94,27 @@ static void mosto_step(S *s, int d) {
     if (g == '.' || g == '=') s->mosto = q;
 }
 
-// who: 0 Moss, 1 Otto. Returns 1 and fills n when the swipe changes something.
+static void moss_follow(S *s, int d) {
+    int q = nb(s->moss, d);
+    if (q < 0 || q == s->otto || q == s->mosto || !(lit(s) >> q & 1)) return;
+    if (s->blocks >> q & 1) {
+        S t = *s;
+        if (!push(&t, q, d, s->otto, s->mosto, -1)) return;
+        t.moss = q; *s = t; return;
+    }
+    if (ground(s, q) == '.') s->moss = q;
+}
+
+// who: 0 the one the player walks (Moss; Mosto on the other side), 1 Otto. Returns 1 and fills n when the swipe
+// changes something.
 static int step(const S *s, int who, int d, S *n) {
     *n = *s;
+    if (who == 0 && MODE == 3) {
+        mosto_step(n, d);
+        if (n->mosto == s->mosto) return 0;
+        moss_follow(n, MIRROR[d]);
+        return 1;
+    }
     if (who == 1) {
         if (d != s->face) { n->face = d; return 1; }
         int q = nb(s->otto, d);
@@ -122,7 +140,7 @@ static int step(const S *s, int who, int d, S *n) {
 
 static int won(const S *s) {
     if (MODE == 1) return s->mosto < 0;
-    if (MODE == 2) return s->moss == BEAD && s->mosto == CROWN;
+    if (MODE >= 2) return s->moss == BEAD && s->mosto == CROWN;
     return s->moss == BEAD;
 }
 
@@ -205,7 +223,7 @@ int analyse(const char *rows, int w, int h, int face, int mode, int limit, char 
                 if (a->blocks != b->blocks || a->filled != b->filled) pushes++;
                 if (who == 0 && a->moss != b->moss) { int ox = a->otto % W, oy = a->otto / W, mx = b->moss % W, my = b->moss / W; if (abs(ox - mx) > 1 || abs(oy - my) > 1) beam++; }
                 if (a->mosto >= 0 && b->mosto >= 0 && a->mosto != b->mosto) mm++;
-                path[k * 2] = who ? 'O' : 'M'; path[k * 2 + 1] = "NESW"[d]; k++;
+                path[k * 2] = who ? 'O' : (MODE == 3 ? 'X' : 'M'); path[k * 2 + 1] = "NESW"[d]; k++;
                 cur = nxt;
             }
             path[k * 2] = 0;
@@ -216,4 +234,68 @@ int analyse(const char *rows, int w, int h, int face, int mode, int limit, char 
 done:
     free(lc); free(st); free(ht); free(edst); free(eoff);
     return result;
+}
+
+
+// ---- simulated players (bounded rationality), for the level search ----
+// h: how far the board looks from done, as a player without foresight would judge it (Manhattan distances).
+static int md(int a, int b) { return abs(a % W - b % W) + abs(a / W - b / W); }
+static int heur(const S *s) {
+    if (won(s)) return -1000;
+    if (MODE == 1) return s->mosto < 0 ? 0 : md(s->moss, s->mosto);
+    if (MODE >= 2) return md(s->moss, BEAD) + md(s->mosto, CROWN);
+    return md(s->moss, BEAD);
+}
+static uint64_t rs;
+static inline uint32_t rnd(void) { rs ^= rs << 13; rs ^= rs >> 7; rs ^= rs << 17; return (uint32_t)rs; }
+
+// best value reachable within depth moves (lower is better)
+static int look(const S *s, int depth) {
+    int best = heur(s);
+    if (depth == 0 || best <= -1000) return best;
+    for (int who = 0; who < 2; who++) for (int d = 0; d < 4; d++) {
+        S n; if (!step(s, who, d, &n)) continue;
+        int v = look(&n, depth - 1);
+        if (v < best) best = v;
+    }
+    return best;
+}
+
+// Plays like a person who looks `depth` moves ahead, never repeats a position, breaks ties at random.
+// Returns the share of `trials` games won within `budget` moves.
+double bot(const char *rows, int w, int h, int face, int mode, int depth, int trials, int budget, unsigned seed) {
+    W = w; H = h; N = w * h; MODE = mode; BEAD = CROWN = -1;
+    S s0; memset(&s0, 0, sizeof s0); s0.mosto = -1;
+    for (int i = 0; i < N; i++) {
+        char c = rows[i];
+        G[i] = (c == '_' || c == ' ') ? '_' : c == 'T' ? 'T' : c == '=' ? '=' : '.';
+        if (c == 'M') s0.moss = i; if (c == 'O') s0.otto = i; if (c == 'X') s0.mosto = i;
+        if (c == '*') BEAD = i; if (c == 'C') CROWN = i; if (c == 'B') s0.blocks |= 1ULL << i;
+    }
+    s0.face = face;
+    lcn = 1 << 16; lccount = 0; lc = calloc(lcn, sizeof(LC));
+    int wins = 0;
+    rs = seed * 2654435761u + 1;
+    S *seen = malloc(sizeof(S) * (budget + 2));
+    for (int t = 0; t < trials; t++) {
+        S cur = s0; int ns_ = 0; seen[ns_++] = cur;
+        for (int k = 0; k < budget; k++) {
+            if (won(&cur)) break;
+            S cand[8]; int val[8], nc = 0;
+            for (int who = 0; who < 2; who++) for (int d = 0; d < 4; d++) {
+                S n; if (!step(&cur, who, d, &n)) continue;
+                int rep = 0; for (int j = 0; j < ns_; j++) if (memcmp(&seen[j], &n, sizeof(S)) == 0) { rep = 1; break; }
+                if (rep) continue;
+                cand[nc] = n; val[nc] = look(&n, depth - 1); nc++;
+            }
+            if (!nc) break;
+            int best = val[0]; for (int i = 1; i < nc; i++) if (val[i] < best) best = val[i];
+            int pick[8], np = 0; for (int i = 0; i < nc; i++) if (val[i] == best) pick[np++] = i;
+            cur = cand[pick[rnd() % np]];
+            seen[ns_++] = cur;
+        }
+        if (won(&cur)) wins++;
+    }
+    free(seen); free(lc);
+    return (double)wins / trials;
 }

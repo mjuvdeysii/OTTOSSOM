@@ -11,6 +11,8 @@ A level also gives Otto's facing (N E S W) and the Mosto mode:
   shadow Mosto mirrors Moss (east and west swapped) and only steps into the dark. Moss wins by stepping onto him
          while the lamp shows him.                                                     (chapter 3: 面对)
   pair   the same mirror, but both have a goal: Moss on the bead and Mosto on the crown at once. (chapter 4: 同行)
+  mirror the other side (OTTOSSOM 面): the player moves Mosto (dark cells only, night bridges, pushes blocks) and
+         Otto; Moss mirrors Mosto (lit cells only, pushes blocks, never a bridge). Same goal as pair.
 
 Who moves
   Moss   one step onto a lit cell; pushes a block one cell (into a gap it fills the gap). Never onto a bridge.
@@ -54,7 +56,7 @@ class Level:
         assert self.moss and self.otto, rows
         assert (self.mosto is not None) == (mode != 'none'), rows
         assert mode == 'shadow' or self.bead, rows
-        assert (mode == 'pair') == (self.crown is not None), rows
+        assert (mode in ('pair', 'mirror')) == (self.crown is not None), rows
         self._lit = {}
 
     def start(self):
@@ -138,10 +140,30 @@ def _mosto_step(L, s, dname):
     return s
 
 
+def _moss_follow(L, s, dname):
+    """Moss's mirrored step on the other side: only onto a lit cell; if he cannot, he stays."""
+    moss, otto, d, mosto, boxes, filled = s
+    dx, dy = DIRS[dname]
+    q = (moss[0] + dx, moss[1] + dy)
+    if not L.inb(q) or q == otto or q == mosto or q not in L.lit(s): return s
+    if q in boxes:
+        r = _push(L, s, q, dname, {otto, mosto})
+        if r is None: return s
+        return (q, otto, d, mosto, r[0], r[1])
+    if L.ground(s, q) != '.': return s
+    return (q, otto, d, mosto, boxes, filled)
+
+
 def step(L, s, who, dname):
     """The state after one swipe, or None when the swipe does nothing."""
     moss, otto, d, mosto, boxes, filled = s
     dx, dy = DIRS[dname]
+    if who == 'X':
+        if L.mode != 'mirror': return None
+        ns = _mosto_step(L, s, dname)
+        if ns == s: return None
+        return _moss_follow(L, ns, MIRROR[dname])
+    if who == 'M' and L.mode == 'mirror': return None
     if who == 'O':
         nd = ORDER.index(dname)
         if nd != d: return (moss, otto, nd, mosto, boxes, filled)
@@ -170,12 +192,16 @@ def step(L, s, who, dname):
 
 def won(L, s):
     if L.mode == 'shadow': return s[3] is None
-    if L.mode == 'pair': return s[0] == L.bead and s[3] == L.crown
+    if L.mode in ('pair', 'mirror'): return s[0] == L.bead and s[3] == L.crown
     return s[0] == L.bead
 
 
+def actors(L):
+    return 'XO' if L.mode == 'mirror' else 'MO'
+
+
 def moves(L, s):
-    for who in 'MO':
+    for who in actors(L):
         for dn in ORDER:
             n = step(L, s, who, dn)
             if n is not None and n != s:

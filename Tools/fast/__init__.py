@@ -7,7 +7,7 @@ if not os.path.exists(LIB) or os.path.getmtime(LIB) < os.path.getmtime(os.path.j
 _lib = ctypes.CDLL(LIB)
 _lib.analyse.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_char_p, ctypes.POINTER(ctypes.c_double)]
 _lib.analyse.restype = ctypes.c_int
-MODES = {'none': 0, 'shadow': 1, 'pair': 2}
+MODES = {'none': 0, 'shadow': 1, 'pair': 2, 'mirror': 3}
 
 def analyse(rows, facing, mode, limit=400000):
     w = max(len(r) for r in rows); h = len(rows)
@@ -19,3 +19,12 @@ def analyse(rows, facing, mode, limit=400000):
     p = path.value.decode()
     return dict(len=par, states=int(stats[0]), lost=round(stats[1], 2), hard=round(stats[2], 2), turns=int(stats[3]),
                 pushes=int(stats[4]), beam=int(stats[5]), mosto=int(stats[6]), path=[p[i:i + 2] for i in range(0, len(p), 2)])
+
+_lib.bot.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+_lib.bot.restype = ctypes.c_double
+
+def bot(rows, facing, mode, depth, trials=24, budget=None, par=10, seed=1):
+    """Share of games a player who looks `depth` moves ahead wins within budget (default 3 × par + 6)."""
+    w = max(len(r) for r in rows); h = len(rows)
+    flat = ''.join(r.ljust(w, '_') for r in rows).encode()
+    return _lib.bot(flat, w, h, 'NESW'.index(facing), MODES[mode], depth, trials, budget or 3 * par + 6, seed)
