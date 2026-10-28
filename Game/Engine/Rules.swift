@@ -236,7 +236,7 @@ final class Room {
                 guard who == .mosto, !s.carry, let i = lampPos.indices.first(where: { s.lit[$0] && lampPos[$0].dist(p) == 1 }) else { return nil }
                 s.lit[i] = false; s.carry = true; ev.append(.take(i))
             case .give:
-                guard who == .mosto, s.carry, let i = lampPos.indices.first(where: { !s.lit[$0] && lampPos[$0].dist(p) == 1 && !s.shadows.contains(where: { q in q.dist(lampPos[$0]) == 1 }) }) else { return nil }
+                guard who == .mosto, s.carry, let i = lampPos.indices.first(where: { k in !s.lit[k] && lampPos[k].dist(p) == 1 && !s.shadows.contains(where: { q in q.dist(lampPos[k]) == 1 }) }) else { return nil }
                 s.lit[i] = true; s.carry = false; ev.append(.give(i, nest: nest[i]))
             default: return nil
             }
