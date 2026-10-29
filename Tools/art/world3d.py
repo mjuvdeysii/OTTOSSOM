@@ -33,6 +33,7 @@ def ch(x, y):
     # past the edge: more of what the edge is
     border = {"town": "#", "wilds": "T", "cellar": "x"}[THEME]
     if THEME == "town" and y >= H - 3: return "~"
+    if THEME == "town": return "H" if (x * 7 + y * 3) % 5 else "T"      # more of the town round the edges
     if THEME == "wilds" and y < 0 and 5 <= x <= 9: return "#"
     return border
 
@@ -141,11 +142,17 @@ def build():
     walls_ = [B.rubber(f"hw{i}", c_, rough=0.65) for i, c_ in enumerate(("#D8CCB4", "#B8C0CC", "#CCB8A0"))]
     win = emit("window", "#FFC46A", 2.5); dark = B.mat("winDark", "#1A1E2A", rough=0.3)
     tab = B.rubber("tablet", "#9A9AA8", rough=0.65); glyph = B.mat("glyph", "#5A5A6A", rough=0.8)
+    townwall = stone("townwall", "#B8B0A0", "#8A8274", scale=8, bump=0.4); townwallTop = B.rubber("twTop", "#D8D0C0", rough=0.6)
     raised = []
     lighthouse = []
     for y in range(-MY, H + MY):
         for x in range(-MX, W + MX):
             c_ = ch(x, y); c = cell(x, y)
+            if c_ == "#" and THEME == "town":
+                # the town wall: a low run of pale stone blocks, capped
+                box(f"tw_{x}_{y}", c + Vector((0, 0, 0.32)), (S, S * 0.9, 0.64), townwall, bevel=0.05)
+                box(f"twc_{x}_{y}", c + Vector((0, 0, 0.68)), (S * 1.02, S * 0.95, 0.1), townwallTop, bevel=0.03)
+                continue
             if c_ in "#x":
                 hgt = S * (0.5 if THEME == "town" else 0.9 if THEME == "wilds" else 1.1)
                 raised.append(box(f"r_{x}_{y}", c + Vector((0, 0, hgt / 2 - 0.15)), (S, S, hgt + 0.3), ground, bevel=0))
