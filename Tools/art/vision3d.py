@@ -12,6 +12,7 @@ import bpy
 import ip3d as B
 sys.path.insert(0, os.path.join(HERE, "kb"))
 import mosto3d as MO
+import town3d as TW
 from mathutils import Vector
 
 ARGS = sys.argv[1:]
@@ -172,27 +173,41 @@ def main():
         key((0, 0, 0.6))
         camera((0.2, -4.4, 1.0), (-0.4, 0, 0.9), lens=35)
     elif n == "sun":
-        # a memory: the sun awake and working, never once closing its eye — look at the bags under it
-        world("#2A1A10", 0.6); ground("#8A6A48")
-        tired_sun((0, 3.0, 0.2), 2.4, awake=True, glow=1.0)
-        roofm = B.rubber("roof", "#8A4A3A"); wallm = B.rubber("hw", "#D8CCB4")
-        for i in range(5):
-            x = -1.6 + i * 0.8
-            bpy.ops.mesh.primitive_cube_add(location=(x, -0.6, 0.18)); o = bpy.context.object; o.scale = (0.18, 0.18, 0.18); o.data.materials.append(wallm)
-            bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.28, depth=0.25, location=(x, -0.6, 0.48), rotation=(0, 0, math.radians(45))); bpy.context.object.data.materials.append(roofm)
-        key((0, 2.0, 2.0), warm=True)
-        camera((0, -5.5, 1.2), (0, 2.0, 2.0), lens=30)
+        # a memory: the sun awake, the fire burning in its nest on its brow, never once closing its eye (look at the bags
+        # under it). Below, the lighthouse town in full day: Hank, Dora and Lynn out in the street, short noon shadows.
+        world("#C89A68", 0.9); ground("#9A7A52")
+        tired_sun((0, 4.2, 0.6), 2.6, awake=True, glow=1.2)
+        fire((0, 3.7, 3.5), 1.5, energy=160)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.32, minor_radius=0.09, location=(0, 3.7, 3.28)); bpy.context.object.data.materials.append(B.rubber("nest", "#7A5A3A", rough=0.8))
+        for i, (x, y, wall, roof) in enumerate([(-1.9, 1.2, "#E4D6BC", "#8A4A3A"), (-1.05, 1.7, "#D8C4A4", "#6A5A8A"),
+                                               (1.15, 1.6, "#E4D6BC", "#4A7A6A"), (2.0, 1.1, "#D8CCB4", "#8A4A3A")]):
+            TW.house(f"h{i}", (x, y, 0), w=0.75, h=0.62, wall=wall, roof=roof)
+        # the lighthouse at the edge of town, its lamp unneeded by day
+        bpy.ops.mesh.primitive_cone_add(vertices=48, radius1=0.32, radius2=0.22, depth=2.0, location=(2.6, 2.4, 1.0)); bpy.context.object.data.materials.append(B.rubber("lh", "#E8E0D0"))
+        B.sphere("lhtop", (2.6, 2.4, 2.15), (0.26, 0.26, 0.2), B.rubber("lhr", "#B04A3A"))
+        place(lambda: TW.townsfolk("#8A6A5A", "#3A3A44", who="hank"), (-0.75, 0.0, 0), turn=10, scale=0.9)
+        place(lambda: TW.townsfolk("#E08A5A", "#E8C24A", small=True, who="dora"), (0.05, -0.35, 0), turn=-5, scale=0.9)
+        place(lambda: TW.townsfolk("#6A7AA8", "#5A3A5A", scarf="#C04A4A", who="lynn"), (0.85, 0.05, 0), turn=-15, scale=0.9)
+        light("SUN", (0, 0, 5), 3.0, "#FFE0B0", 0, rot=(math.radians(15), 0, 0))
+        key((0, 0.5, 1.0), warm=True, strength=1.2)
+        camera((0, -5.6, 1.1), (0, 2.0, 1.45), lens=30)
     elif n == "town":
-        # a memory: Otto lighting the town's lamps one by one, night after night
-        world("#2A1E14", 0.5); ground("#7A6A58")
-        lamp = emit("lampLit", "#FFD27A", 8); post = B.rubber("post", "#3A3A44")
-        for i, (x, y) in enumerate([(-1.4, 1.4), (0.2, 2.4), (1.5, 1.2), (-0.4, 3.6)]):
-            bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.04, depth=1.3, location=(x, y, 0.65)); bpy.context.object.data.materials.append(post)
-            B.sphere(f"lamp{i}", (x, y, 1.35), (0.13, 0.13, 0.16), lamp)
-            light("POINT", (x, y - 0.1, 1.35), 40, "#FFC46A", 0.1)
-        place(B.build_otto, (0.3, 0.3, 0), turn=-20, glow=1.0, lid=0.55, look=(-0.6, 0.3), slouch=0.9, droop=0.7, bags=True)
-        key((0.3, 0.3, 0.8), warm=True, strength=2.0)
-        camera((0.2, -4.6, 1.3), (0.1, 1.2, 1.1), lens=32, fstop=5)
+        # a memory: night after night, Otto lighting the town's lamps one by one — a line of them already burning behind
+        # him, the next one dark, his bulb lifted to it; Dora at her window-side with her paper lantern, watching
+        world("#1E1610", 0.45); ground("#6A5A48")
+        lamp = emit("lampLit", "#FFD27A", 8); dark = B.mat("lampOff", "#2A2A30", rough=0.2, coat=0.6); post = B.rubber("post", "#3A3A44")
+        row = [(-1.5, 4.4), (-1.1, 3.4), (-0.6, 2.5), (0.0, 1.8), (1.15, 1.5)]
+        for i, (x, y) in enumerate(row):
+            lit = i < len(row) - 1
+            bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.045, depth=1.3, location=(x, y, 0.65)); bpy.context.object.data.materials.append(post)
+            B.sphere(f"lamp{i}", (x, y, 1.38), (0.14, 0.14, 0.17), lamp if lit else dark)
+            if lit: light("POINT", (x, y - 0.12, 1.38), 45, "#FFC46A", 0.1)
+        for i, (x, y) in enumerate([(-1.9, 2.6), (1.4, 3.6), (2.1, 2.6)]):
+            TW.house(f"th{i}", (x, y, 0), w=0.8, h=0.65, wall="#C8B89C", roof="#6A4A3A", window="#FFC870")
+        place(B.build_otto, (0.45, 0.75, 0), turn=-40, scale=0.85, glow=1.0, lid=0.5, look=(0.6, 0.5), slouch=0.9, droop=0.7, bags=True)
+        place(lambda: TW.townsfolk("#E08A5A", "#E8C24A", small=True, who="dora", lit=True), (1.35, 0.15, 0), turn=-25, scale=0.85)
+        key((0.3, 0.6, 0.9), warm=True, strength=1.6)
+        camera((0.5, -5.6, 1.7), (0.1, 1.8, 0.6), lens=32, fstop=6)
     elif n == "lamp":
         # a memory of the main lamp: one night Mosto came and lifted its light away, while Otto, worn out, slept beside it
         world("#16121E", 0.4); ground("#5A5048")
