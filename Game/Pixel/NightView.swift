@@ -52,28 +52,13 @@ enum NightPainter {
             let k = 1 - (sim.t - sim.lastLoopAt) / 0.25
             let xs = sim.lastLoop.map { $0.x }, ys = sim.lastLoop.map { $0.y }
             for y in Int(ys.min()!)...Int(ys.max()!) { for x in Int(xs.min()!)...Int(xs.max()!) where (x + y) % 2 == 0 {
-                if Geo.inside(V2(Double(x), Double(y)), sim.lastLoop) { f.add(x, y, gold, 0.45 * k) }
+                if Geo.inside(V2(Double(x), Double(y)), sim.lastLoop) { f.add(x, y, gold, 0.3 * k) }
             } }
         }
 
         // everyone, back to front
         var items: [(Double, (inout Frame) -> Void)] = []
         let fr = Int(clock * 6)
-        for fo in sim.foes {
-            let name: String
-            switch fo.type {
-            case .shade: name = "shade_\(fr % 2)"
-            case .shell: name = "shell_\(fr % 2)"
-            case .moth: name = "moth_\(Int(clock * 10) % 2)"
-            case .fang: name = "fang_\(fr % 2)"
-            }
-            items.append((fo.p.y, { f in
-                if let s = PixelArt.sprite(name) { f.draw(s, feet: Int(fo.p.x), Int(fo.p.y) + 4, flip: fo.v.x < 0, tint: fo.hitCD > 0.1 ? cream : nil) }
-                if fo.type == .fang && fo.state == 1 && Int(clock * 8) % 2 == 0 {
-                    f.rect(Int(fo.p.x), Int(fo.p.y) - 18, 1, 4, red); f.set(Int(fo.p.x), Int(fo.p.y) - 12, red)
-                }
-            }))
-        }
         if let m = sim.maw, m.hp > 0 {
             items.append((m.p.y, { f in
                 if let s = PixelArt.sprite("maw_\(fr % 2)_\(min(3, m.belly + (m.belly > 0 ? 1 : 0)))") {
@@ -99,8 +84,27 @@ enum NightPainter {
         if let m = sim.maw, m.belly > 0 { lights.append((m.p + V2(0, 8), 12 + Double(m.belly) * 6, 0.7)) }
         let fx = f.ox, fy = f.oy
         f.ox = 0; f.oy = 0
-        f.night(base: 0.32, lights: lights.map { (V2($0.0.x + Double(fx), $0.0.y + Double(fy)), $0.1, $0.2) })
+        f.night(base: 0.42, lights: lights.map { (V2($0.0.x + Double(fx), $0.0.y + Double(fy)), $0.1, $0.2) })
         f.ox = fx; f.oy = fy
+
+        // the shadows come after the night: they are the night, and their eyes have to read in it
+        var shadows: [(Double, (inout Frame) -> Void)] = []
+        for fo in sim.foes {
+            let name: String
+            switch fo.type {
+            case .shade: name = "shade_\(fr % 2)"
+            case .shell: name = "shell_\(fr % 2)"
+            case .moth: name = "moth_\(Int(clock * 10) % 2)"
+            case .fang: name = "fang_\(fr % 2)"
+            }
+            shadows.append((fo.p.y, { f in
+                if let s = PixelArt.sprite(name) { f.draw(s, feet: Int(fo.p.x), Int(fo.p.y) + 4, flip: fo.v.x < 0, tint: fo.hitCD > 0.1 ? cream : nil) }
+                if fo.type == .fang && fo.state == 1 && Int(clock * 8) % 2 == 0 {
+                    f.rect(Int(fo.p.x), Int(fo.p.y) - 18, 1, 4, red); f.set(Int(fo.p.x), Int(fo.p.y) - 12, red)
+                }
+            }))
+        }
+        for it in shadows.sorted(by: { $0.0 < $1.0 }) { it.1(&f) }
 
         // the thread, over the dark: it is light
         let a = sim.otto + ottoBead, b = sim.moss + mossHand

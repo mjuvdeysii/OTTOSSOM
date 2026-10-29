@@ -13,18 +13,18 @@ enum ChapterOne {
         NightSpec(id: 1, name: "第一夜 · 灯塔顶", place: "top", dawn: 60, drain: 0.5, waves: [
             w(1.5, .shade, 1), w(6, .shade, 1), w(10, .shade, 2), w(16, .shade, 2), w(23, .shade, 3),
             w(31, .shade, 3), w(39, .shade, 4), w(47, .shade, 4), w(54, .shade, 3)], thiefAt: nil, boss: nil, teach: "drag"),
-        NightSpec(id: 2, name: "第二夜 · 北街", place: "street", dawn: 80, drain: 0.6, waves: [
-            w(2, .shade, 2), w(7, .shell, 1), w(13, .shade, 3), w(20, .shell, 1), w(20, .shade, 2), w(28, .shell, 2),
+        NightSpec(id: 2, name: "第二夜 · 北街", place: "street", dawn: 80, drain: 0.85, waves: [
+            w(2, .shade, 2), w(7, .shell, 1), w(13, .shade, 4), w(20, .shell, 1), w(20, .shade, 3), w(28, .shell, 2),
             w(36, .shade, 4), w(44, .shell, 2), w(44, .shade, 2), w(55, .shade, 5), w(64, .shell, 3), w(72, .shade, 4)],
                   thiefAt: nil, boss: nil, teach: "loop"),
-        NightSpec(id: 3, name: "第三夜 · 码头", place: "dock", dawn: 90, drain: 0.75, waves: [
-            w(2, .shade, 3), w(8, .moth, 2), w(15, .shade, 3), w(16, .moth, 1), w(24, .shell, 2), w(25, .moth, 2),
-            w(34, .shade, 5), w(44, .moth, 3), w(45, .shell, 1), w(56, .shade, 4), w(57, .moth, 2), w(68, .shell, 2),
-            w(69, .shade, 3), w(78, .moth, 3), w(80, .shade, 4)], thiefAt: nil, boss: nil, teach: "wake"),
-        NightSpec(id: 4, name: "第四夜 · 广场", place: "square", dawn: 100, drain: 0.8, waves: [
-            w(3, .shade, 3), w(10, .fang, 1), w(18, .shade, 3), w(19, .fang, 1), w(28, .shell, 2), w(29, .moth, 2),
-            w(50, .shade, 5), w(51, .shell, 1), w(62, .fang, 2), w(63, .moth, 2), w(76, .shade, 5), w(77, .fang, 1),
-            w(88, .shell, 2), w(89, .shade, 3)], thiefAt: 38, boss: nil, teach: "fang"),
+        NightSpec(id: 3, name: "第三夜 · 码头", place: "dock", dawn: 90, drain: 1.05, waves: [
+            w(2, .shade, 4), w(8, .moth, 3), w(15, .shade, 4), w(16, .moth, 2), w(24, .shell, 2), w(25, .moth, 3),
+            w(34, .shade, 6), w(44, .moth, 4), w(45, .shell, 1), w(56, .shade, 5), w(57, .moth, 3), w(68, .shell, 2),
+            w(69, .shade, 4), w(78, .moth, 4), w(80, .shade, 5)], thiefAt: nil, boss: nil, teach: "wake"),
+        NightSpec(id: 4, name: "第四夜 · 广场", place: "square", dawn: 100, drain: 1.2, waves: [
+            w(3, .shade, 4), w(10, .fang, 1), w(18, .shade, 4), w(19, .fang, 1), w(28, .shell, 2), w(29, .moth, 3),
+            w(50, .shade, 6), w(51, .shell, 1), w(62, .fang, 2), w(63, .moth, 3), w(76, .shade, 6), w(77, .fang, 1),
+            w(88, .shell, 2), w(89, .shade, 4)], thiefAt: 38, boss: nil, teach: "fang"),
         NightSpec(id: 5, name: "第五夜 · 旧灯窖", place: "cellar", dawn: 0, drain: 0.6, waves: [
             w(2, .shade, 2), w(18, .moth, 2), w(36, .shell, 2), w(60, .moth, 3), w(80, .shell, 2)],
                   thiefAt: nil, boss: true, teach: "boss"),

@@ -124,21 +124,30 @@ struct Frame {
     /// Night over the picture: darker the farther from any light, in a few hard bands with a 2×2 dither between
     /// them — pixel-art light, not a smooth gradient. Lights: centre, radius, strength.
     mutating func night(base: Double, lights: [(V2, Double, Double)]) {
-        let bayer: [Double] = [0, 0.5, 0.75, 0.25]
-        let ls = lights.map { (Int($0.0.x) + ox, Int($0.0.y) + oy, $0.1 * $0.1, $0.2, $0.1) }
+        // the light at each pixel: the brightest light that reaches it, each light only touching its own box
+        var lm = [Double](repeating: 0, count: w * h)
+        for (c, r, k) in lights {
+            let cx = Int(c.x) + ox, cy = Int(c.y) + oy
+            let ry = Int(r / 1.15) + 1, rx = Int(r) + 1
+            let r2 = r * r
+            for y in max(0, cy - ry)..<min(h, cy + ry + 1) {
+                let dy = Double(y - cy) * 1.15
+                for x in max(0, cx - rx)..<min(w, cx + rx + 1) {
+                    let dx = Double(x - cx)
+                    let d2 = dx * dx + dy * dy
+                    if d2 < r2 { let v = k * (1 - d2.squareRoot() / r); if v > lm[y * w + x] { lm[y * w + x] = v } }
+                }
+            }
+        }
+        let bayer: [Double] = [0, 0.45, 0.675, 0.225]
+        let ms = [base, base + (1 - base) * 0.45, base + (1 - base) * 0.75, 1.0]
         for y in 0..<h {
             for x in 0..<w {
-                var l = 0.0
-                for (cx, cy, r2, k, r) in ls {
-                    let dx = Double(x - cx), dy = Double(y - cy) * 1.15
-                    let d2 = dx * dx + dy * dy
-                    if d2 < r2 { l = max(l, k * (1 - d2.squareRoot() / r)) }
-                }
-                let v = l * 3.2 + bayer[(y & 1) * 2 + (x & 1)] * 0.9
-                let band = min(3, Int(v))
-                let m = [base, base + (1 - base) * 0.45, base + (1 - base) * 0.75, 1.0][band]
+                let i = y * w + x
+                let band = min(3, Int(lm[i] * 3.2 + bayer[(y & 1) * 2 + (x & 1)]))
+                let m = ms[band]
                 if m >= 0.999 { continue }
-                let i = y * w + x, d = px[i]
+                let d = px[i]
                 let r = UInt32(Double(d & 0xff) * m), g = UInt32(Double((d >> 8) & 0xff) * m), b = UInt32(Double((d >> 16) & 0xff) * (m * 0.85 + 0.15 * min(1, m + 0.2)))
                 px[i] = 0xFF000000 | b << 16 | g << 8 | r
             }

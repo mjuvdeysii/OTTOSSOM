@@ -23,9 +23,9 @@ struct Upgrade: Identifiable {
     let costs: [Int]
     static let all: [Upgrade] = [
         Upgrade(id: "wick", name: "灯芯", text: "光更足，光丝更长", icon: "flame.fill", costs: [25, 60, 120]),
-        Upgrade(id: "shade", name: "灯罩", text: "影子碰到奥托时吸走的光更少", icon: "shield.fill", costs: [30, 70, 140]),
+        Upgrade(id: "shade", name: "灯罩", text: "影子吸走的光更少", icon: "shield.fill", costs: [30, 70, 140]),
         Upgrade(id: "leaf", name: "叶子", text: "莫斯跑得更快", icon: "leaf.fill", costs: [20, 50, 100]),
-        Upgrade(id: "glow", name: "余光", text: "摸过的光留得更久，更容易套大圈", icon: "sparkles", costs: [30, 70, 140]),
+        Upgrade(id: "glow", name: "余光", text: "轨迹留得更久，圈套得更大", icon: "sparkles", costs: [30, 70, 140]),
         Upgrade(id: "snore", name: "鼾声", text: "叫醒奥托的间隔更短", icon: "zzz", costs: [20, 50, 100]),
     ]
 }
@@ -332,29 +332,32 @@ struct UpgradeShop: View {
             ForEach(Upgrade.all) { u in
                 let lv = save.upgrades[u.id] ?? 0
                 let cost = lv < u.costs.count ? u.costs[lv] : nil
-                HStack(spacing: pt * 6) {
-                    VStack(alignment: .leading, spacing: pt * 2) {
-                        Text("\(u.name)  " + String(repeating: "■", count: lv) + String(repeating: "□", count: 3 - lv))
-                            .font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
-                        Text(u.text).font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: pt * 4)
-                    if let c = cost {
-                        PixelButton(title: "\(c)", k: k, primary: save.motes >= c) {
-                            guard save.motes >= c else { Sound.shared.no(); return }
-                            save.motes -= c; save.upgrades[u.id] = lv + 1; save.save(); Sound.shared.light()
+                VStack(alignment: .leading, spacing: pt * 3) {
+                    HStack(spacing: pt * 6) {
+                        Text(u.name).font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
+                        HStack(spacing: pt * 2) {
+                            ForEach(0..<3, id: \.self) { i in
+                                Rectangle().fill(i < lv ? pxGold : Color(0x3a3450)).frame(width: pt * 5, height: pt * 5)
+                            }
                         }
-                    } else {
-                        Text("满").font(PixelFont.font(1, k: k)).foregroundStyle(pxGold)
+                        Spacer(minLength: pt * 4)
+                        if let c = cost {
+                            PixelButton(title: "\(c)", k: k, primary: save.motes >= c) {
+                                guard save.motes >= c else { Sound.shared.no(); return }
+                                save.motes -= c; save.upgrades[u.id] = lv + 1; save.save(); Sound.shared.light()
+                            }
+                        } else {
+                            Text("满").font(PixelFont.font(1, k: k)).foregroundStyle(pxGold)
+                        }
                     }
+                    Text(u.text).font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8)).lineLimit(1).minimumScaleFactor(0.8)
                 }
-                .padding(pt * 6)
+                .padding(.horizontal, pt * 6).padding(.vertical, pt * 4)
                 .modifier(PixelPanel(pt: pt))
             }
             PixelButton(title: "好", k: k) { close() }
         }
-        .padding(pt * 8)
+        .padding(pt * 6)
         .modifier(PixelPanel(pt: pt, fill: Color(0x141024)))
         .padding(.horizontal, pt * 6)
         .frame(maxHeight: .infinity)
@@ -389,6 +392,7 @@ struct NightScreen: View {
                                 if outcome == 0 && sim.outcome != 0 { outcome = sim.outcome; stars = sim.stars; finish(sim) }
                             })
             .id(seed)
+            .ignoresSafeArea()
             VStack(spacing: pt * 3) {
                 HStack {
                     Button { paused.toggle() } label: {
