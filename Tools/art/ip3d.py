@@ -141,8 +141,8 @@ def sprig(top, material_big, material_small, perk=0.0):
     return [stem,
             leaf("moss_leafL", n1, Euler((-roll, -up_big, math.radians(185))), 0.33, material_big, width=0.62),
             leaf("moss_leafR", n1, Euler((roll, -up_big, math.radians(-5))), 0.35, material_big, width=0.62),
-            leaf("moss_leafF", n2, Euler((-roll, -up_small, math.radians(160))), 0.14, material_small, width=0.6),
-            leaf("moss_leafB", n2, Euler((roll, -up_small, math.radians(20))), 0.13, material_small, width=0.6)]
+            leaf("moss_leafF", n2, Euler((-roll, -up_small, math.radians(160))), 0.21, material_small, width=0.6),
+            leaf("moss_leafB", n2, Euler((roll, -up_small, math.radians(20))), 0.2, material_small, width=0.6)]
 
 def tube(name, points, radius, material):
     cd = bpy.data.curves.new(name, "CURVE"); cd.dimensions = "3D"; cd.bevel_depth = radius; cd.bevel_resolution = 6
@@ -160,6 +160,7 @@ def materials():
     M["mintDeep"] = mat("mintDeep", "#3D6B44", rough=0.6)
     M["otto"] = rubber("otto", "#203872")
     M["ottoDeep"] = rubber("ottoDeep", "#1F3566")
+    M["ottoBag"] = rubber("ottoBag", "#1A2E5E")   # the fold under his eye: tired, readable from across a room
     M["ottoBand"] = rubber("ottoBand", "#15264D")   # the lower band of his body, a deeper blue (the 2D icon's waist)
     # painted eyes: a satin white and a glossy black, as on a vinyl figure
     M["eye"] = mat("eye", "#F6F3EA", rough=0.35, coat=0.35)
@@ -175,7 +176,7 @@ def materials():
     nt.links.new(mix.outputs[0], out.inputs["Surface"]); M["halo"] = halo
     M["cheek"] = mat("cheek", "#F49AB0", rough=0.6, sss=0.3)
     M["foot"] = rubber("foot", "#22231F")
-    M["bead"] = mat("bead", "#D49A12", rough=0.35, emit="#FFA81E", emit_strength=0.0, coat=0.3, sss=0.3, sss_rad=(1.0, 0.6, 0.2))
+    M["bead"] = mat("bead", "#E8A012", rough=0.3, emit="#FFA81E", emit_strength=0.0, coat=0.4, sss=0.3, sss_rad=(1.0, 0.6, 0.2))
 
 def eye(name, at, r, look, scale=(1, 0.75, 1.1), lid=0.0, skin=None, pupil=0.55):
     """An eye: a glossy white, a pupil that looks where asked, a lid of the body's material when half closed."""
@@ -292,7 +293,7 @@ def build_otto(x=0.0, look=(-0.3, 0.0), lid=0.3, glow=1.0, lean=0.0, happy=False
         sy = otto_surface_y(0, ez)
         dz = -0.012 if shut == "flat" else -0.05
         parts.append(tube("otto_shut", [(-0.13, sy - 0.0, ez), (0.0, sy - 0.03, ez + dz), (0.13, sy - 0.0, ez)], 0.017, M["pupil"]))
-        if bags: parts.append(sphere("otto_bag", (0.0, otto_surface_y(0, ez - 0.2) + 0.035, ez - 0.2), (0.17, 0.03, 0.035), M["ottoDeep"]))
+        if bags: parts.append(tube("otto_bag", [(x_, otto_surface_y(x_, ez - 0.2 + x_ * x_ * 2.6) - 0.003, ez - 0.2 + x_ * x_ * 2.6) for x_ in (-0.16, -0.11, -0.055, 0.0, 0.055, 0.11, 0.16)], 0.013, M["ottoBag"]))
     elif happy:
         sy = otto_surface_y(0, ez)
         parts.append(tube("otto_smile", [(-0.12, sy + 0.01, ez - 0.02), (0.0, sy - 0.015, ez + 0.06), (0.12, sy + 0.01, ez - 0.02)], 0.016, M["pupil"]))
@@ -301,7 +302,7 @@ def build_otto(x=0.0, look=(-0.3, 0.0), lid=0.3, glow=1.0, lean=0.0, happy=False
         parts += eye("otto_eye", (0.0, otto_surface_y(0, ez) + 0.06, ez), 0.21, look, scale=(1.05, 0.5, 0.95), lid=lid, skin=M["otto"], pupil=0.57)
         if bags:
             # tiredness: a soft, slightly darker fold under the eye
-            parts.append(sphere("otto_bag", (0.0, otto_surface_y(0, ez - 0.2) + 0.035, ez - 0.2), (0.17, 0.03, 0.035), M["ottoDeep"]))
+            parts.append(tube("otto_bag", [(x_, otto_surface_y(x_, ez - 0.2 + x_ * x_ * 2.6) - 0.003, ez - 0.2 + x_ * x_ * 2.6) for x_ in (-0.16, -0.11, -0.055, 0.0, 0.055, 0.11, 0.16)], 0.013, M["ottoBag"]))
     if smirk:
         # the most Otto ever smiles: one corner, lifted
         mz = ez - 0.3

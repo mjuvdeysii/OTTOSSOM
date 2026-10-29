@@ -70,12 +70,12 @@ def mosto_materials():
     B.M["mosto"] = B.rubber("mosto", COLOR, rough=0.5, sss=0.08)
     B.M["mostoDeep"] = B.rubber("mostoDeep", P["deep"], rough=0.5)
     B.M["gold"] = B.mat("horn", P["horn"], rough=0.42, coat=0.2, sss=0.12, sss_rad=(0.5, 0.35, 0.1))
-    B.M["crown"] = B.mat("crown", P.get("crown", "#E3B24A"), rough=0.32, coat=0.35, sss=0.05)   # matte gold
+    B.M["crown"] = B.mat("crown", P.get("crown", "#C8921E"), rough=0.36, coat=0.3)   # matte gold
     B.M["tip"] = B.mat("tip", P["horn"], rough=0.4, coat=0.2, emit=P["glow"], emit_strength=0.0)
     B.M["iris"] = B.mat("iris", P["iris"], rough=0.15, coat=1.0, emit=P["glow"], emit_strength=0.0)
     B.M["blush"] = B.mat("blush", P["blush"], rough=0.6, sss=0.3)
     B.M["fang"] = B.mat("fang", "#FFFBF2", rough=0.3, coat=0.5)
-    B.M["foot"] = B.rubber("mostoFoot", P["feet"])
+    B.M["mfoot"] = B.rubber("mostoFoot", P["feet"])   # his own feet; Otto and Moss keep their ink-dark ones
 
 def _mesh(name, verts, faces, material, sub=2):
     me = bpy.data.meshes.new(name); me.from_pydata(verts, [], faces); me.update()
@@ -158,7 +158,7 @@ def build_mosto(x=0.0, moss_eye=None, otto_eye=None, shut=None, glow=0.0, lean=0
     M = B.M
     root = bpy.data.objects.new("Mosto", None); bpy.context.collection.objects.link(root)
     body = B.shaped_sphere("mosto_body", body_point, M["mosto"], seg=80)
-    feet = [B.sphere(f"mosto_foot{i}", (s * 0.21, -0.12, 0.045), (0.085, 0.1, 0.055), M["foot"]) for i, s in enumerate((-1, 1))]
+    feet = [B.sphere(f"mosto_foot{i}", (s * 0.21, -0.12, 0.045), (0.085, 0.1, 0.055), M["mfoot"]) for i, s in enumerate((-1, 1))]
     parts = [body, *feet]
     m = MOSTO
     top = m["cz"] + m["rz"]
