@@ -85,13 +85,14 @@ def tear(at, rr, hh, mat, lean=(0, 0)):
     for p in o.data.polygons: p.use_smooth = True
     return o
 
-def fire(at, sc=1.0, energy=120):
+def fire(at, sc=1.0, energy=120, hot=1.0):
+    """The sun's fire: a toy flame, yellow root to red tips round a white core. `hot` burns it brighter (the icon)."""
     at = Vector(at)
-    B.sphere("core", at + Vector((0, -0.06 * sc, -0.02 * sc)), (0.06 * sc,) * 3, emit("core", "#FFF8E0", 12))
-    tear(at + Vector((0, -0.03 * sc, -0.02 * sc)), 0.1 * sc, 0.36 * sc, flame_mat("fi", "#FFE680", "#FFB820", "#FF8A10", 1.6))
-    tear(at + Vector((0, 0, -0.05 * sc)), 0.17 * sc, 0.62 * sc, flame_mat("fo", "#FFA010", "#FF5A00", "#D02000", 1.3), (0.04, 0))
+    B.sphere("core", at + Vector((0, -0.06 * sc, -0.02 * sc)), (0.06 * sc,) * 3, emit("core", "#FFF8E0", 12 * hot))
+    tear(at + Vector((0, -0.03 * sc, -0.02 * sc)), 0.1 * sc, 0.36 * sc, flame_mat("fi", "#FFE680", "#FFB820", "#FF8A10", 1.6 * hot))
+    tear(at + Vector((0, 0, -0.05 * sc)), 0.17 * sc, 0.62 * sc, flame_mat("fo", "#FFA010", "#FF5A00", "#D02000", 1.3 * hot), (0.04, 0))
     for j, dx in enumerate((-0.09, 0.1)):
-        tear(at + Vector((dx * sc, 0.02, -0.04 * sc)), 0.07 * sc, 0.32 * sc, flame_mat(f"fs{j}", "#FF9000", "#F04800", "#C01800", 1.2), (dx * 0.6, 0))
+        tear(at + Vector((dx * sc, 0.02, -0.04 * sc)), 0.07 * sc, 0.32 * sc, flame_mat(f"fs{j}", "#FF9000", "#F04800", "#C01800", 1.2 * hot), (dx * 0.6, 0))
     light("POINT", at + Vector((0, -0.2 * sc, 0.2 * sc)), energy * sc, "#FF9A3A", 0.15 * sc)
 
 def embers(at, n, spread, color="#FF9A3A"):
@@ -233,7 +234,7 @@ def main():
         # the left to take it back; Otto looms behind, bulb lit over Mosto's head.
         world("#0A1030", 0.4); ground("#2E2438")
         tired_sun((0.0, 5.2, 0.4), 2.8, awake=False, glow=0.5)
-        fire_at = Vector((0.82, -0.8, 0.5))
+        fire_at = Vector((0.7, -1.0, 0.36))
         spark = emit("trail", "#FF9A30", 5)
         for i in range(16):
             t = i / 15
@@ -246,9 +247,9 @@ def main():
             B.sphere("bead_glow", bp, (0.075,) * 3, emit("beadGlow", "#FFD27A", 18))
             light("POINT", bp + Vector((0.1, -0.15, 0)), 90, "#FFC46A", 0.08)
         light("AREA", (-3.2, -1.2, 2.6), 160, "#9AAAF0", 2, rot=(math.radians(60), 0, math.radians(-70)))
-        place(B.build_moss, (-1.15, -0.05, 0), turn=40, scale=0.82, look=(0.95, 0.3), lid=0.0, er=0.13, pupil=0.5, perk=1.0)
+        place(B.build_moss, (-1.0, -0.1, 0), turn=40, scale=0.8, look=(0.95, 0.3), lid=0.0, er=0.13, pupil=0.5, perk=1.0)
         place(MO.build_mosto, (0.12, -0.25, 0), turn=-8, scale=1.18, moss_eye=dict(look=(0.25, 0.0), lid=0.45, pupil=0.5), otto_eye=dict(look=(0.25, 0.0), lid=0.5, pupil=0.5), evil=1.0, perk=1.0)
-        fire(fire_at, 1.15, energy=150)
+        fire(fire_at, 1.05, energy=150, hot=0.7)
         # Mosto's own light: a soft key from the front so his face and crown read at any size
         light("AREA", (0.6, -3.0, 2.0), 140, "#E8D8FF", 1.5, rot=(math.radians(62), 0, math.radians(8)))
         light("AREA", (-2.5, -4, 4), 150, "#8C9CE8", 4, rot=(math.radians(48), 0, math.radians(-32)))

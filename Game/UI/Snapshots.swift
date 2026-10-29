@@ -22,6 +22,17 @@ enum Snapshots {
                 say(String(format: "%d_%02d_%@", ch.id, i, room)); await wait(2.6)
             }
         }
+        // the story scenes, caught mid-acting (Dora's lantern lit, so its whole arc plays)
+        Progress.shared.flags = ["dora", "doraStolen"]
+        let scenes: [(Int, String, String, [Double])] = [
+            (1, "outside", "c1_end", [1.6, 3.2]), (1, "street", "c1_d60", [3.0, 9.4]), (2, "lamp", "c2_d30", [4.6, 2.4]),
+            (3, "city", "c3_city", [2.6, 1.6]), (4, "nest", "c4_end", [1.4, 2.6]), (4, "street", "c4_home", [4.6, 4.2, 3.0])]
+        for (ch, room, script, at) in scenes {
+            router.screen = .scene(ch, room, script)
+            for (k, t) in at.enumerated() { await wait(t); say("9_\(script)_\(k)") }
+            await wait(1.2)
+        }
+        Progress.shared.flags = []
         router.screen = .title; await wait(1)
         say("done")
     }

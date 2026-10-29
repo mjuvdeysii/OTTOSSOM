@@ -14,13 +14,17 @@ struct BoardFrame {
     let dark: Double
     let hideHeroes: Bool
     let bulbR: Double
-    let doudou: Bool
+    var flags: Set<String> = []
     var hint: HintMark? = nil
     var dots: [Pt] = []
     var tap: (Pt, Double)? = nil
     /// The whole screen in board coordinates (points, board origin at 0,0). When set, the world around the room is drawn too.
     var extent: CGRect? = nil
     var emotes: [String: Emote] = [:]
+    var poses: [String: Pose] = [:]
+    var flies: [Fly] = []
+    /// Dora's paper lantern: lit by Otto on day 1, stolen by Mosto on day 60, given back by Moss at the end.
+    var doraLit: Bool { flags.contains("doraBack") || (flags.contains("dora") && !flags.contains("doraStolen")) }
 }
 
 extension Color {
@@ -497,11 +501,11 @@ struct Painter {
         if ch == "h" { ctx.fill(Path(ellipseIn: CGRect(x: X + T * 0.08, y: top + T * 0.41, width: T * 0.08, height: T * 0.08)), with: .color(Color(0xd9c27a))) }
         if ch == "d" {
             let lx = X + T * 0.24, ly = top + T * 0.32
-            if f.doudou {
+            if f.doraLit {
                 ctx.fill(Path(ellipseIn: CGRect(x: lx - T * 0.35, y: ly - T * 0.35, width: T * 0.7, height: T * 0.7)),
                          with: .radialGradient(Gradient(colors: [Color(0xffbe78, 0.6), Color(0xffbe78, 0)]), center: CGPoint(x: lx, y: ly), startRadius: 0, endRadius: T * 0.35))
             }
-            ctx.fill(Path(roundedRect: CGRect(x: lx - T * 0.07, y: ly - T * 0.08, width: T * 0.14, height: T * 0.16), cornerRadius: T * 0.05), with: .color(f.doudou ? Color(0xffcf8a) : Color(0xc9b9a0)))
+            ctx.fill(Path(roundedRect: CGRect(x: lx - T * 0.07, y: ly - T * 0.08, width: T * 0.14, height: T * 0.16), cornerRadius: T * 0.05), with: .color(f.doraLit ? Color(0xffcf8a) : Color(0xc9b9a0)))
         }
     }
 

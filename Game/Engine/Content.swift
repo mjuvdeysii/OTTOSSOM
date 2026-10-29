@@ -57,7 +57,12 @@ final class Progress {
         m["\(chapter)"] = i; d.set(m, forKey: stepKey)
     }
     var flags: Set<String> {
-        get { Set(d.stringArray(forKey: flagKey) ?? []) }
+        get {
+            // "doudou" was Dora's lantern before the cast took their English names
+            var f = Set(d.stringArray(forKey: flagKey) ?? [])
+            if f.remove("doudou") != nil { f.insert("dora") }
+            return f
+        }
         set { d.set(Array(newValue), forKey: flagKey) }
     }
     func unlocked(_ chapter: Int) -> Bool { chapter == 1 || done.contains(chapter - 1) }

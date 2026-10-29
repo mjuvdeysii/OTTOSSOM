@@ -1,5 +1,21 @@
 import SwiftUI
 
+/// A held body pose or a little piece of acting (a stomp, a spin, a squash) on someone, for a while.
+struct Pose {
+    var state: String?      // sprite state to show instead of the idle one ("yawn", "sleep", "mine", "lit"…)
+    var fx: String?         // flat, tall, wag, stomp, shake, spin, shrink, slump, nod
+    var at = Date()
+    var dur: Double = 1
+}
+
+/// A mote of the sun's fire flying from one cell to another (a light stolen, a light given back).
+struct Fly {
+    var from: CGPoint
+    var to: CGPoint
+    var at = Date()
+    var dur: Double
+}
+
 struct Figure {
     var kind: String
     var x: Double
@@ -58,12 +74,14 @@ final class GameModel: ObservableObject {
     @Published var hintsUsed = 0
     @Published var emotes: [String: Emote] = [:]
     @Published var vision: String?
+    @Published var poses: [String: Pose] = [:]
+    @Published var flies: [Fly] = []
     private var guided = false
     private var lastInput = Date()
     private var dialogCont: CheckedContinuation<Int, Never>?
     private var started = false
 
-    static let names: [String: String] = ["h": "老韩", "d": "豆豆", "n": "林嫂", "o": "Otto", "m": "Moss", "x": "Mosto", "": ""]
+    static let names: [String: String] = ["h": "汉克", "d": "朵拉", "n": "琳恩", "o": "奥托", "m": "莫斯", "x": "莫斯托", "": ""]
 
     init(chapter: Chapter) {
         self.chapter = chapter
@@ -77,15 +95,22 @@ final class GameModel: ObservableObject {
     }
 
     var isPreview = false
-    static func preview(chapter: Chapter, room: String) -> GameModel {
+    var previewScript: String?
+    static func preview(chapter: Chapter, room: String, script: String? = nil) -> GameModel {
         let m = GameModel(chapter: chapter)
         m.isPreview = true
+        m.previewScript = script
         m.load(room)
         m.state.bulb = m.room.heroes.contains(.otto)
         return m
     }
 
     func begin() {
+        if isPreview, !started, let sc = previewScript {
+            started = true
+            Task { busy = true; await run(sc) }
+            return
+        }
         guard !started, !isPreview else { return }
         started = true
         Sound.shared.music(chapter.id)
@@ -99,6 +124,7 @@ final class GameModel: ObservableObject {
         room = r; state = r.start; prev = nil; hist = []; active = 0; actors = [:]
         hintMark = nil; pathDots = []; cleared = nil
         dark = 0; bulbR = Double(r.rOtto); hint = ""; hideHeroes = false; emotes = [:]; guided = false
+        poses = [:]; flies = []
         mainDim = (id == "top" && chapter.id == 1 && stepIndex > 4)
         Sound.shared.hum(state.bulb)
     }
@@ -223,12 +249,40 @@ final class GameModel: ObservableObject {
                     vision = nil
                     try? await Task.sleep(for: .milliseconds(500))
                 }
+            } else if let who = c["pose"] as? String {
+                let ms = c["ms"] as? Int ?? 900
+                if c["clear"] != nil { poses[who] = nil; continue }
+                poses[who] = Pose(state: c["as"] as? String, fx: c["fx"] as? String, at: Date(), dur: Double(c["dur"] as? Int ?? ms) / 1000)
+                try? await Task.sleep(for: .milliseconds(ms))
+                if c["hold"] == nil { poses[who] = nil }
+            } else if let pts = c["fly"] as? [Any], pts.count == 2, let p0 = spot(pts[0]), let p1 = spot(pts[1]) {
+                let ms = c["ms"] as? Int ?? 800
+                let f = Fly(from: p0, to: p1, dur: Double(ms) / 1000)
+                flies.append(f); Sound.shared.touch()
+                try? await Task.sleep(for: .milliseconds(ms))
+                flies.removeAll { $0.at == f.at }
+            } else if let f = c["unset"] as? String {
+                var fl = Progress.shared.flags; fl.remove(f); Progress.shared.flags = fl
             } else if c["guide"] != nil {
                 guide()
             } else if let f = c["set"] as? String {
                 var fl = Progress.shared.flags; fl.insert(f); Progress.shared.flags = fl
             }
         }
+    }
+
+    /// A place on the board for a script: [x, y], or someone by name — a hero's letter, a story actor, a townsperson's letter.
+    private func spot(_ v: Any) -> CGPoint? {
+        if let a = v as? [Double], a.count == 2 { return CGPoint(x: a[0], y: a[1]) }
+        if let a = v as? [Int], a.count == 2 { return CGPoint(x: a[0], y: a[1]) }
+        guard let who = v as? String else { return nil }
+        let heroKey: [String: Hero] = ["o": .otto, "m": .moss]
+        if who == "x", let t = state.thief { return CGPoint(x: t.x, y: t.y) }
+        if who == "x", let i = room.index(of: .mosto), i < state.c.count { return CGPoint(x: state.c[i].x, y: state.c[i].y) }
+        if let h = heroKey[who], let i = room.index(of: h), i < state.c.count { return CGPoint(x: state.c[i].x, y: state.c[i].y) }
+        if let a = actors[who] { return CGPoint(x: a.x, y: a.y) }
+        if who.count == 1, let c = who.first, let p = room.npcs.first(where: { $0.value == c })?.key { return CGPoint(x: p.x, y: p.y) }
+        return nil
     }
 
     func present(who: String, text: String, options: [String]) async -> Int {

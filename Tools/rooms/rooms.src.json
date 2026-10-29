@@ -142,6 +142,10 @@
      "room": "nest",
      "intro": "c4_sun",
      "outro": "c4_end"
+    },
+    {
+     "cut": "c4_home",
+     "room": "street"
     }
    ]
   }

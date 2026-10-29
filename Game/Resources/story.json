@@ -8,9 +8,25 @@
    "card": "一 · 灯塔城"
   },
   {
+   "pose": "h",
+   "ms": 0,
+   "fx": "stomp",
+   "hold": true,
+   "dur": 900
+  },
+  {
+   "emote": "h",
+   "icon": "anger",
+   "ms": 900
+  },
+  {
+   "pose": "h",
+   "clear": true
+  },
+  {
    "emote": "h",
    "icon": "...",
-   "ms": 900
+   "ms": 800
   },
   {
    "emote": "o",
@@ -38,9 +54,20 @@
  ],
  "c1_dock": [
   {
+   "pose": "n",
+   "ms": 0,
+   "fx": "shake",
+   "hold": true,
+   "dur": 1100
+  },
+  {
    "emote": "n",
    "icon": "!",
-   "ms": 900
+   "ms": 1100
+  },
+  {
+   "pose": "n",
+   "clear": true
   }
  ],
  "c1_d30": [
@@ -63,9 +90,34 @@
    "ms": 380
   },
   {
+   "pose": "mosto",
+   "ms": 0,
+   "as": "glee",
+   "fx": "wag",
+   "hold": true,
+   "dur": 800
+  },
+  {
    "emote": "mosto",
    "icon": "grin",
-   "ms": 700
+   "ms": 800
+  },
+  {
+   "pose": "mosto",
+   "clear": true
+  },
+  {
+   "fly": [
+    [
+     3,
+     3
+    ],
+    [
+     3,
+     2
+    ]
+   ],
+   "ms": 600
   },
   {
    "mainDim": true
@@ -77,9 +129,20 @@
    "wait": 300
   },
   {
+   "pose": "h",
+   "ms": 0,
+   "fx": "stomp",
+   "hold": true,
+   "dur": 1000
+  },
+  {
    "emote": "h",
    "icon": "anger",
-   "ms": 900
+   "ms": 1000
+  },
+  {
+   "pose": "h",
+   "clear": true
   },
   {
    "walk": "mosto",
@@ -95,9 +158,19 @@
    "remove": "mosto"
   },
   {
+   "pose": "o",
+   "ms": 1400,
+   "as": "yawn"
+  },
+  {
+   "pose": "o",
+   "ms": 500,
+   "as": "wide"
+  },
+  {
    "emote": "o",
    "icon": "...",
-   "ms": 1100
+   "ms": 900
   }
  ],
  "c1_tower": [],
@@ -107,6 +180,13 @@
   },
   {
    "lampsAll": true
+  },
+  {
+   "actor": "hank",
+   "at": [
+    6,
+    7
+   ]
   },
   {
    "emote": "d",
@@ -131,6 +211,19 @@
    "ms": 420
   },
   {
+   "fly": [
+    [
+     6,
+     2
+    ],
+    [
+     6,
+     1
+    ]
+   ],
+   "ms": 450
+  },
+  {
    "lamp": 1,
    "lit": false
   },
@@ -138,9 +231,21 @@
    "carry": "mosto"
   },
   {
+   "pose": "mosto",
+   "ms": 0,
+   "as": "glee",
+   "fx": "wag",
+   "hold": true,
+   "dur": 700
+  },
+  {
    "emote": "mosto",
    "icon": "note",
    "ms": 700
+  },
+  {
+   "pose": "mosto",
+   "clear": true
   },
   {
    "walk": "mosto",
@@ -151,6 +256,19 @@
     ]
    ],
    "ms": 420
+  },
+  {
+   "fly": [
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     1
+    ]
+   ],
+   "ms": 400
   },
   {
    "lamp": 0,
@@ -167,8 +285,66 @@
    "ms": 420
   },
   {
+   "fly": [
+    [
+     3,
+     6
+    ],
+    [
+     3,
+     5
+    ]
+   ],
+   "ms": 400
+  },
+  {
    "lamp": 2,
    "lit": false
+  },
+  {
+   "if": "dora",
+   "then": [
+    {
+     "walk": "mosto",
+     "path": [
+      [
+       4,
+       5
+      ]
+     ],
+     "ms": 260
+    },
+    {
+     "fly": [
+      "d",
+      [
+       4,
+       5
+      ]
+     ],
+     "ms": 500
+    },
+    {
+     "set": "doraStolen"
+    },
+    {
+     "pose": "mosto",
+     "ms": 0,
+     "as": "glee",
+     "fx": "wag",
+     "hold": true,
+     "dur": 700
+    },
+    {
+     "emote": "mosto",
+     "icon": "grin",
+     "ms": 700
+    },
+    {
+     "pose": "mosto",
+     "clear": true
+    }
+   ]
   },
   {
    "walk": "mosto",
@@ -193,9 +369,30 @@
    "ms": 900
   },
   {
-   "emote": "h",
+   "pose": "hank",
+   "ms": 0,
+   "fx": "stomp",
+   "hold": true,
+   "dur": 1000
+  },
+  {
+   "emote": "hank",
    "icon": "anger",
    "ms": 1000
+  },
+  {
+   "pose": "hank",
+   "clear": true
+  },
+  {
+   "walk": "hank",
+   "path": [
+    [
+     6,
+     8
+    ]
+   ],
+   "ms": 500
   }
  ],
  "c1_gate": [],
@@ -206,28 +403,36 @@
  ],
  "c1_end": [
   {
+   "pose": "o",
+   "ms": 1300,
+   "as": "yawn"
+  },
+  {
+   "pose": "o",
+   "ms": 900,
+   "as": "sleep",
+   "fx": "slump",
+   "hold": true
+  },
+  {
    "fade": true
   },
   {
    "actor": "moss",
    "at": [
-    4,
-    1
+    7,
+    0
    ]
   },
   {
    "walk": "moss",
    "path": [
     [
-     4,
-     2
-    ],
-    [
-     4,
-     3
+     6,
+     1
     ]
    ],
-   "ms": 500
+   "ms": 700
   },
   {
    "emote": "moss",
@@ -241,24 +446,51 @@
  ],
  "talk:top:h": [
   {
+   "pose": "h",
+   "ms": 0,
+   "fx": "nod",
+   "hold": true,
+   "dur": 800
+  },
+  {
    "emote": "h",
    "icon": "zzz",
    "ms": 1000
   },
   {
+   "pose": "h",
+   "clear": true
+  },
+  {
+   "pose": "o",
+   "ms": 1200,
+   "as": "yawn"
+  },
+  {
    "emote": "o",
    "icon": "...",
-   "ms": 900
+   "ms": 800
   }
  ],
  "talk:street:d": [
   {
-   "if": "doudou",
+   "if": "dora",
    "then": [
+    {
+     "pose": "d",
+     "ms": 0,
+     "fx": "spin",
+     "hold": true,
+     "dur": 1000
+    },
     {
      "emote": "d",
      "icon": "heart",
-     "ms": 900
+     "ms": 1000
+    },
+    {
+     "pose": "d",
+     "clear": true
     }
    ],
    "else": [
@@ -268,21 +500,50 @@
      "ms": 800
     },
     {
-     "set": "doudou"
+     "fly": [
+      "o",
+      "d"
+     ],
+     "ms": 700
+    },
+    {
+     "set": "dora"
+    },
+    {
+     "pose": "d",
+     "ms": 0,
+     "fx": "spin",
+     "hold": true,
+     "dur": 1200
     },
     {
      "emote": "d",
      "icon": "heart",
-     "ms": 1000
+     "ms": 1200
+    },
+    {
+     "pose": "d",
+     "clear": true
     }
    ]
   }
  ],
  "talk:dock:n": [
   {
+   "pose": "n",
+   "ms": 0,
+   "fx": "shake",
+   "hold": true,
+   "dur": 1000
+  },
+  {
    "emote": "n",
    "icon": "sweat",
-   "ms": 900
+   "ms": 1000
+  },
+  {
+   "pose": "n",
+   "clear": true
   }
  ],
  "talk:gate:h": [
@@ -307,15 +568,26 @@
       {
        "emote": "o",
        "icon": "...",
-       "ms": 900
+       "ms": 1000
       },
       {
        "key": true
       },
       {
+       "pose": "h",
+       "ms": 0,
+       "fx": "nod",
+       "hold": true,
+       "dur": 900
+      },
+      {
        "emote": "h",
        "icon": "!",
        "ms": 900
+      },
+      {
+       "pose": "h",
+       "clear": true
       }
      ]
     }
@@ -350,7 +622,13 @@
   {
    "emote": "m",
    "icon": "!",
-   "ms": 900
+   "ms": 700
+  },
+  {
+   "pose": "m",
+   "ms": 1200,
+   "as": "mine",
+   "fx": "tall"
   },
   {
    "key": true
@@ -379,21 +657,60 @@
    "mainDim": true
   },
   {
+   "pose": "h",
+   "ms": 0,
+   "fx": "stomp",
+   "hold": true,
+   "dur": 1000
+  },
+  {
+   "emote": "h",
+   "icon": "anger",
+   "ms": 1000
+  },
+  {
+   "pose": "h",
+   "clear": true
+  },
+  {
+   "pose": "m",
+   "ms": 0,
+   "as": "sad",
+   "fx": "flat",
+   "hold": true
+  },
+  {
+   "emote": "m",
+   "icon": "sweat",
+   "ms": 1000
+  },
+  {
+   "pose": "m",
+   "clear": true
+  }
+ ],
+ "talk:lamp:h": [
+  {
+   "pose": "h",
+   "ms": 0,
+   "fx": "stomp",
+   "hold": true,
+   "dur": 900
+  },
+  {
    "emote": "h",
    "icon": "anger",
    "ms": 900
   },
   {
-   "emote": "m",
-   "icon": "sweat",
-   "ms": 800
-  }
- ],
- "talk:lamp:h": [
+   "pose": "h",
+   "clear": true
+  },
   {
-   "emote": "h",
-   "icon": "anger",
-   "ms": 900
+   "pose": "m",
+   "ms": 700,
+   "as": "sad",
+   "fx": "flat"
   }
  ],
  "c2_trace": [
@@ -434,6 +751,11 @@
    "ms": 800
   },
   {
+   "pose": "o",
+   "ms": 900,
+   "as": "wide"
+  },
+  {
    "emote": "o",
    "icon": "zzz",
    "ms": 1100
@@ -445,9 +767,25 @@
    "ms": 4200
   },
   {
+   "pose": "m",
+   "ms": 0,
+   "as": "wide",
+   "hold": true
+  },
+  {
    "emote": "m",
    "icon": "!",
    "ms": 1000
+  },
+  {
+   "pose": "m",
+   "clear": true
+  },
+  {
+   "pose": "m",
+   "ms": 1100,
+   "as": "mine",
+   "fx": "tall"
   },
   {
    "card": "二 · 摸",
@@ -469,9 +807,21 @@
  ],
  "c3_hive_out": [
   {
+   "pose": "x",
+   "ms": 0,
+   "as": "glee",
+   "fx": "wag",
+   "hold": true,
+   "dur": 900
+  },
+  {
    "emote": "x",
    "icon": "note",
    "ms": 900
+  },
+  {
+   "pose": "x",
+   "clear": true
   },
   {
    "vision": "v_dark",
@@ -487,9 +837,67 @@
  ],
  "c3_city": [
   {
-   "emote": "x",
-   "icon": "grin",
-   "ms": 900
+   "if": "dora",
+   "then": [
+    {
+     "actor": "dora",
+     "at": [
+      1,
+      6
+     ],
+     "carry": true
+    },
+    {
+     "emote": "dora",
+     "icon": "!",
+     "ms": 700
+    },
+    {
+     "pose": "x",
+     "ms": 0,
+     "as": "glee",
+     "fx": "wag",
+     "hold": true,
+     "dur": 800
+    },
+    {
+     "emote": "x",
+     "icon": "grin",
+     "ms": 800
+    },
+    {
+     "pose": "x",
+     "clear": true
+    },
+    {
+     "fly": [
+      "dora",
+      "x"
+     ],
+     "ms": 600
+    },
+    {
+     "pose": "dora",
+     "ms": 0,
+     "as": "dark",
+     "hold": true
+    },
+    {
+     "emote": "dora",
+     "icon": "sweat",
+     "ms": 900
+    },
+    {
+     "remove": "dora"
+    }
+   ],
+   "else": [
+    {
+     "emote": "x",
+     "icon": "grin",
+     "ms": 900
+    }
+   ]
   }
  ],
  "c3_back": [
@@ -518,21 +926,58 @@
  ],
  "talk:rest:m": [
   {
+   "pose": "m",
+   "ms": 0,
+   "as": "mine",
+   "fx": "tall",
+   "hold": true
+  },
+  {
    "emote": "m",
    "icon": "anger",
    "ms": 900
   },
   {
-   "emote": "x",
-   "icon": "note",
-   "ms": 900
-  }
- ],
- "c3_end": [
+   "pose": "m",
+   "clear": true
+  },
+  {
+   "pose": "x",
+   "ms": 0,
+   "as": "glee",
+   "fx": "wag",
+   "hold": true,
+   "dur": 900
+  },
   {
    "emote": "x",
    "icon": "note",
    "ms": 900
+  },
+  {
+   "pose": "x",
+   "clear": true
+  }
+ ],
+ "c3_end": [
+  {
+   "pose": "x",
+   "ms": 0,
+   "as": "glee",
+   "fx": "wag",
+   "hold": true,
+   "dur": 900
+  },
+  {
+   "emote": "x",
+   "icon": "note",
+   "ms": 900
+  },
+  {
+   "pose": "x",
+   "ms": 0,
+   "as": "sleep",
+   "hold": true
   },
   {
    "emote": "x",
@@ -549,9 +994,21 @@
    "card": "四 · 索魔"
   },
   {
+   "pose": "x",
+   "ms": 0,
+   "as": "glee",
+   "fx": "wag",
+   "hold": true,
+   "dur": 900
+  },
+  {
    "emote": "x",
    "icon": "grin",
    "ms": 900
+  },
+  {
+   "pose": "x",
+   "clear": true
   },
   {
    "emote": "o",
@@ -559,9 +1016,20 @@
    "ms": 800
   },
   {
+   "pose": "m",
+   "ms": 0,
+   "as": "mine",
+   "fx": "tall",
+   "hold": true
+  },
+  {
    "emote": "m",
    "icon": "!",
-   "ms": 800
+   "ms": 900
+  },
+  {
+   "pose": "m",
+   "clear": true
   },
   {
    "guide": true
@@ -588,27 +1056,44 @@
  ],
  "c4_end": [
   {
+   "pose": "x",
+   "ms": 0,
+   "as": "caught",
+   "hold": true
+  },
+  {
    "emote": "x",
    "icon": "sweat",
    "ms": 1000
   },
   {
-   "emote": "m",
-   "icon": "!",
+   "fly": [
+    "x",
+    "m"
+   ],
    "ms": 800
   },
   {
-   "emote": "o",
-   "icon": "...",
-   "ms": 900
+   "pose": "x",
+   "ms": 1200,
+   "as": "caught",
+   "fx": "shrink",
+   "hold": true
+  },
+  {
+   "pose": "m",
+   "ms": 1000,
+   "as": "mine",
+   "fx": "tall"
+  },
+  {
+   "pose": "o",
+   "ms": 900,
+   "as": "glee"
   },
   {
    "vision": "v_dawn",
    "ms": 5200
-  },
-  {
-   "card": "灯台索魔",
-   "sub": "✓"
   }
  ],
  "c1_market": [],
@@ -626,6 +1111,165 @@
    "emote": "x",
    "icon": "grin",
    "ms": 900
+  }
+ ],
+ "c4_home": [
+  {
+   "hideHeroes": true
+  },
+  {
+   "lampsAll": true
+  },
+  {
+   "actor": "hank",
+   "at": [
+    6,
+    2
+   ]
+  },
+  {
+   "actor": "otto",
+   "at": [
+    4,
+    8
+   ],
+   "carry": true
+  },
+  {
+   "actor": "moss",
+   "at": [
+    5,
+    8
+   ]
+  },
+  {
+   "walk": "otto",
+   "path": [
+    [
+     4,
+     6
+    ]
+   ],
+   "ms": 700
+  },
+  {
+   "walk": "moss",
+   "path": [
+    [
+     5,
+     6
+    ]
+   ],
+   "ms": 500
+  },
+  {
+   "pose": "hank",
+   "ms": 0,
+   "fx": "nod",
+   "hold": true,
+   "dur": 900
+  },
+  {
+   "emote": "hank",
+   "icon": "!",
+   "ms": 900
+  },
+  {
+   "pose": "hank",
+   "clear": true
+  },
+  {
+   "if": "doraStolen",
+   "then": [
+    {
+     "emote": "d",
+     "icon": "...",
+     "ms": 800
+    },
+    {
+     "fly": [
+      "moss",
+      "d"
+     ],
+     "ms": 800
+    },
+    {
+     "set": "doraBack"
+    }
+   ],
+   "else": [
+    {
+     "if": "dora",
+     "then": [],
+     "else": [
+      {
+       "emote": "d",
+       "icon": "?",
+       "ms": 800
+      },
+      {
+       "fly": [
+        "otto",
+        "d"
+       ],
+       "ms": 800
+      },
+      {
+       "set": "doraBack"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "pose": "d",
+   "ms": 0,
+   "fx": "spin",
+   "hold": true,
+   "dur": 1300
+  },
+  {
+   "emote": "d",
+   "icon": "heart",
+   "ms": 1300
+  },
+  {
+   "pose": "d",
+   "clear": true
+  },
+  {
+   "pose": "otto",
+   "ms": 1300,
+   "as": "yawn"
+  },
+  {
+   "pose": "otto",
+   "ms": 700,
+   "as": "sleep",
+   "fx": "slump",
+   "hold": true
+  },
+  {
+   "emote": "otto",
+   "icon": "zzz",
+   "ms": 1000
+  },
+  {
+   "pose": "moss",
+   "ms": 0,
+   "as": "glee",
+   "fx": "hop",
+   "hold": true,
+   "dur": 1000
+  },
+  {
+   "emote": "moss",
+   "icon": "note",
+   "ms": 1000
+  },
+  {
+   "card": "灯台索魔",
+   "sub": "✓"
   }
  ]
 }

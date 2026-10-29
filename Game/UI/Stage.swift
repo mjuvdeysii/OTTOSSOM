@@ -117,9 +117,10 @@ struct Stage {
             if let q = f.prev?.thief { p = CGPoint(x: lerp(Double(q.x), Double(t.x)), y: lerp(Double(q.y), Double(t.y))) }
             let caught = r.trapped(f.state)
             let dx = (f.prev?.thief).map { t.x - $0.x } ?? 0
-            let st = caught ? "caught" : blinking(2.1, 4.4) ? "blink" : dx < 0 ? "left" : dx > 0 ? "right" : "glee"
+            let pz = f.poses["x"]
+            let st = pz?.state ?? (caught ? "caught" : blinking(2.1, 4.4) ? "blink" : dx < 0 ? "left" : dx > 0 ? "right" : "glee")
             items.append((Double(p.y) + 0.005, { c in
-                self.figure(&c, "mosto", st, at: p)
+                self.figure(&c, "mosto", st, at: p, pose: pz)
                 if !caught { self.spark(&c, "mosto_\(st)", at: p) }
             }))
         }
@@ -134,18 +135,31 @@ struct Stage {
                 }))
             }
         }
-        for (_, a) in f.actors {
+        for (key, a) in f.actors {
             let p = CGPoint(x: a.x, y: a.y)
+            let pz = f.poses[key]
             items.append((a.y, { c in
                 var g = c; g.opacity = a.alpha
-                if a.kind == "moss" { self.figure(&g, "moss", self.mossState(face: 1), at: p) }
-                else { self.figure(&g, "mosto", self.mostoState(face: -1), at: p); if a.carry { self.spark(&g, "mosto_idle", at: p) } }
+                switch a.kind {
+                case "moss": self.figure(&g, "moss", pz?.state ?? self.mossState(face: 1), at: p, pose: pz)
+                case "otto":
+                    let st = pz?.state.map { $0.contains("_") ? $0 : "\($0)_S" } ?? (self.blinking(0.4, 4.2) ? "blink_S" : "idle_S")
+                    self.figure(&g, "otto", st, at: p, pose: pz)
+                    if a.carry { self.bulb(&g, "otto_\(st)", at: p, lift: 0) }
+                case "hank": self.sprite(&g, "npc_h", at: p, pose: pz)
+                case "dora": self.sprite(&g, pz?.state == "lit" || (pz == nil && a.carry) ? "npc_dl" : "npc_d", at: p, pose: pz)
+                case "lynn": self.sprite(&g, "npc_n", at: p, pose: pz)
+                default:
+                    let st = pz?.state ?? self.mostoState(face: -1)
+                    self.figure(&g, "mosto", st, at: p, pose: pz); if a.carry { self.spark(&g, "mosto_idle", at: p) }
+                }
             }))
         }
         for it in items.sorted(by: { $0.0 < $1.0 }) { it.1(&ctx) }
         night(&ctx)
         glows(&ctx)
         motes(&ctx)
+        flights(&ctx)
         hintMarks(&ctx)
         bubbles(&ctx)
     }
@@ -154,7 +168,7 @@ struct Stage {
 
     /// Where someone's head is, for a speech-free bubble: heroes by their letter, story actors by name, townsfolk by theirs.
     func head(_ who: String) -> CGPoint? {
-        let tall: [String: CGFloat] = ["o": 2.2, "m": 1.45, "x": 1.7, "moss": 1.45, "mosto": 1.7]
+        let tall: [String: CGFloat] = ["o": 2.2, "m": 1.45, "x": 1.7, "moss": 1.45, "mosto": 1.7, "otto": 2.2, "h": 1.35, "n": 1.35, "d": 1.05, "hank": 1.35, "lynn": 1.35, "dora": 1.05]
         let heroKey: [String: Hero] = ["o": .otto, "m": .moss, "x": .mosto]
         var at: CGPoint? = nil
         if who == "x", let t = f.state.thief { at = CGPoint(x: t.x, y: t.y) }
@@ -214,15 +228,23 @@ struct Stage {
     func scaleOf(_ name: String) -> CGFloat {
         name.hasPrefix("otto") || name.hasPrefix("moss") || name.hasPrefix("mosto") || name.hasPrefix("npc") ? s * 1.3 : s
     }
-    func sprite(_ ctx: inout GraphicsContext, _ name: String, at p: CGPoint, lift: CGFloat = 0, warm: Bool = true, flip: Bool = false) {
+    func sprite(_ ctx: inout GraphicsContext, _ name: String, at p: CGPoint, lift: CGFloat = 0, warm: Bool = true, flip: Bool = false, pose: Pose? = nil) {
         let s = scaleOf(name)
         guard let m = Art.meta[name] else { return }
         let g = ground(p)
         let n = Art.image(name + "_n") ?? Art.image(name)
         guard let img = n, let ui = Art.uiImage(name + "_n") ?? Art.uiImage(name) else { return }
         let w = ui.size.width * s, h = ui.size.height * s
-        let rect = CGRect(x: g.x - m.feet.x * s, y: g.y - m.feet.y * s - lift * T, width: w, height: h)
         var c = ctx
+        let act = acting(pose)
+        let rect = CGRect(x: g.x - m.feet.x * s, y: g.y - m.feet.y * s - (lift + act.lift) * T, width: w, height: h)
+        if act != .still {
+            c.translateBy(x: g.x, y: g.y)
+            c.rotate(by: .radians(act.rot))
+            c.scaleBy(x: act.sx, y: act.sy)
+            c.translateBy(x: -g.x, y: -g.y)
+            c.opacity *= act.alpha
+        }
         if flip { c.translateBy(x: g.x * 2, y: 0); c.scaleBy(x: -1, y: 1) }
         c.draw(img, in: rect)
         if warm, let wimg = Art.image(name + "_w") {
@@ -231,8 +253,35 @@ struct Stage {
         }
     }
 
-    func figure(_ ctx: inout GraphicsContext, _ who: String, _ state: String, at p: CGPoint, lift: CGFloat = 0) {
-        sprite(&ctx, "\(who)_\(state)", at: p, lift: lift)
+    func figure(_ ctx: inout GraphicsContext, _ who: String, _ state: String, at p: CGPoint, lift: CGFloat = 0, pose: Pose? = nil) {
+        sprite(&ctx, "\(who)_\(state)", at: p, lift: lift, pose: pose)
+    }
+
+    /// A little acting, about the feet: squash, stretch, a wag, a stomp, a paper spin, shrinking into the ground.
+    struct Acting: Equatable { var sx: CGFloat = 1, sy: CGFloat = 1, rot: Double = 0, lift: CGFloat = 0, alpha: Double = 1
+        static let still = Acting() }
+    func acting(_ p: Pose?) -> Acting {
+        guard let p, let fx = p.fx else { return .still }
+        let age = Date().timeIntervalSince(p.at)
+        let k = CGFloat(min(1, age / 0.18))                     // ease into the pose
+        let u = min(1, age / max(0.1, p.dur))                    // 0…1 over the whole beat
+        var a = Acting()
+        switch fx {
+        case "flat": a.sx = 1 + 0.2 * k; a.sy = 1 - 0.3 * k                       // Moss, thwarted: flattened to the ground
+        case "tall": a.sx = 1 - 0.07 * k; a.sy = 1 + 0.14 * k                      // Moss's "mine!": stands up tall
+            a.lift = CGFloat(max(0, sin(min(1, age / 0.3) * .pi))) * 0.12
+        case "wag": a.rot = sin(age * 13) * 0.09 * Double(k)                       // Mosto's gleeful sway
+        case "stomp": let b = abs(sin(age * 15)); a.lift = CGFloat(b) * 0.07       // Hank stamping
+            a.sy = 1 - CGFloat(1 - b) * 0.08; a.sx = 1 + CGFloat(1 - b) * 0.05
+        case "shake": a.rot = sin(age * 18) * 0.08 * (1 - u)                      // Lynn shaking her head
+        case "spin": a.sx = CGFloat(cos(age * 9)); a.lift = CGFloat(abs(sin(age * 9))) * 0.06   // Dora twirling
+        case "nod": a.sy = 1 - CGFloat(max(0, sin(age * 8))) * 0.07
+        case "slump": a.rot = -0.12 * Double(k) * min(1, age / 0.6); a.sy = 1 - 0.08 * CGFloat(min(1, age / 0.6))  // Otto giving way
+        case "shrink": let q = CGFloat(1 - u); a.sx = q; a.sy = q * q; a.alpha = Double(q)   // Mosto drawn into Moss's shadow
+        case "hop": a.lift = CGFloat(abs(sin(age * 10))) * 0.14 * CGFloat(1 - u)
+        default: break
+        }
+        return a
     }
 
     func blinking(_ seed: Double, _ every: Double) -> Bool { (f.t + seed).truncatingRemainder(dividingBy: every) < 0.13 }
@@ -243,15 +292,18 @@ struct Stage {
         let face = i < f.face.count ? f.face[i] : 1
         switch h {
         case .otto:
+            let pz = f.poses["o"]
             let dir = face < 0 ? "W" : "E"
-            let name = blinking(0.4, 4.2) ? "otto_blink_\(dir)" : "otto_idle_\(dir)"
-            sprite(&ctx, name, at: p, lift: hop)
+            let name = pz?.state.map { "otto_" + ($0.contains("_") ? $0 : "\($0)_S") } ?? (blinking(0.4, 4.2) ? "otto_blink_\(dir)" : "otto_idle_\(dir)")
+            sprite(&ctx, name, at: p, lift: hop, pose: pz)
             if f.state.bulb { bulb(&ctx, name, at: p, lift: hop) }
         case .moss:
-            figure(&ctx, "moss", mossState(face: face), at: p, lift: hop)
+            let pz = f.poses["m"]
+            figure(&ctx, "moss", pz?.state ?? mossState(face: face), at: p, lift: hop, pose: pz)
         case .mosto:
-            let st = mostoState(face: face)
-            figure(&ctx, "mosto", st, at: p, lift: hop)
+            let pz = f.poses["x"]
+            let st = pz?.state ?? mostoState(face: face)
+            figure(&ctx, "mosto", st, at: p, lift: hop, pose: pz)
             if f.state.carry { spark(&ctx, "mosto_\(st)", at: p, lift: hop) }
         }
     }
@@ -293,9 +345,12 @@ struct Stage {
     func npc(_ ctx: inout GraphicsContext, _ p: Pt, _ ch: Character) {
         let at = CGPoint(x: p.x, y: p.y)
         switch ch {
-        case "o": sprite(&ctx, "otto_sleep_S", at: at)
-        case "m": figure(&ctx, "moss", mossState(face: 1), at: at)
-        case "h", "d", "n": sprite(&ctx, "npc_\(ch)", at: at)
+        case "o":
+            let pz = f.poses["o"]
+            sprite(&ctx, "otto_" + (pz?.state.map { $0.contains("_") ? $0 : "\($0)_S" } ?? "sleep_S"), at: at, pose: pz)
+        case "m": let pz = f.poses["m"]; figure(&ctx, "moss", pz?.state ?? mossState(face: 1), at: at, pose: pz)
+        case "d": sprite(&ctx, f.doraLit || f.poses["d"]?.state == "lit" ? "npc_dl" : "npc_d", at: at, pose: f.poses["d"])
+        case "h", "n": sprite(&ctx, "npc_\(ch)", at: at, pose: f.poses[String(ch)])
         default: break
         }
     }
@@ -362,7 +417,36 @@ struct Stage {
         if let xi = r.index(of: .mosto), f.state.carry, !f.hideHeroes { out.append((pos(xi), Double(r.rCarry), 0.9)) }
         if let t = f.state.thief, !r.trapped(f.state) { out.append((CGPoint(x: t.x, y: t.y), 1.2, 0.8)) }
         for (_, a) in f.actors where a.carry { out.append((CGPoint(x: a.x, y: a.y), 1, 0.8)) }
+        for fl in f.flies { out.append((flyAt(fl).0, 1.2, 0.9)) }
+        if let d = f.room.npcs.first(where: { $0.value == "d" })?.key, f.doraLit || f.poses["d"]?.state == "lit" {
+            out.append((CGPoint(x: d.x, y: d.y), 1.0, 0.7))
+        }
         return out
+    }
+
+    /// Where a flying mote is now (cells) and how high above the ground (cells of lift).
+    func flyAt(_ fl: Fly) -> (CGPoint, CGFloat) {
+        let u = CGFloat(min(1, max(0, Date().timeIntervalSince(fl.at) / fl.dur)))
+        let e = u * u * (3 - 2 * u)
+        let p = CGPoint(x: fl.from.x + (fl.to.x - fl.from.x) * e, y: fl.from.y + (fl.to.y - fl.from.y) * e)
+        return (p, 0.9 + sin(u * .pi) * 1.1)
+    }
+
+    /// The fire in flight: a mote with a short tail, arcing from one holder to the next.
+    func flights(_ ctx: inout GraphicsContext) {
+        var c = ctx; c.blendMode = .plusLighter
+        for fl in f.flies {
+            for k in 0..<6 {
+                let back = Fly(from: fl.from, to: fl.to, at: fl.at.addingTimeInterval(Double(k) * 0.035), dur: fl.dur)
+                let (p, lift) = flyAt(back)
+                let g = ground(p)
+                let cy = g.y - lift * T * Art.zs
+                let R = T * (0.26 - 0.035 * CGFloat(k))
+                let a = 0.9 - 0.14 * Double(k)
+                c.fill(Path(ellipseIn: CGRect(x: g.x - R, y: cy - R, width: R * 2, height: R * 2)),
+                       with: .radialGradient(Gradient(colors: [Color(0xfff2c4, a), Color(0xffa040, a * 0.5), Color(0xff6a20, 0)]), center: CGPoint(x: g.x, y: cy), startRadius: 0, endRadius: R))
+            }
+        }
     }
 
     /// How lit a cell is, 0…1, for laying the warm sprite over the cold one.

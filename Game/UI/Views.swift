@@ -11,7 +11,7 @@ struct ChangyeApp: App {
     }
 }
 
-enum Screen: Equatable { case title, chapter(Int), snap(Int, String) }
+enum Screen: Equatable { case title, chapter(Int), snap(Int, String), scene(Int, String, String) }
 
 final class Router: ObservableObject {
     @Published var screen: Screen = .title
@@ -36,6 +36,10 @@ struct RootView: View {
             case .snap(let id, let room):
                 if let ch = Content.chapters.first(where: { $0.id == id }) {
                     GameView(model: GameModel.preview(chapter: ch, room: room)).id(room)
+                }
+            case .scene(let id, let room, let script):
+                if let ch = Content.chapters.first(where: { $0.id == id }) {
+                    GameView(model: GameModel.preview(chapter: ch, room: room, script: script)).id(script)
                 }
             }
         }
@@ -183,7 +187,7 @@ struct TitleWorld: View {
                     let T = max(28, min(size.width, size.height) / 9)
                     let o = CGPoint(x: (size.width - T * 5) / 2, y: size.height * 0.36)
                     let frame = BoardFrame(room: room, state: room.start, prev: nil, e: 1, t: tl.date.timeIntervalSinceReferenceDate, active: -1,
-                                           face: [1, 1, -1], actors: [:], mainDim: false, dark: 0, hideHeroes: true, bulbR: 0, doudou: false,
+                                           face: [1, 1, -1], actors: [:], mainDim: false, dark: 0, hideHeroes: true, bulbR: 0,
                                            extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height))
                     var c = ctx
                     c.translateBy(x: o.x, y: o.y)
@@ -320,10 +324,10 @@ struct GameView: View {
             let eased = 1 - pow(1 - e, 3)
             let frame = BoardFrame(room: r, state: model.state, prev: model.prev, e: eased, t: now.timeIntervalSinceReferenceDate,
                                    active: model.active, face: model.face, actors: model.actors, mainDim: model.mainDim, dark: model.dark,
-                                   hideHeroes: model.hideHeroes, bulbR: model.bulbR, doudou: Progress.shared.flags.contains("doudou"),
+                                   hideHeroes: model.hideHeroes, bulbR: model.bulbR, flags: Progress.shared.flags,
                                    hint: model.hintMark, dots: model.pathDots,
                                    tap: model.tapMark.map { ($0.p, now.timeIntervalSince($0.at)) },
-                                   extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height), emotes: model.emotes)
+                                   extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height), emotes: model.emotes, poses: model.poses, flies: model.flies)
             Canvas { ctx, _ in
                 var c = ctx
                 c.translateBy(x: o.x, y: o.y)
@@ -566,7 +570,7 @@ struct Portrait: View {
             Canvas { ctx, size in
                 let room = TitleView.trio
                 let frame = BoardFrame(room: room, state: room.start, prev: nil, e: 1, t: tl.date.timeIntervalSinceReferenceDate, active: -1,
-                                       face: [1, 1, -1], actors: [:], mainDim: false, dark: 0, hideHeroes: false, bulbR: 0, doudou: false)
+                                       face: [1, 1, -1], actors: [:], mainDim: false, dark: 0, hideHeroes: false, bulbR: 0)
                 let T = size.width * (kind == .otto ? 0.95 : 1.15)
                 var c = ctx
                 c.translateBy(x: (size.width - T) / 2 - T, y: size.height - T * (kind == .otto ? 1.9 : 1.92))

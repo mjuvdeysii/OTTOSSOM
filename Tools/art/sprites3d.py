@@ -97,6 +97,8 @@ MOSS = {
     "glee": dict(shut="up", perk=1.0, lean=-5),
     "sad": dict(lid=0.35, look=(0, -0.7), er=0.12, pupil=0.6, perk=-0.4),
     "sleep": dict(shut="down", perk=-0.3),
+    # "mine!": drawn up tall, leaves pressed up together, eyes set on the thing
+    "mine": dict(lid=0.32, look=(0, 0.0), er=0.12, pupil=0.5, perk=2.1, hop=0.1),
 }
 def moss_jobs():
     for k, kw in MOSS.items():
@@ -117,8 +119,9 @@ def mosto_jobs():
         yield f"mosto_{k}", lambda kw=kw: figure(MO.build_mosto, 0, **kw)
     yield "mosto_back", lambda: figure(MO.build_mosto, 180, **MOSTO["idle"])
 
-def townsfolk(body, hat, scarf=None, small=False):
-    """A lighthouse-town figure in the same vinyl: a soft capsule, two painted eyes, a hat."""
+def townsfolk(body, hat, scarf=None, small=False, who=None, lit=False):
+    """A lighthouse-town figure in the same vinyl: a soft capsule, two painted eyes, a hat — and the one thing that says
+    who they are: Hank's grey moustache and the gate key on his belt, Dora's paper lantern on a stick, Lynn's net."""
     k = 0.75 if small else 1.0
     mb = B.rubber("tf_body", body); mh = B.rubber("tf_hat", hat)
     bpy.ops.mesh.primitive_uv_sphere_add(segments=48, ring_count=24, location=(0, 0, 0.45 * k)); o = bpy.context.object
@@ -130,6 +133,38 @@ def townsfolk(body, hat, scarf=None, small=False):
     if scarf:
         bpy.ops.mesh.primitive_torus_add(major_radius=0.3 * k, minor_radius=0.06 * k, location=(0, 0, 0.42 * k)); t = bpy.context.object
         t.data.materials.append(B.rubber("tf_scarf", scarf))
+    if who == "hank":
+        grey = B.rubber("tf_grey", "#D8D4CC", rough=0.6)
+        for sd in (-1, 1):
+            B.sphere(f"tf_stache{sd}", (sd * 0.075, -0.33, 0.5), (0.085, 0.04, 0.035), grey)
+        # a cap's brim, and the town-gate key hanging at his belt
+        B.sphere("tf_brim", (0, -0.18, 0.86), (0.26, 0.16, 0.035), B.rubber("tf_brimM", "#2A2A32"))
+        gold = B.mat("tf_key", "#D8A22A", rough=0.3, coat=0.4)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.06, minor_radius=0.015, location=(0.2, -0.28, 0.3), rotation=(math.radians(90), 0, 0))
+        bpy.context.object.data.materials.append(gold)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.016, depth=0.16, location=(0.2, -0.29, 0.19)); bpy.context.object.data.materials.append(gold)
+        B.sphere("tf_bit", (0.235, -0.29, 0.13), (0.035, 0.015, 0.02), gold)
+    if who == "dora":
+        # a paper lantern on a little stick, held out to her side
+        stick = B.rubber("tf_stick", "#8A5A3A", rough=0.6)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.014, depth=0.42, location=(0.3 * k + 0.05, -0.12, 0.62 * k + 0.12), rotation=(0, math.radians(-30), 0))
+        bpy.context.object.data.materials.append(stick)
+        paper = B.mat("tf_paperLit", "#FFC870", emit="#FFB050", emit_strength=9) if lit else B.mat("tf_paper", "#D8C8A8", rough=0.7)
+        lx, lz = 0.3 * k + 0.17, 0.62 * k + 0.12
+        B.sphere("tf_lantern", (lx + 0.03, -0.12, lz - 0.12), (0.14, 0.14, 0.17), paper)
+        cap = B.rubber("tf_cap", "#B03A2A")
+        B.sphere("tf_capT", (lx + 0.03, -0.12, lz + 0.05), (0.08, 0.065, 0.025), cap)
+        B.sphere("tf_capB", (lx + 0.03, -0.12, lz - 0.29), (0.08, 0.065, 0.025), cap)
+        B.sphere("tf_hand", (0.3 * k - 0.02, -0.16, 0.5 * k), (0.06, 0.05, 0.05), B.rubber("tf_handM", body))
+    if who == "lynn":
+        # a bundle of net over her arm: a soft knot of cord with the mesh pressed in, a cork float
+        net = B.rubber("tf_net", "#5E7A6A", rough=0.75)
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, location=(-0.33, -0.12, 0.36)); o = bpy.context.object
+        o.scale = (0.19, 0.16, 0.2); o.data.materials.append(net); B.smooth(o, 1)
+        for i in range(3):
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.13, minor_radius=0.008, location=(-0.33, -0.12, 0.28 + i * 0.07), rotation=(0, math.radians(90), 0))
+            bpy.context.object.scale = (1, 0.95, 1.1); bpy.context.object.data.materials.append(B.rubber("tf_cord", "#2E4236"))
+        B.sphere("tf_cork", (-0.36, -0.24, 0.24), (0.05, 0.04, 0.035), B.rubber("tf_corkM", "#E0A040"))
 
 def object_jobs():
     def boulder():
@@ -162,9 +197,10 @@ def object_jobs():
     yield "lantern_on", lambda: lantern(True)
     yield "lantern_off", lambda: lantern(False)
     yield "bars", bars
-    yield "npc_h", lambda: figure(lambda: townsfolk("#8A6A5A", "#3A3A44"), 0)
-    yield "npc_d", lambda: figure(lambda: townsfolk("#E08A5A", "#E8C24A", small=True), 0)
-    yield "npc_n", lambda: figure(lambda: townsfolk("#6A7AA8", "#5A3A5A", scarf="#C04A4A"), 0)
+    yield "npc_h", lambda: figure(lambda: townsfolk("#8A6A5A", "#3A3A44", who="hank"), 0)
+    yield "npc_d", lambda: figure(lambda: townsfolk("#E08A5A", "#E8C24A", small=True, who="dora"), 0)
+    yield "npc_dl", lambda: figure(lambda: townsfolk("#E08A5A", "#E8C24A", small=True, who="dora", lit=True), 0)
+    yield "npc_n", lambda: figure(lambda: townsfolk("#6A7AA8", "#5A3A5A", scarf="#C04A4A", who="lynn"), 0)
 
 def figure_lean(objs):
     bpy.ops.object.empty_add(location=(0, 0, 0)); pivot = bpy.context.object
@@ -212,10 +248,12 @@ def main():
     meta_path = os.path.join(OUT, "sprites.json")
     meta = json.load(open(meta_path)) if os.path.exists(meta_path) else {}
     meta.update(dict(pc=PC, tilt=TILT, cw=CW, ch=CH))
+    jobs_only = arg("--jobs", "").split(",") if "--jobs" in ARGS else None
     groups = {"otto": otto_jobs, "moss": moss_jobs, "mosto": mosto_jobs, "objects": object_jobs, "spark": spark_jobs}
     for g, jobs in groups.items():
         if only and g not in only: continue
         for name, build in jobs():
+            if jobs_only and name not in jobs_only: continue
             for light in ("n", "w"):
                 if g == "spark" and light == "w": continue
                 setup(light == "w")
