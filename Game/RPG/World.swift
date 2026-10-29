@@ -331,7 +331,8 @@ final class World: ObservableObject {
             }
             let exits = Set(map.exits.map { Pt($0.at) })
             options = options.filter { !solid($0) && !foePos.values.contains($0) && !exits.contains($0) }
-            if let n = options.first(where: { $0 == me }) ?? options.randomElement(using: &rng) { foePos[f.id] = n }
+            if options.contains(me) { foePos[f.id] = me }
+            else if !options.isEmpty { foePos[f.id] = options[Int(rng.next() % UInt64(options.count))] }
         }
         touchFoes()
     }
@@ -356,13 +357,13 @@ final class World: ObservableObject {
     }
 
     func open(_ ch: RPGChest) {
-        guard !s.opened.contains(ch.id) else { toast("空的"); return }
+        guard !s.opened.contains(ch.id) else { note("空的"); return }
         s.opened.insert(ch.id)
         let n = ch.n ?? 1
         if ch.item == "motes" { s.motes += n } else { s.bag[ch.item, default: 0] += n }
         let name = c.items[ch.item]?.name ?? ch.item
         Sound.shared.light(); Haptic.success()
-        toast("得到 \(name)\(n > 1 ? " ×\(n)" : "")")
+        note("得到 \(name)\(n > 1 ? " ×\(n)" : "")")
         save()
     }
 
@@ -376,7 +377,7 @@ final class World: ObservableObject {
         s.beaten = s.beaten.intersection(keep)
         placeFoes(); reveal()
         Sound.shared.light(); Sound.shared.motif(.otto); Haptic.success()
-        toast("灯亮了 · 全员恢复 · 已存档")
+        note("灯亮了 · 全员恢复 · 已存档")
         save()
         if first && !s.flags.contains("lampFirst") { s.flags.insert("lampFirst"); Task { await say("lampFirst") } }
     }
@@ -392,7 +393,7 @@ final class World: ObservableObject {
                 let n = ["stone1", "stone2", "stone3"].filter { s.opened.contains($0) }.count
                 if quest("stones") == nil { s.quests["stones"] = 0 }
                 if n >= 3 { s.flags.insert("mineEarly"); s.quests["stones"] = 1; gainXP(30, announce: true) }
-                toast("石碑 \(n)/3")
+                note("石碑 \(n)/3")
                 save()
             }
         }
@@ -408,7 +409,7 @@ final class World: ObservableObject {
                 s.members.append(Member(hero: .moss, level: lv, xp: s.members.first?.xp ?? 0, hp: Stats.base(.moss, lv).hp))
                 trail = [me, me]
                 Sound.shared.motif(.moss); Haptic.success()
-                toast("莫斯加入了队伍")
+                note("莫斯加入了队伍")
                 if quest("main") == "leave" { advance("main") }
                 if quest("main") == "moss" { advance("main") }
             case "hank":
@@ -419,7 +420,7 @@ final class World: ObservableObject {
                 case nil: await say("dora"); s.quests["dora"] = 0
                 case "find": await say("doraWait")
                 case "back":
-                    await say("doraDone"); s.bag["jar", default: 0] += 2; advance("dora"); s.flags.insert("doraLit"); toast("得到 萤火罐 ×2")
+                    await say("doraDone"); s.bag["jar", default: 0] += 2; advance("dora"); s.flags.insert("doraLit"); note("得到 萤火罐 ×2")
                 default: await say("doraAfter")
                 }
             case "lynn":
@@ -428,7 +429,7 @@ final class World: ObservableObject {
                 case "clear": await say("lynnWait")
                 case "back":
                     await say("lynnDone"); s.bag["tea", default: 0] += 3; s.bag["shadeCopper", default: 0] += 1; advance("net")
-                    toast("得到 暖茶 ×3、铜灯罩")
+                    note("得到 暖茶 ×3、铜灯罩")
                 default: await say("lynnShop")
                 }
                 shop = n.shop
@@ -449,7 +450,7 @@ final class World: ObservableObject {
         guard let i = s.quests[q], let steps = c.quests[q]?.steps, i + 1 < steps.count else { return }
         s.quests[q] = i + 1
         Haptic.light()
-        if q != "main" || steps[i + 1].map != nil { toast("任务 · \(steps[i + 1].text)") }
+        if q != "main" || steps[i + 1].map != nil { note("任务 · \(steps[i + 1].text)") }
     }
     func checkQuests() {
         if quest("dora") == "find", ["fly1", "fly2", "fly3"].allSatisfy({ s.opened.contains($0) }) { advance("dora") }
@@ -477,9 +478,9 @@ final class World: ObservableObject {
             }
         }
         var cur = gm
-        while let (from, ex) = prev[cur] {
-            if from == s.map { return Pt(ex.at) }
-            cur = from
+        while let step = prev[cur] {
+            if step.0 == s.map { return Pt(step.1.at) }
+            cur = step.0
         }
         return nil
     }
@@ -492,7 +493,7 @@ final class World: ObservableObject {
             while s.members[i].level < Stats.maxLevel && s.members[i].xp >= Stats.levels[s.members[i].level] {
                 s.members[i].level += 1
                 s.members[i].hp = Stats.of(s.members[i]).maxHP
-                if announce { toast("\(Stats.name(s.members[i].hero)) 升到 Lv\(s.members[i].level)") }
+                if announce { note("\(Stats.name(s.members[i].hero)) 升到 Lv\(s.members[i].level)") }
             }
         }
     }
@@ -524,7 +525,7 @@ final class World: ObservableObject {
         Sound.shared.take(); Haptic.light(); save()
     }
 
-    func toast(_ t: String) {
+    func note(_ t: String) {
         toast = t
         Task { try? await Task.sleep(for: .milliseconds(2200)); if toast == t { toast = nil } }
     }

@@ -10,7 +10,9 @@ struct PartyMenu: View {
         NavigationStack {
             VStack(spacing: 12) {
                 Picker("", selection: $tab) {
-                    Text("队伍").tag(0); Text("背包").tag(1); Text("任务").tag(2)
+                    Text("队伍").tag(0)
+                    Text("背包").tag(1)
+                    Text("任务").tag(2)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 16)
@@ -53,7 +55,9 @@ struct PartyMenu: View {
                     }
                 }
                 HStack(spacing: 14) {
-                    stat("攻击", "\(st.atk)"); stat("防御", "\(st.def)"); stat("速度", String(format: "%.0f", st.spd))
+                    stat("攻击", "\(st.atk)")
+                    stat("防御", "\(st.def)")
+                    stat("速度", String(format: "%.0f", st.spd))
                 }
                 HStack(spacing: 8) {
                     Image(systemName: m.hero == .otto ? "lamp.desk.fill" : "leaf.fill").foregroundStyle(gold)
