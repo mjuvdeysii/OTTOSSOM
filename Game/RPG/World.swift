@@ -148,7 +148,7 @@ final class World: ObservableObject {
         if probing { return }
         if !s.flags.contains("intro") {
             s.flags.insert("intro")
-            Task { await say("intro"); save() }
+            Task { await say("intro"); note("点地面就能走 · 金色箭头指着下一个目标"); save() }
         } else {
             mapCard = map.name
             Task { try? await Task.sleep(for: .milliseconds(1600)); mapCard = nil }

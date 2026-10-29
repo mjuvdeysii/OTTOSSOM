@@ -38,7 +38,7 @@ struct BattleView: View {
                     foes.frame(height: g.size.height * 0.36).padding(.top, 54)
                     lightMeter
                     Text(caption.isEmpty ? " " : caption).font(.callout.weight(.semibold)).foregroundStyle(.white)
-                        .lineLimit(1).minimumScaleFactor(0.7).padding(.horizontal, 16)
+                        .lineLimit(2).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 16)
                         .animation(.none, value: caption)
                     Spacer(minLength: 0)
                     partyRow
@@ -47,7 +47,18 @@ struct BattleView: View {
                 .padding(.horizontal, 12).padding(.bottom, 10)
             }
         }
-        .onAppear { lightShown = b?.light ?? 3; caption = opening }
+        .onAppear {
+            lightShown = b?.light ?? 3
+            caption = opening
+            // the first fights teach the two things that matter: read the foe's next move, use what fits
+            if !w.s.flags.contains("tipIntent") {
+                w.s.flags.insert("tipIntent")
+                Task { try? await Task.sleep(for: .milliseconds(1400)); caption = "敌人头上是它下一步要做的事。金框是推荐的招。" }
+            } else if w.hasMoss && !w.s.flags.contains("tipTouch") {
+                w.s.flags.insert("tipTouch")
+                Task { try? await Task.sleep(for: .milliseconds(1400)); caption = "莫斯「摸」一下，能看穿弱点，还多 2 光。" }
+            }
+        }
     }
 
     private var opening: String {
