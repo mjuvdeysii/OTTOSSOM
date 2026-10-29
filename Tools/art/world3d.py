@@ -148,6 +148,7 @@ def build():
     for y in range(-MY, H + MY):
         for x in range(-MX, W + MX):
             c_ = ch(x, y); c = cell(x, y)
+            if c_ == "#" and THEME == "wilds": c_ = "T"        # the wilds are walled by forest, not cliffs
             if c_ == "#" and THEME == "town":
                 # the town wall: a low run of pale stone blocks, capped
                 box(f"tw_{x}_{y}", c + Vector((0, 0, 0.32)), (S, S * 0.9, 0.64), townwall, bevel=0.05)
