@@ -421,6 +421,7 @@ struct FloatText: View {
 struct FoeSprite: View {
     let kind: FoeKind
     var stolen = 0
+    var zoom: CGFloat { kind == .maw || kind == .bigshade ? 1.45 : kind == .moth ? 1.7 : 2.0 }
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
             let t = tl.date.timeIntervalSinceReferenceDate
@@ -431,8 +432,9 @@ struct FoeSprite: View {
                         .scaleEffect(0.8 + 0.1 * sin(t * 4))
                 }
                 if let ui = Art.uiImage(name + "_n") ?? Art.uiImage(name) {
+                    // the sprite's canvas is roomy; the figure itself fills the frame
                     Image(uiImage: ui).resizable().aspectRatio(contentMode: .fit)
-                        .scaleEffect(x: 1 + 0.02 * sin(t * 2.4), y: 1 - 0.02 * sin(t * 2.4), anchor: .bottom)
+                        .scaleEffect(x: zoom * (1 + 0.02 * sin(t * 2.4)), y: zoom * (1 - 0.02 * sin(t * 2.4)), anchor: UnitPoint(x: 0.5, y: 0.8))
                 }
             }
         }

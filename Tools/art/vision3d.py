@@ -328,6 +328,46 @@ def main():
         light("AREA", (3, 2.5, 3), 180, "#C87AF0", 3, rot=(math.radians(-50), 0, math.radians(140)))
         camera((0.0, -8.0, 2.5), (0.0, 0.0, 0.85), lens=36, fstop=3.2)
         bpy.context.scene.camera.data.shift_y = -0.08
+    elif n.startswith("battle_"):
+        # a stage for the fights: the place itself, low and wide, with room in the middle for the foes (drawn by the game)
+        th = n.split("_")[1]
+        r = random.Random(5)
+        if th == "town":
+            world("#0A1028", 0.4); ground("#4A4656")
+            starm = emit("star", "#DCE4FF", 5)
+            for i in range(90): B.sphere(f"st{i}", (r.uniform(-14, 14), 40, r.uniform(4, 22)), (0.04 + r.random() * 0.05,) * 3, starm, seg=6)
+            for i, x in enumerate([-3.6, -2.0, -0.4, 1.4, 3.2]):
+                TW.house(f"bh{i}", (x, 6.5 + (i % 2) * 1.2, 0), w=1.3, h=1.1, wall=("#C8B8A0", "#B8C0CC", "#CCB8A0")[i % 3], roof=("#8A3A3A", "#4A5A8A", "#6A4A3A")[i % 3], window="#FFC070" if i % 2 else None)
+            post = B.rubber("tpost", "#2A2A34"); off = B.mat("off", "#2A2A30", rough=0.2, coat=0.6)
+            for x in (-2.6, 2.6):
+                bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.06, depth=2.0, location=(x, 3.2, 1.0)); bpy.context.object.data.materials.append(post)
+                B.sphere(f"dl{x}", (x, 3.2, 2.1), (0.2, 0.2, 0.24), off)
+            key((0, 2, 1), strength=1.2)
+        elif th == "wilds":
+            world("#0A1620", 0.45); ground("#3E5A3A")
+            leaves = [B.rubber(f"lf{i}", c_, rough=0.7) for i, c_ in enumerate(("#3E6A3E", "#4E7E46", "#35583A"))]
+            trunk = B.rubber("trunk", "#5A4632")
+            for i in range(9):
+                x = r.uniform(-5, 5); y = r.uniform(4, 10)
+                if abs(x) < 1.6 and y < 6: x += 3 * (1 if x >= 0 else -1)
+                bpy.ops.mesh.primitive_cylinder_add(vertices=10, radius=0.14, depth=1.2, location=(x, y, 0.6)); bpy.context.object.data.materials.append(trunk)
+                B.sphere(f"cn{i}", (x, y, 1.6), (0.9, 0.9, 0.85), leaves[i % 3])
+            rock = B.rubber("rk", "#7A7488")
+            for i in range(5): B.sphere(f"rk{i}", (r.uniform(-4, 4), r.uniform(1.5, 4), 0.2), (0.4, 0.32, 0.28), rock)
+            starm = emit("star", "#DCE4FF", 5)
+            for i in range(70): B.sphere(f"st{i}", (r.uniform(-14, 14), 40, r.uniform(6, 22)), (0.04 + r.random() * 0.05,) * 3, starm, seg=6)
+            key((0, 2, 1), strength=1.2)
+        else:
+            world("#06060C", 0.2); ground("#3A3644")
+            wallm = B.rubber("cw", "#2E2A3A", rough=0.85)
+            for x in (-4.5, 4.5):
+                bpy.ops.mesh.primitive_cube_add(location=(x, 4, 2)); o = bpy.context.object; o.scale = (0.6, 8, 2.2); o.data.materials.append(wallm)
+            bpy.ops.mesh.primitive_cube_add(location=(0, 9, 2)); o = bpy.context.object; o.scale = (5, 0.5, 2.6); o.data.materials.append(wallm)
+            for i, x in enumerate((-3.6, 3.6)):
+                B.sphere(f"candle{i}", (x, 5, 1.6), (0.08, 0.08, 0.12), emit("cf", "#FFC870", 8))
+                light("POINT", (x, 4.8, 1.7), 60, "#FFB060", 0.1)
+            key((0, 2, 1), strength=0.8)
+        camera((0, -6.5, 2.6), (0, 2.5, 0.8), lens=30, fstop=4)
     elif n == "dawn":
         # the fire home again: the sun opens its eye on the horizon, Otto finally asleep, Moss beside him; Mosto is only a
         # crooked crown in Moss's shadow now

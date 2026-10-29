@@ -314,7 +314,7 @@ struct MapPainter {
         }
         // Moss one step behind, then Otto
         if w.hasMoss {
-            let mp = w.trail.count > 1 ? w.trail[1] : w.me
+            let mp = w.trail.count > 1 && w.trail[1] != w.me ? w.trail[1] : Pt(w.me.x - w.face, w.me.y)
             let mossState: String = w.dir == "W" ? "left" : w.dir == "E" ? "right" : w.dir == "N" ? "back" : "down"
             items.append((CGFloat(mp.y) - 0.01, { c in self.sprite(&c, "moss_\(mossState)", mp, eased: true) }))
         }
