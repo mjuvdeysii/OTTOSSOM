@@ -121,7 +121,7 @@ struct Stage {
             let st = pz?.state ?? (caught ? "caught" : blinking(2.1, 4.4) ? "blink" : dx < 0 ? "left" : dx > 0 ? "right" : "glee")
             items.append((Double(p.y) + 0.005, { c in
                 self.figure(&c, "mosto", st, at: p, pose: pz)
-                if !caught { self.spark(&c, "mosto_\(st)", at: p) }
+                if !caught && st != "caught" && st != "sleep" { self.spark(&c, "mosto_\(st)", at: p) }
             }))
         }
         if !f.hideHeroes {

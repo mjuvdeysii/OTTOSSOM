@@ -1040,6 +1040,9 @@
    "emote": "x",
    "icon": "note",
    "ms": 900
+  },
+  {
+   "guide": true
   }
  ],
  "c4_sun": [
@@ -1111,6 +1114,9 @@
    "emote": "x",
    "icon": "grin",
    "ms": 900
+  },
+  {
+   "guide": true
   }
  ],
  "c4_home": [

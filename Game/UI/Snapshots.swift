@@ -30,7 +30,7 @@ enum Snapshots {
         for (ch, room, script, at) in scenes {
             router.screen = .scene(ch, room, script)
             for (k, t) in at.enumerated() { await wait(t); say("9_\(script)_\(k)") }
-            await wait(1.2)
+            await wait(3.0)   // the simulator's screenshot lags the cue; let it land before the scene changes
         }
         Progress.shared.flags = []
         router.screen = .title; await wait(1)
