@@ -11,7 +11,7 @@ struct ChangyeApp: App {
     }
 }
 
-enum Screen: Equatable { case title, chapter(Int), snap(Int, String), scene(Int, String, String) }
+enum Screen: Equatable { case title, chapter(Int), snap(Int, String), scene(Int, String, String), rules }
 
 final class Router: ObservableObject {
     @Published var screen: Screen = .title
@@ -37,6 +37,8 @@ struct RootView: View {
                 if let ch = Content.chapters.first(where: { $0.id == id }) {
                     GameView(model: GameModel.preview(chapter: ch, room: room)).id(room)
                 }
+            case .rules:
+                RulesView(upTo: 4)
             case .scene(let id, let room, let script):
                 if let ch = Content.chapters.first(where: { $0.id == id }) {
                     GameView(model: GameModel.preview(chapter: ch, room: room, script: script)).id(script)
