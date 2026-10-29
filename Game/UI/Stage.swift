@@ -276,12 +276,12 @@ struct Stage {
         let s = scaleOf(holder)
         let c = CGPoint(x: g.x + (hold.x - m.feet.x) * s, y: g.y + (hold.y - m.feet.y) * s - lift * T)
         var a = ctx; a.blendMode = .plusLighter
-        let R = T * 0.7
+        let R = T * 0.42
         a.fill(Path(ellipseIn: CGRect(x: c.x - R, y: c.y - R * 0.9, width: R * 2, height: R * 1.8)),
-               with: .radialGradient(Gradient(colors: [Color(0xff9a3a, 0.55), Color(0xff6a20, 0)]), center: c, startRadius: 0, endRadius: R))
+               with: .radialGradient(Gradient(colors: [Color(0xff9a3a, 0.32), Color(0xff6a20, 0)]), center: c, startRadius: 0, endRadius: R))
         let frame = Int(f.t * 10) % 6
         guard let fm = Art.meta["spark_\(frame)"], let img = Art.image("spark_\(frame)"), let ui = Art.uiImage("spark_\(frame)") else { return }
-        let sc = s * 0.55
+        let sc = s * 0.4
         ctx.draw(img, in: CGRect(x: c.x - fm.feet.x * sc, y: c.y - fm.feet.y * sc, width: ui.size.width * sc, height: ui.size.height * sc))
     }
 

@@ -18,7 +18,7 @@ enum Snapshots {
         for ch in Content.chapters {
             for (i, st) in ch.steps.enumerated() {
                 guard let room = st.room, st.cut == nil else { continue }
-                router.screen = .snap(ch.id, room); await wait(2.2)
+                router.screen = .snap(ch.id, room); await wait(3.6)
                 say(String(format: "%d_%02d_%@", ch.id, i, room)); await wait(1.8)
             }
         }
