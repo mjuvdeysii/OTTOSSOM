@@ -11,7 +11,7 @@ struct ChangyeApp: App {
     }
 }
 
-enum Screen: Equatable { case title, chapter(Int), snap(Int, String), scene(Int, String, String), rules }
+enum Screen: Equatable { case title, chapter(Int), snap(Int, String), scene(Int, String, String), rules, adventure(Bool), probe(String) }
 
 final class Router: ObservableObject {
     @Published var screen: Screen = .title
@@ -39,6 +39,10 @@ struct RootView: View {
                 }
             case .rules:
                 RulesView(upTo: 4)
+            case .adventure(let fresh):
+                AdventureView(w: World(fresh: fresh)).transition(.opacity)
+            case .probe(let what):
+                AdventureView(w: World.probe(what)).id(what)
             case .scene(let id, let room, let script):
                 if let ch = Content.chapters.first(where: { $0.id == id }) {
                     GameView(model: GameModel.preview(chapter: ch, room: room, script: script)).id(script)
@@ -102,12 +106,56 @@ struct TitleView: View {
             .accessibilityElement(children: .combine)
             Spacer(minLength: 200)
             VStack(spacing: 10) {
-                ForEach(Content.chapters) { ch in chapterCard(ch) }
+                journeyCards
             }
             .padding(.horizontal, 18)
             .padding(.bottom, 16)
         }
         .frame(maxWidth: 560)
+    }
+
+    @State private var confirmNew = false
+
+    /// Continue where the save left off, or start the journey again.
+    private var journeyCards: some View {
+        VStack(spacing: 10) {
+            if World.hasSave, let sv = World.peek() {
+                Button { router.screen = .adventure(false) } label: {
+                    journeyCard(title: "继续旅程", sub: "\(RPGContent.shared.maps[sv.map]?.name ?? "") · 奥托 Lv\(sv.members.first?.level ?? 1)", icon: "play.fill", primary: true,
+                                faces: sv.members.map { $0.hero })
+                }
+                .buttonStyle(.plain)
+            }
+            Button {
+                if World.hasSave { confirmNew = true } else { router.screen = .adventure(true) }
+            } label: {
+                journeyCard(title: World.hasSave ? "新的旅程" : "开始旅程", sub: "灯塔城 · 主灯被吞的那一夜", icon: World.hasSave ? "plus" : "play.fill", primary: !World.hasSave, faces: [.otto])
+            }
+            .buttonStyle(.plain)
+            .confirmationDialog("从头开始？现在的进度会被覆盖。", isPresented: $confirmNew, titleVisibility: .visible) {
+                Button("从头开始", role: .destructive) { router.screen = .adventure(true) }
+            }
+        }
+    }
+
+    private func journeyCard(title: String, sub: String, icon: String, primary: Bool, faces: [Hero]) -> some View {
+        HStack(spacing: 14) {
+            HStack(spacing: -14) { ForEach(faces, id: \.self) { h in Face(hero: h).frame(width: 52, height: 52) } }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.system(size: 20, weight: .bold, design: .serif)).foregroundStyle(.white)
+                Text(sub).font(.caption).foregroundStyle(mutedText).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: icon).font(.system(size: 15, weight: .bold))
+                .foregroundStyle(primary ? Color.black : gold)
+                .frame(width: 38, height: 38)
+                .background(primary ? gold : Color.white.opacity(0.08), in: Circle())
+        }
+        .padding(.leading, 10).padding(.trailing, 14).padding(.vertical, 12)
+        .background(.ultraThinMaterial.opacity(0.9), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(panelBG.opacity(0.55), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(LinearGradient(colors: [Color.white.opacity(primary ? 0.25 : 0.1), Color.white.opacity(0.03)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
+        .environment(\.colorScheme, .dark)
     }
 
     private func chapterCard(_ ch: Chapter) -> some View {

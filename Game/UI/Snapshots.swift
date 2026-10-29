@@ -15,25 +15,11 @@ enum Snapshots {
     static func run(_ router: Router) async {
         Sound.shared.enabled = false
         router.screen = .title; await wait(4.5); say("00_title"); await wait(2.0)
-        router.screen = .rules; await wait(3.0); say("00_rules"); await wait(5.0)
-        for ch in Content.chapters {
-            for (i, st) in ch.steps.enumerated() {
-                guard let room = st.room, st.cut == nil else { continue }
-                router.screen = .snap(ch.id, room); await wait(3.6)
-                say(String(format: "%d_%02d_%@", ch.id, i, room)); await wait(4.5)
-            }
+        // the adventure, at its main moments
+        for (what, hold) in [("town", 4.0), ("talk", 3.5), ("battle", 3.5), ("wilds", 4.0), ("cellar", 4.0), ("boss", 4.0), ("menu", 4.0)] {
+            router.screen = .probe(what); await wait(hold)
+            say("rpg_\(what)"); await wait(4.0)
         }
-        // the story scenes, caught mid-acting (Dora's lantern lit, so its whole arc plays)
-        Progress.shared.flags = ["dora", "doraStolen"]
-        let scenes: [(Int, String, String, [Double])] = [
-            (1, "outside", "c1_end", [1.6, 3.2]), (1, "street", "c1_d60", [3.0, 9.4]), (2, "lamp", "c2_d30", [4.6, 2.4]),
-            (3, "city", "c3_city", [2.6, 1.6]), (4, "nest", "c4_end", [1.4, 2.6]), (4, "street", "c4_home", [4.6, 4.2, 3.0])]
-        for (ch, room, script, at) in scenes {
-            router.screen = .scene(ch, room, script)
-            for (k, t) in at.enumerated() { await wait(t); say("9_\(script)_\(k)") }
-            await wait(3.0)   // the simulator's screenshot lags the cue; let it land before the scene changes
-        }
-        Progress.shared.flags = []
         router.screen = .title; await wait(1)
         say("done")
     }

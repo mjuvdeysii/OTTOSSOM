@@ -18,8 +18,10 @@ targets:
     platform: iOS
     sources:
       - path: Game
-        excludes: ["Resources/rooms.json", "Resources/story.json"]
+        excludes: ["Resources/rooms.json", "Resources/story.json", "Resources/rpg.json"]
       - path: Game/Resources/rooms.json
+        buildPhase: resources
+      - path: Game/Resources/rpg.json
         buildPhase: resources
       - path: Game/Resources/story.json
         buildPhase: resources
