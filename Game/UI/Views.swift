@@ -339,7 +339,19 @@ struct GameView: View {
                                    extent: CGRect(x: -o.x, y: -o.y, width: size.width, height: size.height), emotes: model.emotes, poses: model.poses, flies: model.flies)
             Canvas { ctx, _ in
                 var c = ctx
-                c.translateBy(x: o.x, y: o.y)
+                let (z, fc) = model.cam.now(now)
+                if z > 1.001 {
+                    // a scene's close-up: the focus cell glides to the middle of the screen as the room grows
+                    let f = CGPoint(x: (fc.x + 0.5) * T, y: (fc.y + 0.5) * T * Art.k)
+                    let mid = CGPoint(x: size.width / 2, y: size.height * 0.46)
+                    let a = CGFloat(min(1, (z - 1) / 0.35))
+                    let anchor = CGPoint(x: o.x + f.x + (mid.x - o.x - f.x) * a, y: o.y + f.y + (mid.y - o.y - f.y) * a)
+                    c.translateBy(x: anchor.x, y: anchor.y)
+                    c.scaleBy(x: CGFloat(z), y: CGFloat(z))
+                    c.translateBy(x: -f.x, y: -f.y)
+                } else {
+                    c.translateBy(x: o.x, y: o.y)
+                }
                 Stage(f: frame, T: T).draw(&c)
                 // panels read better over a darker floor of the scene
                 let fade = Gradient(colors: [.black.opacity(0), .black.opacity(0.7)])

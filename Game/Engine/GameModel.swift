@@ -26,6 +26,21 @@ struct CoachStep: Equatable {
     var until: String
 }
 
+/// The camera during a scene: how close (1 = the whole room) and which board cell it centres on, easing from the last.
+struct Cam: Equatable {
+    var zoom: Double = 1
+    var focus = CGPoint(x: 0, y: 0)       // cell coordinates
+    var fromZoom: Double = 1
+    var fromFocus = CGPoint(x: 0, y: 0)
+    var at = Date.distantPast
+    var dur: Double = 0.01
+    func now(_ t: Date) -> (Double, CGPoint) {
+        let u = min(1, max(0, t.timeIntervalSince(at) / dur)), e = u * u * (3 - 2 * u)
+        return (fromZoom + (zoom - fromZoom) * e,
+                CGPoint(x: fromFocus.x + (focus.x - fromFocus.x) * e, y: fromFocus.y + (focus.y - fromFocus.y) * e))
+    }
+}
+
 struct Figure {
     var kind: String
     var x: Double
@@ -97,6 +112,7 @@ final class GameModel: ObservableObject {
     @Published var vision: String?
     @Published var poses: [String: Pose] = [:]
     @Published var flies: [Fly] = []
+    @Published var cam = Cam()
     private var guided = false
     private var lastInput = Date()
     private var dialogCont: CheckedContinuation<Int, Never>?
@@ -150,7 +166,7 @@ final class GameModel: ObservableObject {
         room = r; state = r.start; prev = nil; hist = []; active = 0; actors = [:]
         hintMark = nil; pathDots = []; cleared = nil
         dark = 0; bulbR = Double(r.rOtto); hint = ""; hideHeroes = false; emotes = [:]; guided = false
-        poses = [:]; flies = []; coach = nil; lesson = []; lessonAt = 0
+        poses = [:]; flies = []; coach = nil; lesson = []; lessonAt = 0; cam = Cam()
         mainDim = (id == "top" && chapter.id == 1 && stepIndex > 4)
         Sound.shared.hum(state.bulb)
     }
@@ -289,6 +305,15 @@ final class GameModel: ObservableObject {
                 flies.append(f); Sound.shared.touch()
                 try? await Task.sleep(for: .milliseconds(ms))
                 flies.removeAll { $0.at == f.at }
+            } else if let target = c["cam"] {
+                // {"cam": [x, y] | "x" | "reset", "zoom": 1.6, "ms": 700, "wait": false}
+                let ms = c["ms"] as? Int ?? 700
+                let (z0, f0) = cam.now(Date())
+                var next = Cam(zoom: c["zoom"] as? Double ?? 1.6, focus: f0, fromZoom: z0, fromFocus: f0, at: Date(), dur: Double(ms) / 1000)
+                if (target as? String) == "reset" { next.zoom = 1 } else if let p = spot(target) { next.focus = p }
+                if z0 <= 1.001 && next.zoom > 1 { next.fromFocus = next.focus }   // from the full view, aim straight at it
+                cam = next
+                if c["wait"] as? Bool ?? true { try? await Task.sleep(for: .milliseconds(ms)) }
             } else if let f = c["unset"] as? String {
                 var fl = Progress.shared.flags; fl.remove(f); Progress.shared.flags = fl
             } else if c["guide"] != nil {
@@ -496,12 +521,13 @@ final class GameModel: ObservableObject {
         if v.delta != nil { Sound.shared.step() }
         for e in ev {
             switch e {
-            case .light, .give: Sound.shared.light(); Haptic.light()
+            case .light: Sound.shared.light(); Sound.shared.motif(.otto); Haptic.light()
+            case .give: Sound.shared.light(); Haptic.light()
             case .dim: Sound.shared.dim(); Haptic.warn(); hint = "两个影子挤在灯边，灯暗了。可以撤回。"
-            case .take: Sound.shared.take(); Haptic.light()
+            case .take: Sound.shared.take(); Sound.shared.motif(.mosto); Haptic.light()
             case .push: Sound.shared.push(); Haptic.light()
             case .bulb(let on): Sound.shared.hum(on)
-            case .steal: Sound.shared.dim(); Haptic.warn()
+            case .steal: Sound.shared.dim(); Sound.shared.motif(.mosto); Haptic.warn()
             case .thief, .drift: break
             }
         }
@@ -586,7 +612,7 @@ final class GameModel: ObservableObject {
         guard hero == .moss else { hint = "只有莫斯读得出石头记得的事。"; return }
         let name = "touch:\(room.spec.id):\(p.x),\(p.y)"
         busy = true
-        Sound.shared.touch()
+        Sound.shared.touch(); Sound.shared.motif(.moss)
         Task {
             if Content.story[name] != nil { await run(name) } else { _ = await present(who: "", text: "什么也没记住。", options: []) }
             busy = false

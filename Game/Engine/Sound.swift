@@ -124,38 +124,67 @@ final class Sound {
         // Mosto: long tones that slide up into place, in a minor key, with a grin of a half step
         let mosto: [(Double, Double, Int)] = [(0, 3, 57), (3, 1, 56), (4, 4, 60), (8, 3, 59), (11, 1, 57), (12, 4, 64), (16, 3, 65), (19, 1, 64),
                                                (20, 4, 60), (24, 2, 62), (26, 2, 63), (28, 4, 57)]
+        // the second half answers the first: the chapter's melody again, softer, with the next
+        // character's motif creeping in under it (Otto → Moss → Mosto → all), and a slow bass on the chord roots
+        func second(_ base: [Note], _ answer: [(Double, Double, Int)], _ voice: Timbre, _ vol: Float) -> [Note] {
+            var out = base.map { var x = $0; x.at += 32; if x.voice != .pad { x.vol *= 0.7 }; return x }
+            for (a, l, m) in answer { out.append(Note(at: a + 32, len: l, midi: m, voice: voice, vol: vol)) }
+            return out
+        }
+        func bass(_ roots: [Int], _ vol: Float) -> [Note] {
+            roots.enumerated().map { Note(at: Double($0.offset) * 4, len: 3.6, midi: $0.element, voice: .hum, vol: vol) }
+        }
+        let bpm: Double
         switch theme {
         case 1:
             pads([padC, padAm, padF, padG, padC, padAm, padF, padC], 0.035)
             add(.hum, 0.11, otto)
-            return (58, 32, n)
+            bpm = 58
         case 2:
             pads([padC, padEm, padF, padC, padAm, padEm, padF, padG], 0.03)
             add(.pluck, 0.07, moss)
             add(.hum, 0.05, [(0, 4, 48), (8, 4, 53), (16, 4, 45), (24, 4, 43)])
-            return (76, 32, n)
+            bpm = 76
         case 3:
             pads([padAm, padF, padAm, padEm, padAm, padF, padG, padAm], 0.032)
             add(.glide, 0.08, mosto)
             add(.pluck, 0.035, [(2, 0.5, 69), (6, 0.5, 68), (14, 0.5, 72), (22, 0.5, 71), (30, 0.5, 69)])
-            return (66, 32, n)
+            bpm = 66
         case 4:
             pads([padAm, padF, padC, padG, padAm, padF, padG, padC], 0.035)
             add(.glide, 0.06, mosto)
             add(.hum, 0.08, otto)
             add(.pluck, 0.045, moss.filter { $0.0 >= 16 })
-            return (70, 32, n)
+            bpm = 70
         default:
             pads([padC, padAm, padF, padG, padC, padAm, padF, padC], 0.03)
             add(.hum, 0.08, otto.filter { $0.0 < 16 })
             add(.pluck, 0.05, moss.filter { $0.0 >= 16 })
             add(.glide, 0.05, [(28, 4, 59)])   // at the very end, Mosto's tone slides up into Otto's
-            return (56, 32, n)
+            bpm = 56
         }
+        let first = n
+        let roots: [Int]
+        var answer: [(Double, Double, Int)] = [], av: Timbre = .pluck, avol: Float = 0.03
+        switch theme {
+        case 1: roots = [36, 33, 29, 31, 36, 33, 29, 36]; answer = moss.filter { $0.0 < 16 }; av = .pluck; avol = 0.03
+        case 2: roots = [36, 28, 29, 36, 33, 28, 29, 31]; answer = mosto.filter { $0.0 < 16 }; av = .glide; avol = 0.035
+        case 3: roots = [33, 29, 33, 28, 33, 29, 31, 33]; answer = otto.filter { $0.0 >= 16 }; av = .hum; avol = 0.05
+        case 4: roots = [33, 29, 36, 31, 33, 29, 31, 36]; answer = mosto.map { ($0.0, $0.1, $0.2 + 12) }; av = .glide; avol = 0.03
+        default: roots = [36, 33, 29, 31, 36, 33, 29, 36]; answer = moss.filter { $0.0 < 16 }; av = .pluck; avol = 0.025
+        }
+        var all = first + second(first, answer, av, avol)
+        all += bass((roots + roots).map { $0 + 12 }, 0.04)
+        return (bpm, 64, all)
     }
 
     private static func compose(_ theme: Int, sr: Double, fmt: AVAudioFormat) -> AVAudioPCMBuffer? {
         let sc = score(theme)
+        return render(sc.notes, bpm: sc.bpm, beats: sc.beats, sr: sr, fmt: fmt, wrap: true)
+    }
+
+    private static func render(_ notes: [Note], bpm: Double, beats: Double, sr: Double, fmt: AVAudioFormat, wrap: Bool) -> AVAudioPCMBuffer? {
+        let sc = (bpm: bpm, beats: beats, notes: notes)
         let beat = 60 / sc.bpm
         let total = Int(sc.beats * beat * sr)
         guard let buf = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: AVAudioFrameCount(total)) else { return nil }
@@ -191,7 +220,8 @@ final class Sound {
                     phase += f / sr
                     w = sin(2 * .pi * phase) + 0.2 * sin(2 * .pi * phase * 2.003)
                 }
-                out[(s0 + i) % total] += Float(w * env) * note.vol
+                let k = s0 + i
+                if wrap { out[k % total] += Float(w * env) * note.vol } else if k < total { out[k] += Float(w * env) * note.vol }
             }
         }
         // a soft limiter, so stacked voices never clip
@@ -227,6 +257,25 @@ final class Sound {
                 out[off + i] += Float(w) * env * vol
             }
         }
+        let p = players[next % players.count]; next += 1
+        p.scheduleBuffer(buf, at: nil, options: [], completionHandler: nil)
+        if !p.isPlaying { p.play() }
+    }
+
+    /// A character's motif, a few notes in their own voice, for the moments that are theirs.
+    enum Who { case otto, moss, mosto }
+    func motif(_ who: Who) {
+        guard enabled else { return }
+        start()
+        guard let fmt = format, engine.isRunning else { return }
+        let notes: [Note]
+        switch who {
+        case .otto: notes = [Note(at: 0, len: 0.8, midi: 60, voice: .hum, vol: 0.09), Note(at: 0.6, len: 1.2, midi: 64, voice: .hum, vol: 0.08)]
+        case .moss: notes = [Note(at: 0, len: 0.3, midi: 79, voice: .pluck, vol: 0.07), Note(at: 0.25, len: 0.3, midi: 81, voice: .pluck, vol: 0.07),
+                             Note(at: 0.5, len: 0.6, midi: 84, voice: .pluck, vol: 0.07)]
+        case .mosto: notes = [Note(at: 0, len: 0.9, midi: 57, voice: .glide, vol: 0.08), Note(at: 0.7, len: 1.0, midi: 60, voice: .glide, vol: 0.07)]
+        }
+        guard let buf = Sound.render(notes, bpm: 90, beats: 3, sr: fmt.sampleRate, fmt: fmt, wrap: false) else { return }
         let p = players[next % players.count]; next += 1
         p.scheduleBuffer(buf, at: nil, options: [], completionHandler: nil)
         if !p.isPlaying { p.play() }
