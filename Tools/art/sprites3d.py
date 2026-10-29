@@ -15,6 +15,7 @@ import ip3d as B
 sys.path.insert(0, os.path.join(HERE, "kb"))
 import mosto3d as MO
 from town3d import townsfolk
+import foes3d as FO
 from mathutils import Vector
 from bpy_extras.object_utils import world_to_camera_view
 
@@ -156,6 +157,12 @@ def object_jobs():
     yield "npc_dl", lambda: figure(lambda: townsfolk("#E08A5A", "#E8C24A", small=True, who="dora", lit=True), 0)
     yield "npc_n", lambda: figure(lambda: townsfolk("#6A7AA8", "#5A3A5A", scarf="#C04A4A", who="lynn"), 0)
 
+def foe_jobs():
+    for k in ("shade", "shell", "moth", "fang", "bigshade", "maw"):
+        yield f"foe_{k}", lambda k=k: figure(getattr(FO, k), 0)
+    yield "chest", lambda: figure(lambda: FO.chest(False), 0)
+    yield "chest_open", lambda: figure(lambda: FO.chest(True), 0)
+
 def figure_lean(objs):
     bpy.ops.object.empty_add(location=(0, 0, 0)); pivot = bpy.context.object
     for o in objs: o.parent = pivot
@@ -203,7 +210,7 @@ def main():
     meta = json.load(open(meta_path)) if os.path.exists(meta_path) else {}
     meta.update(dict(pc=PC, tilt=TILT, cw=CW, ch=CH))
     jobs_only = arg("--jobs", "").split(",") if "--jobs" in ARGS else None
-    groups = {"otto": otto_jobs, "moss": moss_jobs, "mosto": mosto_jobs, "objects": object_jobs, "spark": spark_jobs}
+    groups = {"otto": otto_jobs, "moss": moss_jobs, "mosto": mosto_jobs, "objects": object_jobs, "spark": spark_jobs, "foes": foe_jobs}
     for g, jobs in groups.items():
         if only and g not in only: continue
         for name, build in jobs():

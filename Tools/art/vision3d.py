@@ -102,8 +102,9 @@ def embers(at, n, spread, color="#FF9A3A"):
         p = Vector(at) + Vector((rnd.uniform(-spread, spread), rnd.uniform(-spread * 0.5, spread * 0.5), rnd.uniform(0, spread * 1.5)))
         B.sphere(f"emb{i}", p, (0.025 + rnd.random() * 0.02,) * 3, m, seg=8)
 
-def tired_sun(at, r, awake=False, glow=1.0):
-    """The sun: a vast soft dome, tired like Otto — heavy lid, bags under the eye."""
+def tired_sun(at, r, awake=False, glow=1.0, rays=0):
+    """The sun: a vast soft dome, tired like Otto — heavy lid, bags under the eye. `rays` puts that many soft rays
+    round its upper rim (drooping when it sleeps), so it reads as the sun at a glance without shouting it."""
     body = B.rubber("sunbody", "#E07A2A", rough=0.55)
     p = body.node_tree.nodes["Principled BSDF"]
     p.inputs["Emission Color"].default_value = B.hexcol("#FF9A40"); p.inputs["Emission Strength"].default_value = 0.6 * glow
@@ -121,6 +122,20 @@ def tired_sun(at, r, awake=False, glow=1.0):
     bag = B.mat("sunBag", "#B85A20", rough=0.6)
     B.tube("bag", [tuple(face + Vector((x * r * 0.13, -0.015, -0.13 * r + (x * x) * r * 0.035))) for x in (-1, -0.5, 0, 0.5, 1)], r * 0.013, bag)
     light("POINT", Vector(at) + Vector((0, -r * 1.3, r * 0.6)), 1400 * glow * (r / 3) ** 2, "#FF9A50", r * 0.4)
+    if rays:
+        # short soft rays that hang when it sleeps: enough to say "sun",
+        # quietly, in the same matte vinyl as everything else
+        rm = B.rubber("sunray", "#C8722E", rough=0.6)
+        pr = rm.node_tree.nodes["Principled BSDF"]
+        pr.inputs["Emission Color"].default_value = B.hexcol("#FF9A40"); pr.inputs["Emission Strength"].default_value = 0.25 * glow
+        c = Vector(at)
+        for k in range(rays):
+            a_ = math.radians(20 + 140 * k / (rays - 1))
+            d = Vector((math.cos(a_), 0, math.sin(a_)))
+            droop = 0.0 if awake else 0.12
+            base = c + d * r * 1.12 + Vector((0, -r * 0.1, 0))
+            tip = c + d * r * 1.27 + Vector((0, -r * 0.1, -droop * r * abs(math.cos(a_))))
+            B.tube(f"ray{k}", [tuple(base), tuple((base + tip) / 2), tuple(tip)], r * 0.03, rm)
 
 def finish(path, w, h):
     s = bpy.context.scene
@@ -248,12 +263,12 @@ def main():
         # up the fire he took, grinning. A trail of sparks leads back to the sun asleep behind him. Moss leans in from
         # the left to take it back; Otto looms behind, bulb lit over Mosto's head.
         world("#0A1030", 0.4); ground("#2E2438")
-        tired_sun((0.0, 5.2, 0.4), 2.8, awake=False, glow=0.5)
+        tired_sun((0.5, 9.5, -0.6), 2.7, awake=False, glow=0.55, rays=9)
         fire_at = Vector((0.7, -1.0, 0.36))
         spark = emit("trail", "#FF9A30", 5)
-        for i in range(16):
-            t = i / 15
-            p = Vector((-0.3 * (1 - t) + fire_at.x * t, 4.2 * (1 - t) + fire_at.y * t, 3.1 * (1 - t) ** 1.6 + fire_at.z * t + 0.8 * math.sin(math.pi * t)))
+        for i in range(26):
+            t = i / 25
+            p = Vector((0.4 * (1 - t) + fire_at.x * t, 8.6 * (1 - t) + fire_at.y * t, 2.0 * (1 - t) ** 1.4 + fire_at.z * t + 1.0 * math.sin(math.pi * t)))
             B.sphere(f"tr{i}", p, (0.035 * (0.5 + t),) * 3, spark, seg=10)
         place(B.build_otto, (-0.8, 1.3, 0), turn=-15, mirror=True, glow=1.0, lid=0.5, look=(-0.7, -0.45), slouch=0.7, droop=0.5, bags=True)
         bead = bpy.data.objects.get("otto_bead")
@@ -280,7 +295,7 @@ def main():
         for i in range(160):
             x = r.uniform(-14, 14); z = r.uniform(3.5, 22); y = 40
             B.sphere(f"st{i}", (x, y, z), (0.035 + r.random() * 0.05,) * 3, starm, seg=6)
-        tired_sun((0.6, 11, -1.4), 4.2, awake=False, glow=0.35)
+        tired_sun((0.6, 18, -1.8), 4.6, awake=False, glow=0.4, rays=11)
         # the lighthouse, its lamp out
         bpy.ops.mesh.primitive_cone_add(vertices=48, radius1=0.42, radius2=0.28, depth=3.0, location=(2.8, 7.6, 1.5)); bpy.context.object.data.materials.append(B.rubber("lhw", "#D8D0C4"))
         for k in range(3):
