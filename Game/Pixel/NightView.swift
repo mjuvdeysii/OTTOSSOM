@@ -157,7 +157,7 @@ final class NightCanvas: UIView {
         frame_ = Frame(w: scale.w, h: scale.h)
         super.init(frame: .zero)
         layer.magnificationFilter = .nearest
-        layer.contentsGravity = .topLeft
+        layer.contentsGravity = .resize
         layer.contentsScale = UIScreen.main.scale / CGFloat(scale.k)
         isMultipleTouchEnabled = false
         backgroundColor = .black

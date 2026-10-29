@@ -361,7 +361,7 @@ struct UpgradeShop: View {
         .modifier(PixelPanel(pt: pt, fill: Color(0x141024)))
         .padding(.horizontal, pt * 6)
         .frame(maxHeight: .infinity)
-        .background(Color.black.opacity(0.55).ignoresSafeArea())
+        .background(Color.black.opacity(0.85).ignoresSafeArea())
     }
 }
 
@@ -392,6 +392,8 @@ struct NightScreen: View {
                                 if outcome == 0 && sim.outcome != 0 { outcome = sim.outcome; stars = sim.stars; finish(sim) }
                             })
             .id(seed)
+            .frame(width: CGFloat(scale.w) * scale.pt, height: CGFloat(scale.h) * scale.pt)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .ignoresSafeArea()
             VStack(spacing: pt * 3) {
                 HStack {
