@@ -56,63 +56,95 @@ struct RootView: View {
 struct TitleView: View {
     static let trio = Room(RoomSpec(id: "title", name: "", day: 60, map: ["#####", "#OMX#", "#####"]))
     @EnvironmentObject var router: Router
-    @State private var tick = 0
     @State private var allOpen = false
+    @State private var breathe = false
     var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
-                if let bg = Art.background("top") {
-                    GeometryReader { g in
-                        Image(uiImage: bg.image).resizable().aspectRatio(contentMode: .fill)
-                            .frame(width: g.size.width, height: g.size.height).clipped()
-                            .overlay(LinearGradient(colors: [.black.opacity(0.35), .black.opacity(0.75)], startPoint: .top, endPoint: .bottom))
+                GeometryReader { g in
+                    if let ui = Art.uiImage("v_title", ext: "jpg") {
+                        // the key art, rendered like the icon: the three on the crest, the sun asleep without its fire
+                        Image(uiImage: ui).resizable().aspectRatio(contentMode: .fill)
+                            .frame(width: g.size.width, height: g.size.height, alignment: .top)
+                            .scaleEffect(breathe ? 1.035 : 1.0, anchor: UnitPoint(x: 0.5, y: 0.45))
+                            .clipped()
+                            .overlay(alignment: .top) {
+                                LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom).frame(height: g.size.height * 0.28)
+                            }
+                            .overlay(alignment: .bottom) {
+                                LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .top, endPoint: .bottom).frame(height: g.size.height * 0.5)
+                            }
+                    } else {
+                        TitleWorld()
                     }
-                    .ignoresSafeArea()
-                } else {
-                    TitleWorld().ignoresSafeArea()
                 }
+                .ignoresSafeArea()
+                .onAppear { withAnimation(.easeInOut(duration: 9).repeatForever(autoreverses: true)) { breathe = true } }
             }
     }
 
     private var content: some View {
-        VStack(spacing: 18) {
-            Spacer(minLength: 24)
-            Trio()
-                .frame(height: 190)
-                .onTapGesture(count: 5) { allOpen = true; Haptic.success() }
-                .onAppear { Sound.shared.music(0) }
-            Text("灯台索魔").font(.system(size: 44, weight: .semibold, design: .serif)).foregroundStyle(.white).tracking(10)
-                .shadow(color: .black.opacity(0.6), radius: 10)
-            Spacer(minLength: 12)
-            VStack(spacing: 10) {
-                ForEach(Content.chapters) { ch in
-                    let open = allOpen || Progress.shared.unlocked(ch.id)
-                    let done = Progress.shared.done.contains(ch.id)
-                    Button {
-                        router.screen = .chapter(ch.id)
-                    } label: {
-                        HStack(spacing: 14) {
-                            Text(["一", "二", "三", "四"][ch.id - 1]).font(.system(size: 15, weight: .semibold, design: .serif))
-                                .foregroundStyle(open ? gold : mutedText).frame(width: 22)
-                            Text(ch.title).font(.system(size: 20, weight: .semibold, design: .serif)).foregroundStyle(open ? .white : mutedText)
-                            Spacer()
-                            ChapterFaces(hero: ch.hero).opacity(open ? 1 : 0.35)
-                            Image(systemName: done ? "checkmark.circle.fill" : open ? "play.circle.fill" : "lock.fill")
-                                .font(.title3).foregroundStyle(open ? gold : mutedText)
-                        }
-                        .padding(.horizontal, 18).padding(.vertical, 10)
-                        .background(panelBG.opacity(0.88), in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.08)))
-                    }
-                    .disabled(!open)
-                    .accessibilityLabel("第\(ch.id)章 \(ch.title)")
-                }
+        VStack(spacing: 0) {
+            VStack(spacing: 8) {
+                Text("灯台索魔")
+                    .font(.system(size: 46, weight: .heavy, design: .serif))
+                    .tracking(12)
+                    .foregroundStyle(LinearGradient(colors: [Color(0xfff3d6), Color(0xf2c062)], startPoint: .top, endPoint: .bottom))
+                    .shadow(color: Color(0xffb04a).opacity(0.45), radius: 14)
+                    .shadow(color: .black.opacity(0.7), radius: 3, y: 2)
+                Text("OTTOSSOM").font(.system(size: 12, weight: .semibold, design: .rounded)).tracking(7)
+                    .foregroundStyle(Color.white.opacity(0.55))
             }
-            .padding(.horizontal, 20)
-            Spacer(minLength: 24)
+            .padding(.top, 36)
+            .onTapGesture(count: 5) { allOpen = true; Haptic.success() }
+            .onAppear { Sound.shared.music(0) }
+            .accessibilityElement(children: .combine)
+            Spacer(minLength: 200)
+            VStack(spacing: 10) {
+                ForEach(Content.chapters) { ch in chapterCard(ch) }
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 16)
         }
         .frame(maxWidth: 560)
+    }
+
+    private func chapterCard(_ ch: Chapter) -> some View {
+        let open = allOpen || Progress.shared.unlocked(ch.id)
+        let done = Progress.shared.done.contains(ch.id)
+        let rooms = ch.steps.filter { $0.cut == nil }.count
+        let at = Progress.shared.step(ch.id)
+        let cleared = done ? rooms : ch.steps.prefix(at).filter { $0.cut == nil }.count
+        return Button { router.screen = .chapter(ch.id) } label: {
+            HStack(spacing: 14) {
+                ChapterFaces(hero: ch.hero, open: open)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("第\(["一", "二", "三", "四"][ch.id - 1])章").font(.system(size: 12, weight: .semibold, design: .serif)).tracking(2)
+                        .foregroundStyle(open ? gold : mutedText)
+                    Text(ch.title).font(.system(size: 20, weight: .bold, design: .serif)).foregroundStyle(open ? .white : mutedText)
+                    HStack(spacing: 4) {
+                        ForEach(0..<rooms, id: \.self) { i in
+                            Capsule().fill(i < cleared ? gold : Color.white.opacity(open ? 0.22 : 0.1)).frame(width: 10, height: 3)
+                        }
+                    }
+                }
+                Spacer(minLength: 8)
+                Image(systemName: done ? "checkmark" : open ? "play.fill" : "lock.fill")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(open ? Color.black : mutedText)
+                    .frame(width: 38, height: 38)
+                    .background(open ? gold : Color.white.opacity(0.08), in: Circle())
+            }
+            .padding(.leading, 10).padding(.trailing, 14).padding(.vertical, 10)
+            .background(.ultraThinMaterial.opacity(0.9), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(panelBG.opacity(0.55), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(LinearGradient(colors: [Color.white.opacity(open ? 0.22 : 0.08), Color.white.opacity(0.03)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
+            .environment(\.colorScheme, .dark)
+        }
+        .buttonStyle(.plain)
+        .disabled(!open)
+        .accessibilityLabel("第\(ch.id)章 \(ch.title)，已过 \(cleared) / \(rooms) 间\(open ? "" : "，未解锁")")
     }
 }
 
@@ -156,18 +188,27 @@ struct Trio: View {
     }
 }
 
-/// Who a chapter belongs to, as small faces.
+/// Who a chapter belongs to: their faces in round frames, cropped from the game's own sprites.
 struct ChapterFaces: View {
     let hero: String
+    var open = true
     var body: some View {
-        HStack(spacing: -10) {
+        HStack(spacing: -14) {
             ForEach(names, id: \.self) { n in
-                if let ui = Art.uiImage(n) {
-                    Image(uiImage: ui).resizable().aspectRatio(contentMode: .fit).frame(width: 46, height: 60).offset(y: 4)
+                ZStack {
+                    Circle().fill(RadialGradient(colors: [Color(0x3a4270), Color(0x161a30)], center: .center, startRadius: 2, endRadius: 30))
+                    if let ui = Art.uiImage(n) {
+                        Image(uiImage: ui).resizable().aspectRatio(contentMode: .fit)
+                            .frame(width: 84, height: 84 * 1.3).offset(y: n.hasPrefix("otto") ? 6 : n.hasPrefix("mosto") ? -4 : -6)
+                    }
                 }
+                .frame(width: 52, height: 52)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(open ? gold.opacity(0.7) : Color.white.opacity(0.12), lineWidth: 1.5))
+                .saturation(open ? 1 : 0.2).opacity(open ? 1 : 0.6)
             }
         }
-        .frame(height: 40).clipped()
+        .accessibilityHidden(true)
     }
     private var names: [String] {
         switch hero {

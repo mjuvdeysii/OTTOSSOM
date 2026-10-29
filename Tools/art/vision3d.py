@@ -270,6 +270,49 @@ def main():
         light("AREA", (-2.5, -4, 4), 150, "#8C9CE8", 4, rot=(math.radians(48), 0, math.radians(-32)))
         light("AREA", (3, 2.2, 3), 200, "#C87AF0", 3, rot=(math.radians(-50), 0, math.radians(140)))
         camera((0.05, -4.5, 1.5), (0.0, 1.0, 1.05), lens=50, fstop=6.3)
+    elif n == "title":
+        # the title's key art, portrait: the three on a crest under the stars, the sleeping sun low behind them with no
+        # fire on its brow, the lighthouse dark at the edge of town; the town's last lamps glow out of focus below,
+        # where the chapter list sits. Mosto in the middle with the fire, as on the icon.
+        world("#070B22", 0.35); ground("#2A2236")
+        starm = emit("star", "#DCE4FF", 6)
+        r = random.Random(11)
+        for i in range(160):
+            x = r.uniform(-14, 14); z = r.uniform(3.5, 22); y = 40
+            B.sphere(f"st{i}", (x, y, z), (0.035 + r.random() * 0.05,) * 3, starm, seg=6)
+        tired_sun((0.6, 11, -1.4), 4.2, awake=False, glow=0.35)
+        # the lighthouse, its lamp out
+        bpy.ops.mesh.primitive_cone_add(vertices=48, radius1=0.42, radius2=0.28, depth=3.0, location=(2.8, 7.6, 1.5)); bpy.context.object.data.materials.append(B.rubber("lhw", "#D8D0C4"))
+        for k in range(3):
+            bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=0.4 - k * 0.04, depth=0.28, location=(2.8, 7.6, 0.55 + k * 0.9)); bpy.context.object.data.materials.append(B.rubber("lhr", "#A8382E"))
+        B.sphere("lhlamp", (2.8, 7.6, 3.2), (0.3, 0.3, 0.28), B.mat("lhg", "#2A2A34", rough=0.2, coat=0.6))
+        B.sphere("lhcap", (2.8, 7.6, 3.5), (0.34, 0.34, 0.16), B.rubber("lhc", "#A8382E"))
+        for i, (x, y, wall, roof) in enumerate([(-3.2, 5.0, "#C8B8A0", "#5A4A6A"), (-2.2, 6.6, "#BCAE98", "#6A3A34"), (3.6, 5.0, "#C8B8A0", "#3A5A5A"),
+                                               (-4.4, 8.0, "#BCAE98", "#6A3A34"), (4.9, 8.4, "#C8B8A0", "#5A4A6A")]):
+            TW.house(f"bh{i}", (x, y, 0), w=0.9, h=0.75, wall=wall, roof=roof, window="#FFC070")
+        # the three: Otto with his bead lit, Mosto with the fire, Moss after it
+        place(B.build_otto, (-1.25, 0.55, 0), turn=-18, mirror=True, glow=1.0, lid=0.5, look=(0.8, -0.2), slouch=0.7, droop=0.5, bags=True)
+        bead = bpy.data.objects.get("otto_bead")
+        if bead:
+            bpy.context.view_layer.update(); bp = bead.matrix_world.translation.copy()
+            B.sphere("bead_glow", bp, (0.075,) * 3, emit("beadGlow", "#FFD27A", 18))
+            light("POINT", bp + Vector((0.1, -0.15, 0)), 90, "#FFC46A", 0.08)
+        place(MO.build_mosto, (0.05, -0.1, 0), turn=-6, scale=1.08, moss_eye=dict(look=(0.2, 0.0), lid=0.45, pupil=0.5), otto_eye=dict(look=(0.2, 0.0), lid=0.5, pupil=0.5), evil=1.0, perk=1.0)
+        fire(Vector((0.72, -0.75, 0.38)), 1.0, energy=140, hot=0.7)
+        place(B.build_moss, (1.35, 0.2, 0), turn=-35, scale=0.82, look=(-0.95, 0.25), lid=0.0, er=0.13, pupil=0.5, perk=1.0)
+        # the town's last lanterns on the slope below, near the camera and soft (the chapter list sits over them)
+        lampm = emit("tl", "#FFD27A", 9); post = B.rubber("tpost", "#2A2A34")
+        for i, (x, y, hgt) in enumerate([(-2.1, -2.6, 0.5), (2.3, -2.9, 0.5), (-0.9, -4.4, 0.35), (1.3, -4.9, 0.35), (-2.6, -5.6, 0.3), (2.9, -6.0, 0.3)]):
+            bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.04, depth=hgt, location=(x, y, hgt / 2)); bpy.context.object.data.materials.append(post)
+            B.sphere(f"tl{i}", (x, y, hgt + 0.1), (0.1, 0.1, 0.12), lampm)
+            light("POINT", (x, y - 0.1, hgt + 0.1), 18, "#FFC46A", 0.1)
+        for i, (x, y) in enumerate([(-3.4, -2.2), (3.6, -2.6)]):
+            TW.house(f"fh{i}", (x, y, 0), w=0.8, h=0.62, wall="#9A8E80", roof="#3A2E3A", window="#FFB050")
+        light("AREA", (0.4, -3.4, 2.4), 150, "#E8D8FF", 2.0, rot=(math.radians(62), 0, math.radians(6)))
+        light("AREA", (-3, -3, 3.5), 90, "#8C9CE8", 3, rot=(math.radians(50), 0, math.radians(-35)))
+        light("AREA", (3, 2.5, 3), 180, "#C87AF0", 3, rot=(math.radians(-50), 0, math.radians(140)))
+        camera((0.0, -8.0, 2.5), (0.0, 0.0, 0.85), lens=36, fstop=3.2)
+        bpy.context.scene.camera.data.shift_y = -0.08
     elif n == "dawn":
         # the fire home again: the sun opens its eye on the horizon, Otto finally asleep, Moss beside him; Mosto is only a
         # crooked crown in Moss's shadow now
