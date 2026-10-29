@@ -52,13 +52,13 @@ def ground(color, size=200):
     g.data.materials.append(B.rubber("ground", color, rough=0.7))
     return g
 
-def place(build, at, turn=0.0, scale=1.0, **kw):
+def place(build, at, turn=0.0, scale=1.0, mirror=False, **kw):
     before = set(bpy.data.objects)
     build(**kw)
     bpy.ops.object.empty_add(location=(0, 0, 0)); pivot = bpy.context.object
     for o in set(bpy.data.objects) - before:
         if o is not pivot and o.parent is None and o.type != "CAMERA": o.parent = pivot
-    pivot.rotation_euler = (0, 0, math.radians(turn)); pivot.location = at; pivot.scale = (scale,) * 3
+    pivot.rotation_euler = (0, 0, math.radians(turn)); pivot.location = at; pivot.scale = (-scale if mirror else scale, scale, scale)
     return pivot
 
 def flame_mat(name, root, mid, tip, strength):
@@ -111,12 +111,13 @@ def tired_sun(at, r, awake=False, glow=1.0):
     if awake:
         B.eye("sun_eye", tuple(face + Vector((0, -0.02, 0.1 * r))), r * 0.2, (0, -0.1), scale=(1.1, 0.4, 0.9), lid=0.62, skin=body, pupil=0.55)
     else:
-        B.tube("sun_lid", [tuple(face + Vector((x * r * 0.22, -0.01, x * x * r * 0.06))) for x in (-1, -0.5, 0, 0.5, 1)], r * 0.018, ink)
-        for k in (-0.6, -0.2, 0.2, 0.6):
-            st = face + Vector((k * r * 0.22, -0.02, (k * k) * r * 0.06))
-            B.tube(f"lash{k}", [tuple(st), tuple(st + Vector((k * r * 0.04, -0.02, -r * 0.07)))], r * 0.01, ink)
-    for j, dz in enumerate((-0.12, -0.18)):
-        B.tube(f"bag{j}", [tuple(face + Vector((x * r * (0.18 - j * 0.03), -0.015, dz * r - abs(x) * 0 + (x * x) * r * 0.03))) for x in (-1, -0.5, 0, 0.5, 1)], r * 0.012, ink)
+        # asleep: one soft closed curve, three short lashes, one tired fold under it — read even when tiny
+        B.tube("sun_lid", [tuple(face + Vector((x * r * 0.24, -0.01, x * x * r * 0.07))) for x in (-1, -0.6, -0.2, 0.2, 0.6, 1)], r * 0.026, ink)
+        for k in (-0.55, 0.0, 0.55):
+            st = face + Vector((k * r * 0.24, -0.02, (k * k) * r * 0.07 - r * 0.01))
+            B.tube(f"lash{k}", [tuple(st), tuple(st + Vector((k * r * 0.05, -0.02, -r * 0.08)))], r * 0.016, ink)
+    bag = B.mat("sunBag", "#B85A20", rough=0.6)
+    B.tube("bag", [tuple(face + Vector((x * r * 0.13, -0.015, -0.13 * r + (x * x) * r * 0.035))) for x in (-1, -0.5, 0, 0.5, 1)], r * 0.013, bag)
     light("POINT", Vector(at) + Vector((0, -r * 1.3, r * 0.6)), 1400 * glow * (r / 3) ** 2, "#FF9A50", r * 0.4)
 
 def finish(path, w, h):
@@ -205,19 +206,32 @@ def main():
         embers((0.4, 3.2, 1.6), 18, 1.0)
         camera((-0.5, -4.0, 1.0), (0.4, 4, 1.8), lens=35)
     elif n == "icon":
-        # the app icon, a silent story: the tired sun asleep behind; Mosto in front hugging its fire, pleased with
-        # himself; Moss reaching for it; Otto leaning in over them, his bulb turned low
-        world("#0C1230", 0.45); ground("#3A2E3A")
-        tired_sun((0.0, 6.0, -0.2), 3.3, awake=False, glow=0.6)
-        place(B.build_otto, (-1.25, 0.9, 0), turn=30, glow=1.0, lid=0.6, look=(0.7, -0.5), slouch=0.9, droop=0.8, bags=True)
-        light("POINT", (-1.55, 0.35, 1.75), 60, "#FFC46A", 0.1)
-        light("AREA", (-3.5, -1.5, 2.5), 120, "#9AAAF0", 2, rot=(math.radians(60), 0, math.radians(-70)))
-        place(B.build_moss, (-0.35, 0.35, 0), turn=45, scale=0.9, look=(0.9, 0.1), lid=0.0, er=0.125, pupil=0.5, perk=1.0)
-        place(MO.build_mosto, (0.75, -0.15, 0), turn=-30, moss_eye=dict(look=(-0.4, -0.5), lid=0.45, pupil=0.5), otto_eye=dict(look=(-0.4, -0.5), lid=0.52, pupil=0.5), evil=0.9, perk=1.0)
-        fire((0.45, -0.68, 0.36), 1.35, energy=150)
-        light("AREA", (-3, -4, 5), 200, "#8C9CE8", 5, rot=(math.radians(45), 0, math.radians(-35)))
-        light("AREA", (3, 2, 3), 160, "#C87AF0", 3, rot=(math.radians(-50), 0, math.radians(140)))
-        camera((0.1, -4.9, 1.7), (0.0, 1.0, 0.95), lens=48, fstop=5.6)
+        # the app icon, a silent story in one frame. Mosto is the star: front and centre, whole face in view, holding
+        # up the fire he took, grinning. A trail of sparks leads back to the sun asleep behind him. Moss leans in from
+        # the left to take it back; Otto looms behind, bulb lit over Mosto's head.
+        world("#0A1030", 0.4); ground("#2E2438")
+        tired_sun((0.0, 5.2, 0.4), 2.8, awake=False, glow=0.5)
+        fire_at = Vector((0.82, -0.8, 0.5))
+        spark = emit("trail", "#FF9A30", 5)
+        for i in range(16):
+            t = i / 15
+            p = Vector((-0.3 * (1 - t) + fire_at.x * t, 4.2 * (1 - t) + fire_at.y * t, 3.1 * (1 - t) ** 1.6 + fire_at.z * t + 0.8 * math.sin(math.pi * t)))
+            B.sphere(f"tr{i}", p, (0.035 * (0.5 + t),) * 3, spark, seg=10)
+        place(B.build_otto, (-0.8, 1.3, 0), turn=-15, mirror=True, glow=1.0, lid=0.5, look=(0.7, -0.4), slouch=0.7, droop=0.5, bags=True)
+        bead = bpy.data.objects.get("otto_bead")
+        if bead:
+            bpy.context.view_layer.update(); bp = bead.matrix_world.translation.copy()
+            B.sphere("bead_glow", bp, (0.075,) * 3, emit("beadGlow", "#FFD27A", 18))
+            light("POINT", bp + Vector((0.1, -0.15, 0)), 90, "#FFC46A", 0.08)
+        light("AREA", (-3.2, -1.2, 2.6), 160, "#9AAAF0", 2, rot=(math.radians(60), 0, math.radians(-70)))
+        place(B.build_moss, (-1.15, -0.05, 0), turn=40, scale=0.82, look=(0.95, 0.3), lid=0.0, er=0.13, pupil=0.5, perk=1.0)
+        place(MO.build_mosto, (0.12, -0.25, 0), turn=-8, scale=1.18, moss_eye=dict(look=(0.25, 0.0), lid=0.45, pupil=0.5), otto_eye=dict(look=(0.25, 0.0), lid=0.5, pupil=0.5), evil=1.0, perk=1.0)
+        fire(fire_at, 1.15, energy=150)
+        # Mosto's own light: a soft key from the front so his face and crown read at any size
+        light("AREA", (0.6, -3.0, 2.0), 140, "#E8D8FF", 1.5, rot=(math.radians(62), 0, math.radians(8)))
+        light("AREA", (-2.5, -4, 4), 150, "#8C9CE8", 4, rot=(math.radians(48), 0, math.radians(-32)))
+        light("AREA", (3, 2.2, 3), 200, "#C87AF0", 3, rot=(math.radians(-50), 0, math.radians(140)))
+        camera((0.05, -4.5, 1.5), (0.0, 1.0, 1.05), lens=50, fstop=6.3)
     elif n == "dawn":
         world("#3A4A7A", 0.8); ground("#7A6A58")
         tired_sun((0, 16, -2.0), 6.0, awake=True, glow=1.6)
