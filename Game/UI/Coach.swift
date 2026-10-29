@@ -96,7 +96,7 @@ struct CoachLine: View {
 /// A gold ring breathing round the button the coach means.
 struct CoachRing: ViewModifier {
     let on: Bool
-    func body(content: Content) -> some View {
+    func body(content: Self.Content) -> some View {
         content.overlay {
             if on {
                 TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
