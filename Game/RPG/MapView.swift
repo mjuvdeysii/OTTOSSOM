@@ -248,8 +248,14 @@ struct MapCanvas: View {
     @MainActor static func camera(w: World, size: CGSize) -> Cam {
         let T = floor(min(64, max(40, size.width / 8.4)))
         let K = Art.k
-        let cx = (w.pos.x + 0.5) * T, cy = (w.pos.y + 0.5) * T * K
-        return Cam(x: size.width / 2 - cx, y: size.height * 0.52 - cy, T: T)
+        var cx = (w.pos.x + 0.5) * T, cy = (w.pos.y + 0.5) * T * K
+        // keep the camera over the map (the rendered ground runs a few cells past its edges, no further)
+        let mw = CGFloat(w.map.w) * T, mh = CGFloat(w.map.h) * T * K
+        let mx = 1.8 * T, my = 3.5 * T * K
+        let fx = size.width / 2, fy = size.height * 0.52
+        if mw + 2 * mx <= size.width { cx = mw / 2 } else { cx = min(max(cx, fx - mx), mw - (size.width - fx) + mx) }
+        if mh + 2 * my <= size.height { cy = mh / 2 + (fy - size.height / 2) } else { cy = min(max(cy, fy - my), mh - (size.height - fy) + my) }
+        return Cam(x: fx - cx, y: fy - cy, T: T)
     }
 
     var body: some View {
