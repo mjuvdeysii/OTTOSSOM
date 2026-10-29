@@ -60,7 +60,7 @@ enum ChapterOne {
         case "wake": return "灯快灭了就点一下奥托，叫醒他"
         case "fang": return "尖影闪「！」后会直冲奥托：在它冲刺的路上横一根光丝"
         case "thief": return "莫斯托偷了光要逃：把他圈住，光就回来"
-        case "boss": return "灯吞吃了光屑，肚子会发亮：那时套住它，伤害翻倍"
+        case "boss": return "灯吞吃了光屑，肚子会发亮：那时套住它，伤害是平时的三倍"
         default: return ""
         }
     }

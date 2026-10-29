@@ -110,6 +110,7 @@ struct PixelGameView: View {
             }
             .ignoresSafeArea()
         }
+        .ignoresSafeArea()
         .statusBarHidden()
         .onAppear { if probe == nil { Sound.shared.music(0) } }
     }

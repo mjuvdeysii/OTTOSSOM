@@ -82,7 +82,8 @@ struct Thief {
 
 struct Maw {
     var p: V2
-    var hp = 6
+    static let maxHP = 10
+    var hp = Maw.maxHP
     var belly = 0          // motes swallowed: its belly glows from 2
     var spit = 4.0
     var drift = 0.0
@@ -143,7 +144,7 @@ struct NightSim {
     var wakeTime = 12.0
 
     var threadLen: Double { 30 + light * 0.55 }
-    var hud: (light: Double, dawn: Double) { (light / lightMax, spec.dawn > 0 ? min(1, t / spec.dawn) : maw.map { 1 - Double($0.hp) / 6 } ?? 0) }
+    var hud: (light: Double, dawn: Double) { (light / lightMax, spec.dawn > 0 ? min(1, t / spec.dawn) : maw.map { 1 - Double($0.hp) / Double(Maw.maxHP) } ?? 0) }
 
     init(spec: NightSpec, w: Double, h: Double, seed: UInt64, upgrades: [String: Int] = [:]) {
         self.spec = spec; W = w; H = h
@@ -295,7 +296,7 @@ struct NightSim {
             events.append(.caught); caught += 3; shake = 1
         }
         if var m = maw, Geo.inside(m.p, poly) {
-            m.hp -= m.belly >= 2 ? 2 : 1
+            m.hp -= m.belly >= 2 ? 3 : 1
             m.belly = 0; m.hurt = 0.5
             maw = m
             events.append(m.hp <= 0 ? .mawDown : .mawHit); caught += 2; shake = 1
@@ -431,7 +432,7 @@ struct NightSim {
         m.spit -= dt
         if m.spit <= 0 {
             m.spit = 5.5
-            for k in 0..<3 { foes.append(makeFoe(k == 2 && m.hp < 4 ? .fang : .shade, at: m.p + V2(Double(k - 1) * 12, 14))) }
+            for k in 0..<3 { foes.append(makeFoe(k == 2 && m.hp < 5 ? .fang : .shade, at: m.p + V2(Double(k - 1) * 12, 14))) }
         }
         // it swallows the motes near it: the belly glows
         for mo in motes where mo.p.dist(m.p) < 34 {
