@@ -444,3 +444,33 @@ if __name__ == "__main__":
         sheet = sheet.resize((sheet.width * 2, sheet.height * 2), Image.NEAREST)
         sheet.save(out)
     print(len(pics), "scenes")
+
+def icon():
+    """The app icon: 64 × 64 pixels shown 16× — the three of them on the lighthouse gallery at night, the thread of
+    light between Otto and Moss, Mosto above with the stolen fire, and the far small sun on the sea."""
+    p = Pic(64, 64)
+    p.grad(0, 0, 64, 40, [SKY[0], SKY[1], SKY[2], SKY[3], hx("#2c3060")])
+    stars(p, 0, 30, 22, 40, bright=0.3)
+    for i in range(64):
+        hh = 3 + 2 * math.sin(i * 0.2)
+        p.rect(i, 40 - hh, 1, hh, hx("#232a50"))
+    p.rect(0, 39, 64, 1, hx("#3a4478"))
+    sea(p, 40, 50, 41, glint_x=53)
+    # the far sun, low and small
+    for j in range(-3, 1):
+        for i in range(-4, 5):
+            if i * i + j * j * 1.4 <= 16: p.put(53 + i, 40 + j, GOLD[2] if i * i + j * j < 6 else GOLD[1])
+    for a in (-50, 0, 50):
+        r = math.radians(a - 90)
+        for k in (6, 7): p.put(53 + math.cos(r) * k, 40 + math.sin(r) * k + (k - 6), GOLD[1])
+    p.rect(0, 50, 64, 14, STONE[2]); p.rect(0, 50, 64, 1, STONE[4]); p.rect(0, 51, 64, 1, STONE[0])
+    for x in range(0, 64, 7): p.rect(x, 52, 1, 12, STONE[1])
+    # glow round Otto's bead on the ground and air
+    p.sprite("mosto_carry_0", 40, 27, flip=True)
+    p.sprite("moss_idle_0", 13, 62)
+    p.sprite("otto_idle_0", 41, 61)
+    p.line(35, 37, 18, 47, GOLD[3])
+    for (x, y) in ((34, 36), (36, 36), (35, 35), (35, 38)): p.put(x, y, GOLD[4])
+    big = p.im.resize((1024, 1024), Image.NEAREST)
+    big.save(os.path.join(ROOT, "Game", "Resources", "Assets.xcassets", "AppIcon.appiconset", "icon.png"))
+    return p
