@@ -90,13 +90,11 @@ final class World: ObservableObject {
     static var hasSave: Bool { UserDefaults.standard.data(forKey: saveKey) != nil }
 
     init(fresh: Bool) {
-        if !fresh, let d = UserDefaults.standard.data(forKey: World.saveKey), let sv = try? JSONDecoder().decode(SaveData.self, from: d) {
-            s = sv
-        } else {
-            s = SaveData()
-        }
-        pos = CGPoint(x: s.x, y: s.y)
-        trail = [Pt(s.x, s.y)]
+        var start = SaveData()
+        if !fresh, let d = UserDefaults.standard.data(forKey: World.saveKey), let sv = try? JSONDecoder().decode(SaveData.self, from: d) { start = sv }
+        s = start
+        pos = CGPoint(x: start.x, y: start.y)
+        trail = [Pt(start.x, start.y)]
         placeFoes()
         reveal()
     }
