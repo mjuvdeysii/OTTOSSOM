@@ -34,6 +34,10 @@ struct GoalBar: View {
             out.append(Item(id: "key", icon: r.spec.goal == "none" ? "hand.point.up.left.fill" : "key.fill", text: nil, done: r.keyGiven,
                             label: r.spec.goal == "none" ? "摸石碑" : "把钥匙交给汉克"))
         }
+        if !r.plates.isEmpty && r.goal != "trap" {
+            let down = r.platesDown(s)
+            out.append(Item(id: "door", icon: down ? "square.fill" : "square.dashed", text: nil, done: down, label: down ? "压板压住了，门开着" : "压板空着，门关着"))
+        }
         if r.goal != "trap" {
             let open = r.exitOpen(s)
             out.append(Item(id: "exit", icon: open ? "door.left.hand.open" : "door.left.hand.closed", text: nil, done: open,

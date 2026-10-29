@@ -15,12 +15,12 @@ enum Snapshots {
     static func run(_ router: Router) async {
         Sound.shared.enabled = false
         router.screen = .title; await wait(4.5); say("00_title"); await wait(2.0)
-        router.screen = .rules; await wait(3.0); say("00_rules"); await wait(3.0)
+        router.screen = .rules; await wait(3.0); say("00_rules"); await wait(5.0)
         for ch in Content.chapters {
             for (i, st) in ch.steps.enumerated() {
                 guard let room = st.room, st.cut == nil else { continue }
                 router.screen = .snap(ch.id, room); await wait(3.6)
-                say(String(format: "%d_%02d_%@", ch.id, i, room)); await wait(2.6)
+                say(String(format: "%d_%02d_%@", ch.id, i, room)); await wait(4.5)
             }
         }
         // the story scenes, caught mid-acting (Dora's lantern lit, so its whole arc plays)
