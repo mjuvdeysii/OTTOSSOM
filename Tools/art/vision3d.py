@@ -217,7 +217,7 @@ def main():
             t = i / 15
             p = Vector((-0.3 * (1 - t) + fire_at.x * t, 4.2 * (1 - t) + fire_at.y * t, 3.1 * (1 - t) ** 1.6 + fire_at.z * t + 0.8 * math.sin(math.pi * t)))
             B.sphere(f"tr{i}", p, (0.035 * (0.5 + t),) * 3, spark, seg=10)
-        place(B.build_otto, (-0.8, 1.3, 0), turn=-15, mirror=True, glow=1.0, lid=0.5, look=(0.7, -0.4), slouch=0.7, droop=0.5, bags=True)
+        place(B.build_otto, (-0.8, 1.3, 0), turn=-15, mirror=True, glow=1.0, lid=0.5, look=(-0.7, -0.45), slouch=0.7, droop=0.5, bags=True)
         bead = bpy.data.objects.get("otto_bead")
         if bead:
             bpy.context.view_layer.update(); bp = bead.matrix_world.translation.copy()
