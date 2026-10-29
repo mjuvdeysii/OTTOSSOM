@@ -139,72 +139,94 @@ def main():
     s.cycles.max_bounces = 4
     B.materials(); MO.mosto_materials()
     n = NAME
+    if n in MEMORY: s.view_settings.exposure = 0.9   # memories are remembered bright, then toned sepia
+    def key(target, warm=False, strength=1.0):
+        """Studio light for a story picture: a soft key from the front, a cool fill, a rim from behind — the figures
+        always read, whatever the mood of the scene."""
+        t = Vector(target)
+        light("AREA", t + Vector((1.2, -3.0, 2.2)), 160 * strength, "#FFE2C0" if warm else "#E6E2FF", 2.0, rot=(math.radians(58), 0, math.radians(20)))
+        light("AREA", t + Vector((-3.0, -2.0, 1.5)), 70 * strength, "#8C9CE8", 3.0, rot=(math.radians(65), 0, math.radians(-55)))
+        light("AREA", t + Vector((1.5, 3.0, 2.5)), 140 * strength, "#C87AF0", 2.0, rot=(math.radians(-50), 0, math.radians(150)))
     if n == "prologue":
-        # the sun's nest, the last of the night before dawn: the sun asleep, its fire on the rim; Mosto reaching for it
-        world("#140E24", 0.5); ground("#5A3A2A")
-        tired_sun((0, 7, -1.2), 4.0, glow=0.7)
-        fire((0.2, 3.1, 0.75), 1.6)
-        place(MO.build_mosto, (-0.35, 2.4, 0.0), turn=-35, scale=1.15, moss_eye=dict(look=(0.8, 0.5), lid=0.3), otto_eye=dict(look=(0.8, 0.5), lid=0.38), evil=0.9, perk=1.0)
-        light("AREA", (-4, -4, 6), 300, "#8A9AE8", 6, rot=(math.radians(45), 0, math.radians(-40)))
-        camera((1.2, -3.8, 1.6), (0, 3.0, 1.4), lens=40, fstop=2.8)
+        # the last of the night: the sun asleep, its fire resting in a little nest on its brow; Mosto tiptoeing in
+        world("#0A0E26", 0.4); ground("#3A2C34")
+        tired_sun((0, 4.5, -0.4), 3.0, awake=False, glow=0.55)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.5, minor_radius=0.14, location=(0.0, 4.3, 2.62)); t = bpy.context.object; t.scale = (1, 1, 0.6)
+        t.data.materials.append(B.rubber("nest", "#7A5A3A"))
+        fire((0.0, 4.3, 2.75), 2.2, energy=200)
+        star = emit("star", "#E6ECFF", 4)
+        for i in range(90):
+            B.sphere(f"st{i}", (rnd.uniform(-9, 9), 14, rnd.uniform(3.5, 16)), (0.03 + rnd.random() * 0.04,) * 3, star, seg=8)
+        place(MO.build_mosto, (0.75, -0.4, 0), turn=-35, scale=1.2, moss_eye=dict(look=(-0.4, 0.9), lid=0.3), otto_eye=dict(look=(-0.4, 0.9), lid=0.38), evil=1.0, perk=1.0)
+        key((0.75, -0.4, 0.6), strength=0.9)
+        camera((0.3, -5.2, 1.2), (0.2, 1.5, 2.6), lens=30, fstop=8)
     elif n == "thief":
-        world("#1A1410", 0.4); ground("#6A5A48")
-        place(MO.build_mosto, (0, 0, 0.25), turn=70, scale=1.0, moss_eye=dict(look=(-0.9, 0.1), lid=0.2), otto_eye=dict(look=(-0.9, 0.1), lid=0.3), evil=0.8, perk=1.0)
-        fire((-0.5, -0.1, 0.75), 1.3)
-        embers((1.2, 0, 0.5), 22, 1.4)
-        light("AREA", (-3, -4, 4), 260, "#E8D8C0", 5, rot=(math.radians(50), 0, math.radians(-35)))
-        camera((0.4, -4.2, 1.2), (0.1, 0, 0.7), lens=55, fstop=3.2)
+        # a memory in a stone: Mosto running off with the light, sparks streaming behind
+        world("#1A1410", 0.5); ground("#6A5A48")
+        place(MO.build_mosto, (0, 0, 0.0), turn=-40, scale=1.2, moss_eye=dict(look=(0.9, 0.2), lid=0.25), otto_eye=dict(look=(0.9, 0.2), lid=0.32), evil=1.0, perk=1.0, lean=-8)
+        fire((0.7, -0.25, 0.75), 1.2)
+        for i in range(18):
+            k = i / 17
+            B.sphere(f"tr{i}", (-0.6 - k * 2.4, 0.2 + k * 0.6, 0.6 + 0.6 * math.sin(k * 3)), (0.04 * (1 - k * 0.7),) * 3, emit("tr", "#FF9A30", 5), seg=8)
+        key((0, 0, 0.6))
+        camera((0.2, -4.4, 1.0), (-0.4, 0, 0.9), lens=35)
     elif n == "sun":
+        # a memory: the sun awake and working, never once closing its eye — look at the bags under it
         world("#2A1A10", 0.6); ground("#8A6A48")
-        tired_sun((0, 4, -0.5), 2.6, awake=True, glow=1.2)
-        for i in range(6):
-            bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.25, depth=0.8, location=(-3 + i * 1.2, -0.5 + (i % 2) * 0.4, 0.4))
-            bpy.context.object.data.materials.append(B.rubber("roof", "#8A4A3A"))
-        camera((0, -6, 1.2), (0, 3, 2.0), lens=40)
+        tired_sun((0, 3.0, 0.2), 2.4, awake=True, glow=1.0)
+        roofm = B.rubber("roof", "#8A4A3A"); wallm = B.rubber("hw", "#D8CCB4")
+        for i in range(5):
+            x = -1.6 + i * 0.8
+            bpy.ops.mesh.primitive_cube_add(location=(x, -0.6, 0.18)); o = bpy.context.object; o.scale = (0.18, 0.18, 0.18); o.data.materials.append(wallm)
+            bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.28, depth=0.25, location=(x, -0.6, 0.48), rotation=(0, 0, math.radians(45))); bpy.context.object.data.materials.append(roofm)
+        key((0, 2.0, 2.0), warm=True)
+        camera((0, -5.5, 1.2), (0, 2.0, 2.0), lens=30)
     elif n == "town":
+        # a memory: Otto lighting the town's lamps one by one, night after night
         world("#2A1E14", 0.5); ground("#7A6A58")
-        lamp = B.mat("lampLit", "#FFD27A", emit="#FFD27A", emit_strength=10)
-        wallm = B.rubber("hw", "#D8CCB4"); roofm = B.rubber("roof", "#8A3A3A")
-        for i in range(7):
-            x = -4 + i * 1.4; y = 1.5 + (i % 3) * 0.8
-            bpy.ops.mesh.primitive_cube_add(location=(x, y, 0.5)); o = bpy.context.object; o.scale = (0.5, 0.5, 0.5); o.data.materials.append(wallm)
-            bpy.ops.mesh.primitive_cylinder_add(vertices=3, radius=0.6, depth=1.05, location=(x, y, 1.25), rotation=(0, math.radians(90), 0))
-            bpy.context.object.scale = (1, 1, 0.7); bpy.context.object.data.materials.append(roofm)
-            B.sphere(f"lamp{i}", (x + 0.7, y - 0.6, 1.2), (0.12, 0.12, 0.15), lamp)
-            light("POINT", (x + 0.7, y - 0.7, 1.2), 30, "#FFC46A", 0.1)
-        tired_sun((0, 14, 0.5), 4.0, awake=True, glow=0.9)
-        place(B.build_otto, (0.3, 0, 0), turn=-10, glow=1.0, lid=0.5, look=(0, 0.3), slouch=0.8, droop=0.6, bags=True)
-        camera((0.5, -5.5, 1.4), (0, 2, 1.6), lens=40, fstop=4)
+        lamp = emit("lampLit", "#FFD27A", 8); post = B.rubber("post", "#3A3A44")
+        for i, (x, y) in enumerate([(-1.4, 1.4), (0.2, 2.4), (1.5, 1.2), (-0.4, 3.6)]):
+            bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.04, depth=1.3, location=(x, y, 0.65)); bpy.context.object.data.materials.append(post)
+            B.sphere(f"lamp{i}", (x, y, 1.35), (0.13, 0.13, 0.16), lamp)
+            light("POINT", (x, y - 0.1, 1.35), 40, "#FFC46A", 0.1)
+        place(B.build_otto, (0.3, 0.3, 0), turn=-20, glow=1.0, lid=0.55, look=(-0.6, 0.3), slouch=0.9, droop=0.7, bags=True)
+        key((0.3, 0.3, 0.8), warm=True, strength=2.0)
+        camera((0.2, -4.6, 1.3), (0.1, 1.2, 1.1), lens=32, fstop=5)
     elif n == "lamp":
+        # a memory of the main lamp: one night Mosto came and lifted its light away, while Otto, worn out, slept beside it
         world("#16121E", 0.4); ground("#5A5048")
-        lampm = B.mat("main", "#FFE0A0", emit="#FFD27A", emit_strength=14)
-        bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=0.12, depth=2.4, location=(0.6, 0.6, 1.2)); bpy.context.object.data.materials.append(B.rubber("post", "#3A3A44"))
-        B.sphere("mainlamp", (0.6, 0.6, 2.6), (0.42, 0.42, 0.5), lampm)
-        light("POINT", (0.6, 0.3, 2.6), 300, "#FFC46A", 0.3)
-        tired_sun((-3, 12, 1.5), 3.0, awake=False, glow=0.5)
-        place(B.build_otto, (-0.5, 0.1, 0), turn=25, glow=1.0, lid=0.62, look=(0.6, 0.6), slouch=1.0, droop=0.8, bags=True)
-        camera((-0.6, -4.2, 1.3), (0.1, 0.5, 1.4), lens=45, fstop=3)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.1, depth=2.2, location=(0.0, 0.8, 1.1)); bpy.context.object.data.materials.append(B.rubber("post", "#3A3A44"))
+        B.sphere("mainlamp", (0.0, 0.8, 2.35), (0.36, 0.36, 0.42), B.mat("glass", "#2A2A30", rough=0.2, coat=0.6))
+        place(MO.build_mosto, (0.55, 0.45, 1.75), turn=-20, scale=0.8, moss_eye=dict(look=(-0.6, 0.4), lid=0.3), otto_eye=dict(look=(-0.6, 0.4), lid=0.36), evil=1.0, perk=1.0)
+        fire((0.35, 0.2, 2.35), 0.9)
+        place(B.build_otto, (-0.9, 0.1, 0), turn=20, glow=0.0, shut="down", slouch=1.2, droop=1.0, bags=True)
+        key((0, 0.5, 1.3), strength=1.8)
+        camera((0.0, -4.6, 1.4), (-0.1, 0.5, 1.4), lens=32)
     elif n == "shadow":
-        # by Otto's bulb, Moss's shadow falls long across the ground — and on its head, a crooked crown
-        world("#0E1020", 0.3); ground("#4A4A58")
-        place(B.build_moss, (0, 0, 0), turn=-15, look=(0.3, -0.2), lid=0.1, er=0.12, pupil=0.6, perk=0.8)
-        place(B.build_otto, (-1.9, -1.4, 0), turn=-40, glow=1.0, lid=0.5, look=(0.7, -0.2), slouch=0.8, droop=0.6, bags=True)
-        light("SPOT", (-1.4, -1.2, 1.0), 900, "#FFC46A", 0.05, rot=(math.radians(78), 0, math.radians(-128)))
-        # the crown, standing just behind Moss so its shadow lands on the head of Moss's shadow
+        # by Otto's bulb, Moss's shadow falls long on the wall behind him — and on its head, a crooked crown
+        world("#0E1020", 0.25); ground("#4A4A58")
+        bpy.ops.mesh.primitive_plane_add(size=8, location=(0, 1.6, 2.0), rotation=(math.radians(90), 0, 0)); bpy.context.object.data.materials.append(B.rubber("wall", "#6A6478"))
+        place(B.build_moss, (0, 0, 0), turn=10, look=(0.4, 0.6), lid=0.0, er=0.13, pupil=0.5, perk=0.9)
+        sp = light("SPOT", (-0.3, -2.2, 0.75), 2200, "#FFC46A", 0.03, rot=(math.radians(90), 0, 0)); sp.data.spot_size = math.radians(70)
         crown = B.mat("crownSh", "#000000")
         pts = [(-0.12, 0), (-0.12, 0.11), (-0.06, 0.05), (0, 0.13), (0.06, 0.05), (0.12, 0.11), (0.12, 0)]
         me = bpy.data.meshes.new("cr"); me.from_pydata([(x, 0, z) for x, z in pts], [], [tuple(range(len(pts)))])
         cr = bpy.data.objects.new("crown_caster", me); bpy.context.collection.objects.link(cr)
-        cr.location = (0.1, 0.25, 1.0); cr.rotation_euler = (0, math.radians(18), math.radians(-40)); cr.scale = (2.4, 2.4, 2.4)
+        cr.location = (0.0, 0.25, 1.05); cr.rotation_euler = (0, math.radians(16), 0); cr.scale = (1.3, 1.3, 1.3)
         cr.visible_camera = False; cr.data.materials.append(crown)
-        camera((0.9, -3.0, 2.3), (0.9, 1.4, 0.0), lens=35)
+        light("AREA", (1.5, -3, 2), 60, "#8C9CE8", 2, rot=(math.radians(55), 0, math.radians(25)))
+        camera((1.0, -4.2, 1.0), (0.2, 1.0, 1.4), lens=30)
     elif n == "dark":
+        # the world without its fire: the sun dark, and far off Mosto flying away with the light
         world("#05060C", 0.15); ground("#2A2A34")
-        tired_sun((0, 9, -2.5), 4.5, awake=False, glow=0.0)
-        place(MO.build_mosto, (1.6, 3.0, 2.2), turn=-60, scale=0.6, moss_eye=dict(look=(0.9, 0.3), lid=0.3), otto_eye=dict(look=(0.9, 0.3), lid=0.4), evil=1.0)
-        fire((1.35, 2.8, 2.6), 0.8, energy=60)
-        embers((0.4, 3.2, 1.6), 18, 1.0)
-        camera((-0.5, -4.0, 1.0), (0.4, 4, 1.8), lens=35)
+        tired_sun((0, 5.0, -0.8), 3.4, awake=False, glow=0.0)
+        place(MO.build_mosto, (0.9, 1.0, 2.6), turn=-60, scale=0.7, moss_eye=dict(look=(0.9, 0.3), lid=0.3), otto_eye=dict(look=(0.9, 0.3), lid=0.4), evil=1.0)
+        fire((1.15, 0.85, 3.0), 0.8, energy=80)
+        for i in range(14):
+            k = i / 13
+            B.sphere(f"tr{i}", (0.6 - k * 1.8, 1.2 + k * 0.8, 2.7 - k * 1.2), (0.03 * (1 - k * 0.6),) * 3, emit("tr", "#FF9A30", 5), seg=8)
+        key((0.9, 1.0, 2.8), strength=0.6)
+        camera((0.0, -5.0, 1.2), (0.3, 2.0, 2.4), lens=30)
     elif n == "icon":
         # the app icon, a silent story in one frame. Mosto is the star: front and centre, whole face in view, holding
         # up the fire he took, grinning. A trail of sparks leads back to the sun asleep behind him. Moss leans in from
@@ -233,12 +255,14 @@ def main():
         light("AREA", (3, 2.2, 3), 200, "#C87AF0", 3, rot=(math.radians(-50), 0, math.radians(140)))
         camera((0.05, -4.5, 1.5), (0.0, 1.0, 1.05), lens=50, fstop=6.3)
     elif n == "dawn":
-        world("#3A4A7A", 0.8); ground("#7A6A58")
-        tired_sun((0, 16, -2.0), 6.0, awake=True, glow=1.6)
-        place(B.build_otto, (-0.7, 0, 0), turn=10, glow=0.0, shut="down", slouch=1.2, droop=1.0, bags=True)
-        place(B.build_moss, (0.6, -0.2, 0), turn=-20, look=(-0.4, 0.4), lid=0.0, er=0.12, pupil=0.5, perk=1.0)
-        light("SUN", (0, 0, 10), 3.5, "#FFC890", rot=(math.radians(80), 0, math.radians(180)))
-        camera((0.4, -4.6, 1.0), (0, 3, 1.3), lens=40, fstop=4)
+        # the fire home again: the sun opens its eye on the horizon, Otto finally asleep, Moss beside him; Mosto is only a
+        # crooked crown in Moss's shadow now
+        world("#3A4A7A", 0.7); ground("#7A6A58")
+        tired_sun((0, 7, 0.4), 4.0, awake=True, glow=1.5)
+        place(B.build_otto, (-0.6, 0.2, 0), turn=15, glow=0.0, shut="down", slouch=1.2, droop=1.0, bags=True)
+        place(B.build_moss, (0.55, -0.2, 0), turn=-15, look=(-0.3, 0.5), lid=0.0, er=0.13, pupil=0.48, perk=1.0)
+        key((0, 0, 0.7), warm=True)
+        camera((0.2, -4.8, 1.0), (0.0, 1.5, 1.4), lens=30, fstop=5)
     finish(OUT, w, h)
 
 main()
