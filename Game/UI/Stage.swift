@@ -87,6 +87,8 @@ struct Stage {
         background(&ctx)
         plates(&ctx)
         guides(&ctx)
+        affordances(&ctx)
+        forecast(&ctx)
         var items: [(Double, (inout GraphicsContext) -> Void)] = []
         for (i, p) in r.lampPos.enumerated() where !r.nest[i] {
             items.append((Double(p.y), { c in self.lamp(&c, i) }))
@@ -162,6 +164,75 @@ struct Stage {
         flights(&ctx)
         hintMarks(&ctx)
         bubbles(&ctx)
+    }
+
+    // MARK: reading the room
+
+    /// What happens next if nothing else changes: a pale arrow under each shadow that will drift, a red ring on a lamp
+    /// two shadows are about to crowd out, and Mosto's next step in violet with the lamp he is about to rob.
+    func forecast(_ ctx: inout GraphicsContext) {
+        let r = f.room
+        guard !f.hideHeroes, f.e >= 0.999, !r.heroes.isEmpty, f.state.c.count == r.heroes.count else { return }
+        var s = f.state, ev: [Event] = []
+        r.drift(&s, &ev)
+        let pulse = 0.55 + 0.45 * sin(f.t * 5)
+        for i in s.shadows.indices where i < f.state.shadows.count && s.shadows[i] != f.state.shadows[i] {
+            arrow(&ctx, f.state.shadows[i], s.shadows[i], Color(0xcfd6ff, 0.75))
+        }
+        for i in r.lampPos.indices where f.state.lit[i] && !s.lit[i] { ring(&ctx, r.lampPos[i], Color(0xe8503a, pulse), 0.46) }
+        guard let a = f.state.thief, !r.trapped(f.state) else { return }
+        var s2 = s
+        r.thiefMove(&s2, &ev)
+        let violet = Color(0xb07af0)
+        if let b = s2.thief, b != a { arrow(&ctx, a, b, violet.opacity(0.95)) }
+        // the lamp he's after: robbed next step (ring pulses), or the nearest lit one he's heading for (faint)
+        if let i = r.lampPos.indices.first(where: { s.lit[$0] && !s2.lit[$0] }) {
+            ring(&ctx, r.lampPos[i], violet.opacity(pulse), 0.48)
+        } else if let i = r.lampPos.indices.filter({ s.lit[$0] && !r.nest[$0] }).min(by: { r.lampPos[$0].dist(a) < r.lampPos[$1].dist(a) }) {
+            ring(&ctx, r.lampPos[i], violet.opacity(0.35), 0.48)
+        }
+    }
+
+    func arrow(_ ctx: inout GraphicsContext, _ a: Pt, _ b: Pt, _ col: Color) {
+        let p = ground(CGPoint(x: a.x, y: a.y)), q = ground(CGPoint(x: b.x, y: b.y))
+        let dx = q.x - p.x, dy = q.y - p.y, len = max(1, hypot(dx, dy))
+        let ux = dx / len, uy = dy / len
+        let tip = CGPoint(x: p.x + dx * 0.78, y: p.y + dy * 0.78)
+        let base = CGPoint(x: p.x + dx * 0.36, y: p.y + dy * 0.36)
+        var line = Path(); line.move(to: base); line.addLine(to: tip)
+        ctx.stroke(line, with: .color(col), style: StrokeStyle(lineWidth: max(2, T * 0.06), lineCap: .round))
+        let w = T * 0.13
+        var head = Path()
+        head.move(to: CGPoint(x: tip.x - ux * w * 1.4 - uy * w, y: tip.y - uy * w * 1.4 + ux * w))
+        head.addLine(to: tip)
+        head.addLine(to: CGPoint(x: tip.x - ux * w * 1.4 + uy * w, y: tip.y - uy * w * 1.4 - ux * w))
+        ctx.stroke(head, with: .color(col), style: StrokeStyle(lineWidth: max(2, T * 0.06), lineCap: .round, lineJoin: .round))
+    }
+
+    func ring(_ ctx: inout GraphicsContext, _ p: Pt, _ col: Color, _ r: CGFloat) {
+        let c = ground(CGPoint(x: p.x, y: p.y))
+        ctx.stroke(Path(ellipseIn: CGRect(x: c.x - T * r, y: c.y - T * r * K, width: T * r * 2, height: T * r * 2 * K)), with: .color(col), lineWidth: 2.5)
+    }
+
+    /// What the one you're playing can use from where they stand: a gold ring under it, or red where it won't work
+    /// (a dark lamp with a shadow beside it).
+    func affordances(_ ctx: inout GraphicsContext) {
+        let r = f.room
+        guard !f.hideHeroes, f.active >= 0, f.active < f.state.c.count, f.active < r.heroes.count else { return }
+        let me = f.state.c[f.active], who = r.heroes[f.active], st = f.state
+        let pulse = 0.5 + 0.5 * sin(f.t * 4)
+        for (i, lp) in r.lampPos.enumerated() where lp.dist(me) == 1 {
+            let crowded = st.shadows.contains { $0.dist(lp) == 1 }
+            var use: Bool? = nil
+            switch who {
+            case .otto: if !st.lit[i] && !r.nest[i] { use = !crowded }
+            case .mosto: if st.carry && !st.lit[i] { use = !crowded } else if !st.carry && st.lit[i] { use = true }
+            case .moss: break
+            }
+            if let ok = use { ring(&ctx, lp, ok ? Color(0xf2c062, 0.5 + 0.45 * pulse) : Color(0xe8503a, 0.8), 0.44) }
+        }
+        if who == .moss { for t in r.tablets where t.dist(me) == 1 { ring(&ctx, t, Color(0xf2c062, 0.5 + 0.45 * pulse), 0.44) } }
+        for (p, _) in r.npcs where p.dist(me) == 1 { ring(&ctx, p, Color(0xf2c062, 0.35 + 0.3 * pulse), 0.4) }
     }
 
     // MARK: feelings

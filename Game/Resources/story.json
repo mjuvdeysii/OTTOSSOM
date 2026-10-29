@@ -1277,5 +1277,280 @@
    "card": "灯台索魔",
    "sub": "✓"
   }
+ ],
+ "teach:top": [
+  {
+   "icon": "hand.tap.fill",
+   "text": "点一下地面，奥托就走过去",
+   "until": "moved",
+   "cell": [
+    4,
+    3
+   ]
+  },
+  {
+   "icon": "door.left.hand.open",
+   "text": "发光的地方是出口，走过去",
+   "until": "won",
+   "cell": [
+    3,
+    1
+   ]
+  }
+ ],
+ "teach:street": [
+  {
+   "icon": "lamp.floor",
+   "text": "街灯是暗的。先走到灯旁边",
+   "until": "near:3,6",
+   "cell": [
+    3,
+    7
+   ]
+  },
+  {
+   "icon": "lamp.floor.fill",
+   "text": "点亮着的「点灯」按钮",
+   "until": "lit:1",
+   "button": "act"
+  },
+  {
+   "icon": "lamp.floor.fill",
+   "text": "三盏灯都点亮，出口才会开",
+   "until": "litAll"
+  },
+  {
+   "icon": "door.left.hand.open",
+   "text": "出口开了，走过去",
+   "until": "won",
+   "cell": [
+    4,
+    1
+   ]
+  }
+ ],
+ "teach:alley": [
+  {
+   "icon": "smoke.fill",
+   "text": "窄巷被影子堵住了。先走近一点",
+   "until": "at:4,5",
+   "cell": [
+    4,
+    5
+   ]
+  },
+  {
+   "icon": "lightbulb.max.fill",
+   "text": "打开头上的灯珠。影子怕冷，会朝光挪",
+   "until": "bulb",
+   "button": "bulb"
+  },
+  {
+   "icon": "smoke.fill",
+   "text": "每走一步，影子朝灯珠挪一格。把它引出窄巷，再绕过去",
+   "until": "won",
+   "cell": [
+    3,
+    1
+   ]
+  }
+ ],
+ "teach:dock": [
+  {
+   "icon": "exclamationmark.triangle.fill",
+   "text": "灯边挨着影子就点不着；挤着两个影子，亮灯也会暗",
+   "until": "moved",
+   "cell": [
+    4,
+    3
+   ]
+  },
+  {
+   "icon": "lightbulb.max.fill",
+   "text": "用灯珠把影子引开，再关掉灯珠去点灯",
+   "until": "lit:1"
+  },
+  {
+   "icon": "door.left.hand.open",
+   "text": "出口开了，走过去",
+   "until": "won",
+   "cell": [
+    4,
+    1
+   ]
+  }
+ ],
+ "teach:gate": [
+  {
+   "icon": "lamp.floor.fill",
+   "text": "先把三盏灯都点亮",
+   "until": "litAll"
+  },
+  {
+   "icon": "key.fill",
+   "text": "去右上角找汉克，把城门钥匙交给他",
+   "until": "key",
+   "cell": [
+    7,
+    1
+   ]
+  },
+  {
+   "icon": "door.left.hand.open",
+   "text": "出口开了，走过去",
+   "until": "won",
+   "cell": [
+    4,
+    1
+   ]
+  }
+ ],
+ "teach:outside": [
+  {
+   "icon": "lightbulb.min",
+   "text": "灯珠越来越暗了。沿着中间的路快走",
+   "until": "won",
+   "cell": [
+    4,
+    1
+   ]
+  }
+ ],
+ "teach:sunset": [
+  {
+   "icon": "hand.point.up.left.fill",
+   "text": "莫斯什么都要摸一下。走到石碑旁边",
+   "until": "near:4,3",
+   "cell": [
+    4,
+    4
+   ]
+  },
+  {
+   "icon": "hand.point.up.left.fill",
+   "text": "点「摸」按钮",
+   "until": "key",
+   "button": "act"
+  },
+  {
+   "icon": "door.left.hand.open",
+   "text": "路开了，去出口",
+   "until": "won",
+   "cell": [
+    4,
+    1
+   ]
+  }
+ ],
+ "teach:ruins": [
+  {
+   "icon": "circle.fill",
+   "text": "莫斯往石头上走，就能推动它。先绕到石头右边",
+   "until": "pushed",
+   "cell": [
+    7,
+    4
+   ]
+  },
+  {
+   "icon": "square.dashed",
+   "text": "把石头推上压板，门就开",
+   "until": "plates",
+   "cell": [
+    2,
+    4
+   ]
+  },
+  {
+   "icon": "door.left.hand.open",
+   "text": "门开了，走过去",
+   "until": "won",
+   "cell": [
+    4,
+    1
+   ]
+  }
+ ],
+ "teach:hive": [
+  {
+   "icon": "wind",
+   "text": "莫斯托有翅膀，能飞过水。飞到太阳的火旁边",
+   "until": "near:4,4",
+   "cell": [
+    4,
+    5
+   ]
+  },
+  {
+   "icon": "hand.raised.fill",
+   "text": "点「抓光」",
+   "until": "carry",
+   "button": "act"
+  },
+  {
+   "icon": "door.left.hand.open",
+   "text": "抱着火飞到出口",
+   "until": "won",
+   "cell": [
+    4,
+    1
+   ]
+  }
+ ],
+ "teach:rim": [
+  {
+   "icon": "hand.raised.fill",
+   "text": "先从亮着的灯里抓一团光",
+   "until": "carry",
+   "cell": [
+    6,
+    4
+   ]
+  },
+  {
+   "icon": "flame.fill",
+   "text": "放进中间暗着的窝里",
+   "until": "litAll",
+   "cell": [
+    5,
+    3
+   ]
+  },
+  {
+   "icon": "door.left.hand.open",
+   "text": "抱着光时影子会跟着你。去出口",
+   "until": "won",
+   "cell": [
+    6,
+    1
+   ]
+  }
+ ],
+ "teach:lure": [
+  {
+   "icon": "eye.fill",
+   "text": "莫斯托每一步都朝最近的亮灯飞。紫色箭头是他的下一步",
+   "until": "moved"
+  },
+  {
+   "icon": "lamp.floor.fill",
+   "text": "让奥托点亮上面那盏灯，把他引进窄口",
+   "until": "lit:1",
+   "cell": [
+    4,
+    2
+   ]
+  },
+  {
+   "icon": "person.2.fill",
+   "text": "点下面的头像，换成莫斯",
+   "until": "select:1",
+   "button": "hero1"
+  },
+  {
+   "icon": "lock.fill",
+   "text": "把石头推到他身后。四面都堵住，就抓到了",
+   "until": "won"
+  }
  ]
 }

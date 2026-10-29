@@ -1,6 +1,6 @@
 import Foundation
 
-// 《长夜》 rules — one grid engine for all four chapters. Rule for rule the same as Tools/rooms/core.js (the reference
+// 《灯台索魔》 rules — one grid engine for all four chapters. Rule for rule the same as Tools/rooms/core.js (the reference
 // the rooms were designed and checked with); CI solves every room with both and the shortest solutions must agree.
 //
 // Map legend: # wall · . floor · ~ water (only Mosto flies over) · L dark lamp · l lit lamp · N dark nest

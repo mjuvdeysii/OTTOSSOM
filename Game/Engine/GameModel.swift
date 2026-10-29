@@ -16,6 +16,16 @@ struct Fly {
     var dur: Double
 }
 
+/// One beat of a room's lesson: what to do (an icon and a few words), where (a cell or a button), and the condition that
+/// moves the lesson on.
+struct CoachStep: Equatable {
+    var icon: String
+    var text: String
+    var cell: Pt?
+    var button: String?     // "bulb", "act", "hero0", "hero1", "undo"
+    var until: String
+}
+
 struct Figure {
     var kind: String
     var x: Double
@@ -60,7 +70,18 @@ final class GameModel: ObservableObject {
     @Published var dark: Double = 0
     @Published var hideHeroes = false
     @Published var bulbR: Double = 3
-    @Published var hint = ""
+    /// A passing remark in the coach line (why that didn't work, a hint); clears itself after a few seconds.
+    @Published var hint = "" {
+        didSet {
+            let h = hint
+            guard !h.isEmpty else { return }
+            Task { try? await Task.sleep(for: .milliseconds(4200)); if self.hint == h { self.hint = "" } }
+        }
+    }
+    @Published var coach: CoachStep?
+    private var lesson: [CoachStep] = []
+    private var lessonAt = 0
+    private var lessonBase = 0
     @Published var dialog: Dialog?
     @Published var card: CardInfo?
     @Published var busy = false
@@ -106,6 +127,11 @@ final class GameModel: ObservableObject {
     }
 
     func begin() {
+        if isPreview, !started, previewScript == nil {
+            started = true
+            startLesson()
+            return
+        }
         if isPreview, !started, let sc = previewScript {
             started = true
             Task { busy = true; await run(sc) }
@@ -124,7 +150,7 @@ final class GameModel: ObservableObject {
         room = r; state = r.start; prev = nil; hist = []; active = 0; actors = [:]
         hintMark = nil; pathDots = []; cleared = nil
         dark = 0; bulbR = Double(r.rOtto); hint = ""; hideHeroes = false; emotes = [:]; guided = false
-        poses = [:]; flies = []
+        poses = [:]; flies = []; coach = nil; lesson = []; lessonAt = 0
         mainDim = (id == "top" && chapter.id == 1 && stepIndex > 4)
         Sound.shared.hum(state.bulb)
     }
@@ -143,6 +169,7 @@ final class GameModel: ObservableObject {
         load(st.room ?? "top")
         if let i = st.intro { await run(i) }
         busy = false
+        startLesson()
     }
 
     private func showBanner(_ text: String) {
@@ -160,6 +187,7 @@ final class GameModel: ObservableObject {
 
     private func roomCleared() async {
         busy = true
+        var fl = Progress.shared.flags; fl.insert("taught:\(room.spec.id)"); Progress.shared.flags = fl
         Sound.shared.win(); Haptic.success()
         hintMark = nil; pathDots = []
         cleared = ClearInfo(steps: state.steps, par: room.spec.par ?? state.steps)
@@ -232,7 +260,7 @@ final class GameModel: ObservableObject {
             } else if c["ifKey"] != nil {
                 await run(branch(c, room.keyGiven))
             } else if c["key"] != nil {
-                room.keyGiven = true; objectWillChange.send(); Sound.shared.light(); Haptic.success()
+                room.keyGiven = true; objectWillChange.send(); Sound.shared.light(); Haptic.success(); checkLesson()
             } else if c["fade"] != nil {
                 await fadeOut()
             } else if let who = c["emote"] as? String, let icon = c["icon"] as? String {
@@ -338,13 +366,64 @@ final class GameModel: ObservableObject {
         Task {
             while guided && room.spec.id == roomID && !finished {
                 try? await Task.sleep(for: .milliseconds(500))
-                if canPlay && !walking && hintMark == nil && Date().timeIntervalSince(lastInput) > 4.5 {
+                if canPlay && !walking && hintMark == nil && coach == nil && Date().timeIntervalSince(lastInput) > 6 {
                     requestHint(); lastInput = Date()
                 }
             }
         }
     }
     func touched() { lastInput = Date() }
+
+    // MARK: lessons
+
+    /// A room's lesson ("teach:<room>" in story.json) runs the first time the room is played: one beat at a time, each
+    /// pointing at the cell or button to use, moving on by itself once the player has done it.
+    func startLesson() {
+        let id = room.spec.id
+        guard let raw = Content.story["teach:\(id)"], isPreview || !Progress.shared.flags.contains("taught:\(id)") else { coach = nil; return }
+        lesson = raw.compactMap { d in
+            guard let icon = d["icon"] as? String, let text = d["text"] as? String else { return nil }
+            let cell = (d["cell"] as? [Int]).flatMap { $0.count == 2 ? Pt($0[0], $0[1]) : nil }
+            return CoachStep(icon: icon, text: text, cell: cell, button: d["button"] as? String, until: d["until"] as? String ?? "won")
+        }
+        lessonAt = 0; lessonBase = state.steps
+        coach = lesson.first
+        checkLesson()
+    }
+
+    func checkLesson() {
+        guard !lesson.isEmpty else { return }
+        var moved = false
+        while lessonAt < lesson.count && met(lesson[lessonAt].until) { lessonAt += 1; lessonBase = state.steps; moved = true }
+        let next = lessonAt < lesson.count ? lesson[lessonAt] : nil
+        if next != coach { coach = next }
+        if moved { Haptic.light() }
+    }
+
+    private func met(_ c: String) -> Bool {
+        let parts = c.split(separator: ":").map(String.init)
+        let arg = parts.count > 1 ? parts[1] : ""
+        let me = state.c[min(active, state.c.count - 1)]
+        let litCount = state.lit.indices.filter { state.lit[$0] && !room.nest[$0] }.count
+        switch parts[0] {
+        case "moved": return state.steps > lessonBase
+        case "at": let q = arg.split(separator: ",").compactMap { Int($0) }; return q.count == 2 && me == Pt(q[0], q[1])
+        case "near": let q = arg.split(separator: ",").compactMap { Int($0) }; return q.count == 2 && me.dist(Pt(q[0], q[1])) == 1
+        case "lit": return litCount >= (Int(arg) ?? 1)
+        case "litAll": return room.lampsOK(state)
+        case "bulb": return state.bulb == (arg != "off")
+        case "carry": return state.carry == (arg != "off")
+        case "drift": return state.shadows != room.start.shadows
+        case "pushed": return state.boulders != room.start.boulders
+        case "plates": return room.platesDown(state)
+        case "key": return room.keyGiven
+        case "exit": return room.exitOpen(state)
+        case "select": return active == (Int(arg) ?? 0)
+        case "thief": return state.thief != room.start.thief
+        case "won": return room.won(state)
+        default: return false
+        }
+    }
 
     // MARK: hints
     func verbText(_ v: Verb) -> String {
@@ -359,13 +438,13 @@ final class GameModel: ObservableObject {
         case .give: return "放光"
         }
     }
-    func heroName(_ h: Hero) -> String { h == .otto ? "Otto" : h == .moss ? "Moss" : "Mosto" }
+    func heroName(_ h: Hero) -> String { h == .otto ? "奥托" : h == .moss ? "莫斯" : "莫斯托" }
 
     func requestHint() {
         guard canPlay, !walking else { return }
         hintsUsed += 1
         if room.needKey && !room.keyGiven && room.lampsOK(state) {
-            hint = room.spec.id == "gate" ? "提示：灯都亮了，去找老韩说话。" : "提示：先去摸一摸石碑。"
+            hint = room.spec.id == "gate" ? "灯都亮了。去找汉克，把城门钥匙交给他。" : "先去摸一摸石碑。"
             return
         }
         let spec = room.spec, st = state, key = room.keyGiven, atStart = hist.isEmpty
@@ -392,7 +471,7 @@ final class GameModel: ObservableObject {
             hintMark = HintMark(hero: ci, verb: v, target: target)
             let who: String = room.heroes.count > 1 ? heroName(room.heroes[ci]) : ""
             let left: Int = res?.path.count ?? (spec.par ?? 0)
-            hint = "提示：\(who)\(verbText(v))。还差 \(left) 步。"
+            hint = "\(who)\(verbText(v))。还差 \(left) 步。"
             Haptic.light()
         }
     }
@@ -418,7 +497,7 @@ final class GameModel: ObservableObject {
         for e in ev {
             switch e {
             case .light, .give: Sound.shared.light(); Haptic.light()
-            case .dim: Sound.shared.dim(); Haptic.warn(); hint = "两个影子挤在灯边，灯被压暗了。可以撤回。"
+            case .dim: Sound.shared.dim(); Haptic.warn(); hint = "两个影子挤在灯边，灯暗了。可以撤回。"
             case .take: Sound.shared.take(); Haptic.light()
             case .push: Sound.shared.push(); Haptic.light()
             case .bulb(let on): Sound.shared.hum(on)
@@ -430,7 +509,8 @@ final class GameModel: ObservableObject {
             bulbR = max(1, 3 - Double(state.steps) * 0.28)
             dark = min(0.9, 0.35 + Double(state.steps) * 0.07)
         }
-        if room.won(state) { Task { await roomCleared() } }
+        checkLesson()
+        if room.won(state) { coach = nil; Task { await roomCleared() } }
         return true
     }
 
@@ -439,12 +519,13 @@ final class GameModel: ObservableObject {
         guard canPlay, let last = hist.popLast() else { return }
         prev = nil; state = last; hint = ""
         Sound.shared.hum(state.bulb)
+        checkLesson()
     }
 
     func reset() {
         lastInput = Date()
         guard canPlay, !hist.isEmpty else { return }
-        prev = nil; state = room.start; hist = []; hint = "重来了。"
+        prev = nil; state = room.start; hist = []; hint = ""
         bulbR = Double(room.rOtto)
         if room.spec.id == "outside" { dark = 0.35 }
         Sound.shared.hum(state.bulb)
@@ -455,6 +536,7 @@ final class GameModel: ObservableObject {
         guard i < room.heroes.count else { return }
         active = i
         Haptic.light()
+        checkLesson()
     }
 
     // contextual action
@@ -490,24 +572,25 @@ final class GameModel: ObservableObject {
 
     private func lampRefused() {
         Sound.shared.no()
-        if room.crowdedLampNear(state, active) { hint = "灯边上挨着影子，点不着。先把影子引开。" }
+        if room.crowdedLampNear(state, active) { hint = "灯边挨着影子，点不着。先用灯珠把影子引开。" }
     }
 
     func talk(_ c: Character) {
         let name = "talk:\(room.spec.id):\(c)"
         guard Content.story[name] != nil else { return }
         busy = true
-        Task { await run(name); busy = false }
+        Task { await run(name); busy = false; checkLesson() }
     }
 
     func touch(_ p: Pt) {
-        guard hero == .moss else { hint = "只有 Moss 读得出石头记得的事。"; return }
+        guard hero == .moss else { hint = "只有莫斯读得出石头记得的事。"; return }
         let name = "touch:\(room.spec.id):\(p.x),\(p.y)"
         busy = true
         Sound.shared.touch()
         Task {
             if Content.story[name] != nil { await run(name) } else { _ = await present(who: "", text: "什么也没记住。", options: []) }
             busy = false
+            checkLesson()
         }
     }
 
@@ -515,12 +598,12 @@ final class GameModel: ObservableObject {
         Sound.shared.no()
         if !room.lampsOK(state) {
             switch room.goal {
-            case "nests": hint = "窝里还没放进光。"
-            case "carry": hint = "手里还没有光。"
-            default: hint = "灯还没全点亮。"
+            case "nests": hint = "窝里还没放进光，出口不开。"
+            case "carry": hint = "手里还没有光。先去抓一团。"
+            default: hint = "灯还没全点亮，出口不开。"
             }
         } else if room.needKey && !room.keyGiven {
-            hint = room.spec.id == "gate" ? "城门钥匙还在 Otto 手里。去找老韩。" : "还有东西没看。"
+            hint = room.spec.id == "gate" ? "城门钥匙还在奥托手里。去找汉克。" : "先去摸一摸石碑。"
         }
     }
 

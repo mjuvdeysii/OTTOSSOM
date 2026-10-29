@@ -232,7 +232,7 @@ struct GameView: View {
         }
         .persistentSystemOverlays(.hidden)
         .onAppear { model.begin() }
-        .sheet(isPresented: $showRules) { RulesView() }
+        .sheet(isPresented: $showRules) { RulesView(upTo: model.chapter.id) }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .overlay {
             if let c = model.card {
@@ -267,12 +267,16 @@ struct GameView: View {
             }
             .foregroundStyle(.white)
             .accessibilityLabel("回到标题")
-            HStack(spacing: 6) {
-                ForEach(Array(model.chapter.steps.enumerated()).filter { $0.element.cut == nil }, id: \.offset) { i, _ in
-                    Capsule().fill(i < model.stepIndex ? gold : i == model.stepIndex ? Color.white.opacity(0.85) : Color.white.opacity(0.15))
-                        .frame(height: 4)
+            VStack(spacing: 6) {
+                GoalBar(model: model)
+                HStack(spacing: 4) {
+                    ForEach(Array(model.chapter.steps.enumerated()).filter { $0.element.cut == nil }, id: \.offset) { i, _ in
+                        Capsule().fill(i < model.stepIndex ? gold : i == model.stepIndex ? Color.white.opacity(0.85) : Color.white.opacity(0.15))
+                            .frame(height: 3)
+                    }
                 }
             }
+            .frame(maxWidth: .infinity)
             HStack(spacing: 4) {
                 Image(systemName: "shoeprints.fill").font(.caption)
                 Text("\(model.state.steps)").font(.callout.monospacedDigit().weight(.semibold)).foregroundStyle(.white)
@@ -286,11 +290,14 @@ struct GameView: View {
     }
 
     private var bottomPanel: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
+            if model.dialog == nil { CoachLine(model: model) }
             if let d = model.dialog { dialogView(d) } else { controls }
-            HStack {
+            HStack(spacing: 6) {
                 Button { showSettings = true } label: { Image(systemName: "gearshape").frame(width: 40, height: 32) }
                     .accessibilityLabel("设置")
+                Button { showRules = true } label: { Image(systemName: "book").frame(width: 40, height: 32) }
+                    .accessibilityLabel("怎么玩")
                 Spacer()
                 Button { model.requestHint() } label: { Image(systemName: "questionmark.circle").frame(width: 40, height: 32) }
                     .accessibilityLabel("提示")
@@ -354,6 +361,10 @@ struct GameView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                         .position(x: size.width / 2, y: o.y + 22)
                 }
+                if let step = model.coach, let cell = step.cell, model.canPlay, !model.walking {
+                    GhostHand().position(x: o.x + (CGFloat(cell.x) + 0.5) * T, y: o.y + (CGFloat(cell.y) + 0.5) * T * Art.k)
+                        .transition(.opacity)
+                }
                 if let c = model.cleared {
                     HStack(spacing: 12) {
                         Image(systemName: c.steps <= c.par ? "star.circle.fill" : "checkmark.circle.fill").font(.system(size: 34)).foregroundStyle(gold)
@@ -384,7 +395,7 @@ struct GameView: View {
         HStack(spacing: 10) {
             if model.room.heroes.count > 1 {
                 ForEach(Array(model.room.heroes.enumerated()), id: \.offset) { i, h in
-                    Button { model.select(i) } label: { heroChip(h, on: i == model.active) }
+                    Button { model.select(i) } label: { heroChip(h, on: i == model.active).modifier(CoachRing(on: model.coach?.button == "hero\(i)")) }
                         .accessibilityLabel(h == .otto ? "Otto" : h == .moss ? "Moss" : "Mosto")
                         .accessibilityAddTraits(i == model.active ? .isSelected : [])
                 }
@@ -393,8 +404,10 @@ struct GameView: View {
             if model.hero == .otto {
                 iconButton(model.state.bulb ? "lightbulb.max.fill" : "lightbulb", on: model.state.bulb,
                            enabled: model.canPlay && !model.room.lockBulb, label: "灯珠") { _ = model.apply(.bulb) }
+                    .modifier(CoachRing(on: model.coach?.button == "bulb"))
             }
-            iconButton(actionIcon, on: false, enabled: model.canPlay && model.actionLabel != nil, label: model.actionLabel ?? "互动") { model.interact() }
+            iconButton(actionIcon, on: model.actionLabel != nil && model.canPlay, enabled: model.canPlay && model.actionLabel != nil, label: model.actionLabel ?? "互动") { model.interact() }
+                .modifier(CoachRing(on: model.coach?.button == "act" || (model.actionLabel != nil && model.canPlay)))
             iconButton("arrow.uturn.backward", on: false, enabled: model.canPlay && !model.hist.isEmpty, label: "撤回") { model.undo() }
             iconButton("arrow.counterclockwise", on: false, enabled: model.canPlay && !model.hist.isEmpty, label: "重来") { model.reset() }
         }
@@ -507,25 +520,6 @@ struct GameView: View {
     }
 }
 
-struct RulesView: View {
-    @Environment(\.dismiss) var dismiss
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("走") { Text("点地面，角色就走过去。走错了就「撤回」，或者「重来」这个房间。") }
-                Section("Otto · 照") { Text("「灯珠」亮着时，够得着的影子每一步都朝他挪一格。站到灯旁边按「点灯」。亮着的格子，就是光够得着的范围。") }
-                Section("Moss · 摸") { Text("走进石头就能推它。石头压住压板，门就开。站到石碑旁边按「摸」，能读到它记得的事。") }
-                Section("Mosto · 抓") { Text("站到亮着的灯旁边按「抓光」，再到窝或暗着的灯旁边按「放光」。翅膀能飞过水，也能从影子中间穿过去。抱着光时，影子会跟着他。") }
-                Section("迷路的影子") { Text("它们不坏，只是冷，会往有光的地方挪。一盏灯边上挤了两个影子，灯就被压暗；挨着影子的灯点不着。") }
-                Section("第四章") { Text("点下面的名字换人。三个人都走到出口，才算过关。") }
-            }
-            .navigationTitle("怎么玩")
-            .toolbar { Button("好") { dismiss() } }
-        }
-        .preferredColorScheme(.dark)
-    }
-}
-
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @State private var sound = Sound.shared.enabled
@@ -546,7 +540,7 @@ struct SettingsView: View {
                     Text("进度只保存在这台设备上。")
                 }
                 Section("关于") {
-                    Text("《长夜》—— Otto、Moss 与 Mosto 的故事。本作在开发过程中使用了 AI 辅助。")
+                    Text("《灯台索魔》—— 奥托、莫斯与莫斯托的故事。本作在开发过程中使用了 AI 辅助。")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }
