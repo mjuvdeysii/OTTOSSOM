@@ -490,7 +490,7 @@ def terrain(ch, th):
                 th_ = 0.5 + rnd2.random() * 0.4
                 cyl(f"trunk_{x}_{y}", c + Vector((0, 0, th_ / 2)), 0.08, th_, trunk, verts=12)
                 for k in range(3):
-                    blob(f"canopy_{x}_{y}_{k}", c + Vector((rnd2.uniform(-0.2, 0.2), rnd2.uniform(-0.2, 0.2), th_ + 0.25 + k * 0.12)), (0.45 - k * 0.08,) * 3, leaves[rnd2.randrange(3)], noise=0.06, seed=x * 7 + y * 11 + k, sub=3)
+                    blob(f"canopy_{x}_{y}_{k}", c + Vector((rnd2.uniform(-0.2, 0.2), rnd2.uniform(-0.2, 0.2), th_ + 0.25 + k * 0.12)), (0.45 - k * 0.08,) * 3, leaves[rnd2.randrange(3)], noise=0.06, seed=x * 7 + y * 11 + k, sub=2)
             elif r < 0.5:
                 for k in range(3 + int(rnd2.random() * 3)):
                     blob(f"fern_{x}_{y}_{k}", c + Vector((rnd2.uniform(-0.45, 0.45), rnd2.uniform(-0.45, 0.45), 0.08)), (0.2, 0.16, 0.1), mossy, seed=x + y * 5 + k, sub=2)
@@ -567,6 +567,7 @@ def main():
         s.render.film_transparent = False
         s.render.image_settings.file_format = "JPEG"; s.render.image_settings.quality = 86
         from bpy_extras.object_utils import world_to_camera_view
+        s.render.resolution_x = w; s.render.resolution_y = h   # the projection needs the real frame shape
         bpy.context.view_layer.update()
         corner = cell(0, 0) + Vector((-S / 2, S / 2, 0))
         v = world_to_camera_view(s, s.camera, corner)
