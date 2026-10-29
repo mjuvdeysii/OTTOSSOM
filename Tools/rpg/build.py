@@ -69,7 +69,7 @@ MAPS["wilds"] = dict(name="城外荒野", theme="wilds", music=2, dark=0.45, map
     "#TTT,..D..,TTT#",
 ])
 # ---------------------------------------------------------------- 旧灯窖 一层 (dark; only Otto's bead and lit lamps show it)
-MAPS["cellar1"] = dict(name="旧灯窖 · 一层", theme="cellar", music=3, dark=0.9, fog=True, map=[
+MAPS["cellar1"] = dict(name="旧灯窖 · 一层", theme="cellar", music=3, dark=0.6, fog=True, map=[
     "xxxxxxxxxxxxx",
     "x.....s.....x",
     "x...........x",
@@ -91,7 +91,7 @@ MAPS["cellar1"] = dict(name="旧灯窖 · 一层", theme="cellar", music=3, dark
     "xxxxxxxxxxxxx",
 ])
 # ---------------------------------------------------------------- 旧灯窖 二层: the maw's room
-MAPS["cellar2"] = dict(name="旧灯窖 · 二层", theme="cellar", music=4, dark=0.8, fog=True, map=[
+MAPS["cellar2"] = dict(name="旧灯窖 · 二层", theme="cellar", music=4, dark=0.55, fog=True, map=[
     "xxxxxxxxxxx",
     "x.........x",
     "x.x.....x.x",

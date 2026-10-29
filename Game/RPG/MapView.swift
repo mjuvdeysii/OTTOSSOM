@@ -461,9 +461,7 @@ struct MapPainter {
         let g = gp(p)
         let c = CGPoint(x: g.x, y: g.y - T * 1.55 - CGFloat(abs(sin(t * 3))) * 4)
         ctx.fill(Path(ellipseIn: CGRect(x: c.x - 11, y: c.y - 11, width: 22, height: 22)), with: .color(gold))
-        var img = ctx.resolve(Image(systemName: sy))
-        img.shading = .color(.black)
-        ctx.draw(img, in: CGRect(x: c.x - 7, y: c.y - 7, width: 14, height: 14))
+        ctx.draw(Text(sy == "exclamationmark" ? "!" : "?").font(.system(size: 15, weight: .heavy, design: .rounded)).foregroundColor(.black), at: c, anchor: .center)
     }
 
     /// The main quest's next place: a gold pulse on it here, or an arrow at the screen edge pointing the way.

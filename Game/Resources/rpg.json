@@ -411,7 +411,7 @@
    "name": "旧灯窖 · 一层",
    "theme": "cellar",
    "music": 3,
-   "dark": 0.9,
+   "dark": 0.6,
    "fog": true,
    "map": [
     "xxxxxxxxxxxxx",
@@ -597,7 +597,7 @@
    "name": "旧灯窖 · 二层",
    "theme": "cellar",
    "music": 4,
-   "dark": 0.8,
+   "dark": 0.55,
    "fog": true,
    "map": [
     "xxxxxxxxxxx",
