@@ -167,7 +167,7 @@ enum BattleEvent: Equatable {
     case light(Int)                          // change of the party's light
     case stolen(Int, Int)                    // foe took n light
     case regain(Int, Int)                    // took n light back from foe
-    case stun(Int), slow(Int), reveal(Int), shell(Int), guard(Int), defend(Int)
+    case stun(Int), slow(Int), reveal(Int), shell(Int), guarding(Int), defend(Int)
     case summon(Int)
     case ko(Int)
     case fled(Bool)
@@ -266,7 +266,7 @@ enum Battle {
         let mossID = s.party.first { $0.hero == .moss }?.id
         let vigil = actions.contains { $0.skill == .vigil && $0.actor == ottoID }
         for d in defending { ev.append(.defend(d)) }
-        if vigil, let o = ottoID { ev.append(.guard(o)) }
+        if vigil, let o = ottoID { ev.append(.guarding(o)) }
         // speed order; party first on ties
         let order = s.fighters.filter { $0.alive }.sorted { a, b in a.spd != b.spd ? a.spd > b.spd : (!a.isFoe && b.isFoe) }.map { $0.id }
         for id in order {

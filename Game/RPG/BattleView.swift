@@ -390,7 +390,7 @@ struct BattleView: View {
             floats.append(Floater(target: id, text: "看穿了", color: gold, at: Date())); Sound.shared.touch()
         case .shell(let id):
             if let i = s.index(id) { s.fighters[i].shell = true }
-        case .guard, .defend:
+        case .guarding, .defend:
             break
         case .summon(let id):
             if let f = final.fighter(id) { s.fighters.append(f) }
