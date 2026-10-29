@@ -486,13 +486,13 @@ def terrain(ch, th):
                 cyl(f"col_{x}_{y}", c + Vector((0, 0, hh / 2)), 0.26, hh, stoneM, verts=20)
                 box(f"colcap_{x}_{y}", c + Vector((0, 0, hh + 0.06)), (0.66, 0.66, 0.14), stoneM, bevel=0.04)
                 blob(f"colmoss_{x}_{y}", c + Vector((0.05, 0, hh + 0.16)), (0.3, 0.28, 0.08), mossy, seed=x * 3 + y, sub=2)
-            elif r < 0.36:
+            elif r < 0.27:
                 th_ = 0.5 + rnd2.random() * 0.4
                 cyl(f"trunk_{x}_{y}", c + Vector((0, 0, th_ / 2)), 0.08, th_, trunk, verts=12)
-                for k in range(3):
+                for k in range(2):
                     blob(f"canopy_{x}_{y}_{k}", c + Vector((rnd2.uniform(-0.2, 0.2), rnd2.uniform(-0.2, 0.2), th_ + 0.25 + k * 0.12)), (0.45 - k * 0.08,) * 3, leaves[rnd2.randrange(3)], noise=0.06, seed=x * 7 + y * 11 + k, sub=2)
-            elif r < 0.5:
-                for k in range(3 + int(rnd2.random() * 3)):
+            elif r < 0.34:
+                for k in range(2 + int(rnd2.random() * 2)):
                     blob(f"fern_{x}_{y}_{k}", c + Vector((rnd2.uniform(-0.45, 0.45), rnd2.uniform(-0.45, 0.45), 0.08)), (0.2, 0.16, 0.1), mossy, seed=x + y * 5 + k, sub=2)
     elif ch == 3:
         # the shadow country: violet crystal clusters glowing faintly, thin spires, dead trees
@@ -543,6 +543,7 @@ def main():
     s = B.reset(); s.view_settings.look = "AgX - Punchy"; s.view_settings.exposure = 1.0; s.cycles.samples = arg("--samples", 48)
     s.cycles.max_bounces = 4; s.cycles.diffuse_bounces = 2; s.cycles.glossy_bounces = 2; s.cycles.transmission_bounces = 2
     s.cycles.use_adaptive_sampling = True; s.cycles.adaptive_threshold = 0.03
+    s.cycles.use_auto_tile = True; s.cycles.tile_size = 512          # big frames in pieces: less memory
     B.materials(); MO.mosto_materials()
     chapters = json.load(open(os.path.join(ROOT, "Game", "Resources", "rooms.json")))["chapters"]
     ch = next((c_["id"] for c_ in chapters for st in c_["steps"] if st.get("room") == ROOM), 4)
