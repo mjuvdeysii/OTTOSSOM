@@ -17,7 +17,7 @@ struct DigBot {
         // stuck: hop and change side
         if sim.p.dist(lastP) < 0.5 { stuck += dt } else { stuck = 0 }
         lastP = sim.p
-        if stuck > 1.2 { side = -side; sideFor = 0.5; stuck = 0; sim.push(V2(0, -1)); return }
+        if stuck > 1.2 { side = -side; sideFor = 0.5; stuck = 0; sim.push(V2(0, -1)); sim.jump(); return }
         if sideFor > 0 { sideFor -= dt; sim.push(V2(side, 0)); return }
         // the next memory stone, if it's not far below: go for it first
         var goal: (Int, Int)?
@@ -40,7 +40,7 @@ struct DigBot {
         }
         if let g = goal {
             let gx = g.0, gy = g.1
-            if gy < fy { sim.push(V2(0, -1)); sideFor = 0.25; side = gx > fx ? 1 : -1; return }
+            if gy < fy { sim.push(V2(0, -1)); sim.jump(); sideFor = 0.25; side = gx > fx ? 1 : -1; return }
             if gy == fy { sim.push(V2(gx > fx ? 1 : -1, 0)); return }
             if gx != fx && gy - fy <= 2 { sim.push(V2(gx > fx ? 1 : -1, 0)); return }
             if gx != fx { side = gx > fx ? 1 : -1 }
@@ -67,6 +67,8 @@ struct DigBot {
     static func night(_ save: DigSave, seed: UInt64) -> DigSim {
         var sim = DigSim(world: save.world, upgrades: save.upgrades, seed: seed)
         sim.nestDone = save.seen.contains("ending")
+        sim.forgiving = save.day == 1
+        if save.day > 1 { sim.regrow() }
         var bot = DigBot()
         let dt = 1.0 / 30
         var n = 0

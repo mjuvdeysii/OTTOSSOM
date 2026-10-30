@@ -55,7 +55,7 @@ final class DigTests: XCTestCase {
     func testLightOutHalvesTheBag() {
         var sim = DigSim(world: DigWorld(seed: 5), upgrades: [:], seed: 5)
         sim.bag.gems = [.amber: 4]; sim.bag.trinkets = [.coin: 3]
-        sim.light = 0.01
+        sim.light = 0.01; sim.started = true
         sim.step(0.1)
         XCTAssertEqual(sim.outcome, -1)
         XCTAssertEqual(sim.bag.gems[.amber], 2); XCTAssertEqual(sim.bag.trinkets[.coin], 1)
@@ -77,6 +77,48 @@ final class DigTests: XCTestCase {
         XCTAssertFalse(s.goal.isEmpty)
         s.openShop()
         XCTAssertEqual(s.orders.count, 2, "the same day doesn't open twice")
+    }
+
+    func testJumpIsOncePerPress() {
+        var w = DigWorld(seed: 9)
+        for x in 0..<DigWorld.W { for y in 0..<(DigWorld.ground + 2) { w.set(x, y, .air) }; w.set(x, DigWorld.ground + 2, .stone) }
+        var sim = DigSim(world: w, upgrades: [:], seed: 9)
+        for _ in 0..<60 { sim.step(1.0 / 60) }
+        XCTAssertTrue(sim.grounded)
+        sim.push(V2(0, -1))           // holding up does not jump by itself
+        for _ in 0..<20 { sim.step(1.0 / 60) }
+        XCTAssertTrue(sim.grounded)
+        sim.jump()
+        sim.step(1.0 / 60)
+        XCTAssertFalse(sim.grounded, "a press jumps")
+    }
+
+    func testGoalPointsBackUp() {
+        var s = DigSave()
+        s.orders = []
+        XCTAssertTrue(s.goal(depth: 2).hasPrefix("往下挖"))
+        XCTAssertTrue(s.goal(depth: 20).hasPrefix("往上"))
+        s.memories = Array(1...8)
+        XCTAssertTrue(s.goal(depth: 20).contains("最深"))
+    }
+
+    func testRegrowthAndTheFirstNight() {
+        var w = DigWorld(seed: 11)
+        for y in (DigWorld.ground + 1)..<(DigWorld.ground + 30) { w.set(5, y, .air) }
+        let before = w.cells.filter { [Cell.amber, .blue, .trinket].contains(Cell(rawValue: $0)!) }.count
+        var r = Rng(3)
+        for _ in 0..<5 { w.regrow(&r) }
+        let after = w.cells.filter { [Cell.amber, .blue, .trinket].contains(Cell(rawValue: $0)!) }.count
+        XCTAssertGreaterThan(after, before, "a dug shaft grows crystals back along its walls")
+        var sim = DigSim(world: DigWorld(seed: 5), upgrades: [:], seed: 5)
+        sim.forgiving = true; sim.started = true
+        sim.bag.gems = [.amber: 4]; sim.light = 0.01
+        sim.step(0.1)
+        XCTAssertEqual(sim.bag.gems[.amber], 4, "the first night's dark costs nothing")
+        var still = DigSim(world: DigWorld(seed: 5), upgrades: [:], seed: 5)
+        let l0 = still.light
+        for _ in 0..<120 { still.step(1.0 / 60) }
+        XCTAssertEqual(still.light, l0, "the light doesn't burn before she has dug in")
     }
 
     func testSaveRoundTrip() throws {

@@ -102,6 +102,8 @@ struct DigWorld: Codable {
                 if dx * dx + dy * dy <= 1.1 { cells[y * W + x] = Cell.air.rawValue }
             } }
         }
+        // the first shadow: a little pocket beside where she starts digging, so it's met where it's safe
+        for x in 7...9 { cells[(G + 8) * W + x] = Cell.air.rawValue; cells[(G + 9) * W + x] = Cell.clay.rawValue }
         // Mosto's nest: a room at the very bottom
         for y in (DigWorld.nestY - 2)...(DigWorld.nestY) { for x in (DigWorld.nestX - 3)...(DigWorld.nestX + 2) { cells[y * W + x] = Cell.air.rawValue } }
         ensureMemories()
@@ -120,6 +122,27 @@ struct DigWorld: Codable {
             cells[y * DigWorld.W + x] = Cell.memory.rawValue
             memories[n] = y * DigWorld.W + x
         }
+    }
+
+    /// Each night a little grows back along the dug-out walls: the crystals of that layer, now and then a trinket.
+    mutating func regrow(_ r: inout Rng) {
+        let W = DigWorld.W, G = DigWorld.ground
+        var grown = cells
+        for y in (G + 2)..<(DigWorld.H - 1) {
+            let d = y - G
+            for x in 0..<W {
+                let c = at(x, y)
+                guard c == .soil || c == .clay || c == .stone || c == .rock else { continue }
+                let open = !at(x - 1, y).solid || !at(x + 1, y).solid || !at(x, y - 1).solid || !at(x, y + 1).solid
+                guard open else { continue }
+                let u = r.unit()
+                if u < 0.035 {
+                    let g: Cell = d > 28 && (c == .rock || c == .stone) ? .red : d > 11 && (c == .stone || c == .clay) ? .blue : .amber
+                    grown[y * W + x] = g.rawValue
+                } else if u < 0.05 { grown[y * W + x] = Cell.trinket.rawValue }
+            }
+        }
+        cells = grown
     }
 
     func at(_ x: Int, _ y: Int) -> Cell {
@@ -154,7 +177,7 @@ struct Shade {
     var moth = false
 }
 
-enum DigEvent: Equatable { case dug(Cell), gem(Gem), trinket(Trinket), mote, full, memory(Int), flash(Int), hurt, home, dark, hard, step, land, nest }
+enum DigEvent: Equatable { case dug(Cell), gem(Gem), trinket(Trinket), mote, full, memory(Int), flash(Int), hurt, home, dark, hard, step, land, nest, crack(Int), jump }
 
 struct DigSim {
     static let T = 16.0
@@ -185,6 +208,14 @@ struct DigSim {
     var pops: [(p: V2, icon: String, t0: Double)] = []   // what she just picked up, rising off her
     var bits: [Spark] = []         // chips of what she dug
     var damage: [Int: Double] = [:] // how far each cell has been dug
+    var forgiving = false          // the first night: the light going out costs nothing
+    var started = false            // the light only starts to burn once she's through the grass
+    var jumpBuffer = 0.0           // a jump pressed a moment before she lands still happens
+    var coyote = 0.0               // and one pressed a moment after she walks off an edge
+    var freeze = 0.0               // a hair of stillness when a cell breaks
+    var hardAt: (x: Int, y: Int, t: Double)?
+    var demoFlashDone = false      // the first shadow: the bead shows how it's done once
+    var greedTimer = 0.0           // a full arms grows her shadow; past six things it starts calling moths
     var rng: Rng
     var nextID = 0
     let otto: V2
@@ -213,7 +244,15 @@ struct DigSim {
             }
         }
         thread = [otto + V2(-6, -25), p]
+        // the first shadow waits in its pocket
+        let py = DigWorld.ground + 8
+        if self.world.at(8, py) == .air && self.world.at(8, py + 1).solid && !shades.contains(where: { Int($0.p.y / DigSim.T) - 1 == py }) {
+            shades.append(Shade(id: nextID, p: V2(8.5 * DigSim.T, Double(py + 1) * DigSim.T))); nextID += 1
+        }
     }
+
+    /// The start of a night: what grew back while she was up top.
+    mutating func regrow() { world.regrow(&rng) }
 
     var depth: Int { max(0, Int(p.y / DigSim.T) - DigWorld.ground) }
     var drain: Double { 1 + Double(depth) / 50 }
@@ -223,11 +262,14 @@ struct DigSim {
     /// The player's push: x to walk, down to dig down, up to jump (or dig up).
     mutating func push(_ s: V2) { stick = s }
 
+    /// A jump: once per press, remembered for a moment if she's still in the air.
+    mutating func jump() { jumpBuffer = 0.12 }
+
     /// A tap: Otto's bead flashes — shadows close by break.
     @discardableResult mutating func flash() -> Int {
         guard flashCD <= 0, outcome == 0 else { return 0 }
-        flashCD = 1.0; flashAt = t
-        light -= 2
+        flashCD = 0.8; flashAt = t
+        light -= 1
         var n = 0
         let c = p + V2(0, -4)
         shades.removeAll { s in
@@ -251,9 +293,12 @@ struct DigSim {
         guard outcome == 0 else { return }
         t += dt
         flashCD = max(0, flashCD - dt); hurtCD = max(0, hurtCD - dt)
-        light -= drain * dt
+        if freeze > 0 { freeze -= dt; return }
+        if depth > 0 { started = true }
+        if started { light -= drain * dt }
         moveMoss(dt)
         moveShades(dt)
+        greed(dt)
         trackThread()
         for i in bits.indices { bits[i].v.y += 300 * dt; bits[i].p = bits[i].p + bits[i].v * dt; bits[i].life -= dt }
         bits.removeAll { $0.life <= 0 }
@@ -262,7 +307,11 @@ struct DigSim {
         if !nestDone && !atNest && p.dist(V2((Double(DigWorld.nestX) + 0.0) * DigSim.T, Double(DigWorld.nestY + 1) * DigSim.T)) < 30 {
             atNest = true; events.append(.nest)
         }
-        if light <= 0 { light = 0; outcome = -1; bag.halve(); events.append(.dark) }
+        if light <= 0 {
+            light = 0; outcome = -1
+            if !forgiving { bag.halve() }
+            events.append(.dark)
+        }
     }
 
     func tileAt(_ q: V2) -> (Int, Int) { (Int(floor(q.x / DigSim.T)), Int(floor(q.y / DigSim.T))) }
@@ -283,6 +332,8 @@ struct DigSim {
         if sx != 0 { face = sx }
         let wantDown = stick.y > 0.55 && abs(stick.x) < 0.6
         let wantUp = stick.y < -0.55 && abs(stick.x) < 0.75
+        jumpBuffer = max(0, jumpBuffer - dt)
+        coyote = grounded ? 0.08 : max(0, coyote - dt)
 
         // what she's pushing into gets dug
         var target: (Int, Int)?
@@ -307,18 +358,22 @@ struct DigSim {
                 // the damage stays on a cell, so a dig interrupted by a hop or a step goes on where it stopped
                 let key = ty * DigWorld.W + tx
                 let need = base * pow(0.75, Double(claw))
-                let nt = (damage[key] ?? 0) + dt
+                let old = damage[key] ?? 0
+                let nt = old + dt
                 damage[key] = nt
+                if Int(nt / need * 3) > Int(old / need * 3) && nt < need { events.append(.crack(Int(nt / need * 3))) }
                 if nt >= need { damage[key] = nil; finishDig(tx, ty, tile) } else { digging = (tx, ty, nt) }
             } else {
-                if digging == nil || digging!.x != tx || digging!.y != ty { events.append(.hard) }
+                if digging == nil || digging!.x != tx || digging!.y != ty { events.append(.hard); hardAt = (tx, ty, t) }
                 digging = (tx, ty, -999)    // can't: remembered so the "too hard" note isn't repeated every frame
             }
         } else { digging = nil }
 
         // walking, jumping, falling — one axis at a time
         v.x = sx * DigSim.walk
-        if wantUp && grounded { v.y = -DigSim.jumpV; grounded = false }
+        if jumpBuffer > 0 && (grounded || coyote > 0) && !solidAt(p.x, p.y - DigSim.height - 2) {
+            v.y = -DigSim.jumpV; grounded = false; coyote = 0; jumpBuffer = 0; events.append(.jump)
+        }
         // digging down: slide to the middle of the tile so she drops through the hole
         if wantDown && grounded {
             let cx = (Double(fx) + 0.5) * DigSim.T
@@ -351,6 +406,7 @@ struct DigSim {
 
     private mutating func finishDig(_ x: Int, _ y: Int, _ tile: Cell) {
         digging = nil
+        freeze = 0.04
         let c = V2((Double(x) + 0.5) * DigSim.T, (Double(y) + 0.5) * DigSim.T)
         let col: UInt32 = tile == .amber ? 0xFF6BD3FF : tile == .blue ? 0xFFFFC48A : tile == .red ? 0xFF8A8AFF : tile == .stone || tile == .rock ? 0xFF76605C : 0xFF46364C
         for _ in 0..<7 {
@@ -400,6 +456,10 @@ struct DigSim {
             }
             shades[i] = s
         }
+        if !demoFlashDone, shades.contains(where: { !$0.moth && $0.p.dist(me) < 30 }) {
+            demoFlashDone = true
+            flash()
+        }
         guard hurtCD <= 0 else { return }
         for i in shades.indices where shades[i].p.dist(me + V2(0, -2)) < 11 {
             hurtCD = 1.2
@@ -412,6 +472,23 @@ struct DigSim {
             }
             events.append(.hurt)
             return
+        }
+    }
+
+    /// The more she carries, the bigger her own shadow; past six things it wears a crown and moths come for what
+    /// she holds — every ten seconds one more, out of the dark nearby.
+    private mutating func greed(_ dt: Double) {
+        guard bag.count >= 6, depth > 2 else { greedTimer = 0; return }
+        greedTimer += dt
+        guard greedTimer >= 10 else { return }
+        greedTimer = 0
+        for _ in 0..<6 {
+            let q = p + V2((rng.unit() - 0.5) * 120, -40 - rng.unit() * 40)
+            let (tx, ty) = tileAt(q)
+            if ty > DigWorld.ground && !world.at(tx, ty).solid {
+                shades.append(Shade(id: nextID, p: q, moth: true)); nextID += 1
+                return
+            }
         }
     }
 

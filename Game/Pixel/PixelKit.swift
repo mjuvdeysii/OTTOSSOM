@@ -44,6 +44,7 @@ struct Frame {
     let w: Int, h: Int
     var px: [UInt32]
     var ox = 0, oy = 0          // camera offset (screen shake)
+    var lightMap: [Double] = []   // kept between frames so the night pass doesn't allocate
 
     init(w: Int, h: Int) { self.w = w; self.h = h; px = [UInt32](repeating: 0xFF000000, count: w * h) }
 
@@ -126,7 +127,9 @@ struct Frame {
     /// them — pixel-art light, not a smooth gradient. Lights: centre, radius, strength.
     mutating func night(base: Double, lights: [(V2, Double, Double)]) {
         // the light at each pixel: the brightest light that reaches it, each light only touching its own box
-        var lm = [Double](repeating: 0, count: w * h)
+        if lightMap.count != w * h { lightMap = [Double](repeating: 0, count: w * h) } else {
+            for i in lightMap.indices { lightMap[i] = 0 }
+        }
         for (c, r, k) in lights {
             let cx = Int(c.x) + ox, cy = Int(c.y) + oy
             let ry = Int(r / 1.15) + 1, rx = Int(r) + 1
@@ -138,7 +141,7 @@ struct Frame {
                 for x in xa..<xb {
                     let dx = Double(x - cx)
                     let d2 = dx * dx + dy * dy
-                    if d2 < r2 { let v = k * (1 - d2.squareRoot() / r); if v > lm[y * w + x] { lm[y * w + x] = v } }
+                    if d2 < r2 { let v = k * (1 - d2.squareRoot() / r); if v > lightMap[y * w + x] { lightMap[y * w + x] = v } }
                 }
             }
         }
@@ -147,7 +150,7 @@ struct Frame {
         for y in 0..<h {
             for x in 0..<w {
                 let i = y * w + x
-                let band = min(3, Int(lm[i] * 3.2 + bayer[(y & 1) * 2 + (x & 1)]))
+                let band = min(3, Int(lightMap[i] * 3.2 + bayer[(y & 1) * 2 + (x & 1)]))
                 let m = ms[band]
                 if m >= 0.999 { continue }
                 let d = px[i]

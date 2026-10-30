@@ -199,8 +199,15 @@ struct TalkBox: View {
 struct PixelImage: View {
     let name: String
     let pt: CGFloat
+    static var cache: [String: CGImage] = [:]
+    static func image(_ name: String, _ s: PSprite) -> CGImage? {
+        if let c = cache[name] { return c }
+        let i = Frame.image(of: s)
+        cache[name] = i
+        return i
+    }
     var body: some View {
-        if let s = PixelArt.sprite(name), let img = Frame.image(of: s) {
+        if let s = PixelArt.sprite(name), let img = PixelImage.image(name, s) {
             Image(decorative: img, scale: 1).interpolation(.none).resizable()
                 .frame(width: CGFloat(s.w) * pt, height: CGFloat(s.h) * pt)
         }

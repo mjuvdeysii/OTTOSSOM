@@ -227,7 +227,7 @@ def shade(frame=0, kind="shade"):
     # a ragged hem
     for x in range(3, 13):
         if (x + frame) % 3 == 0: c.put(x, 17, None)
-    eye = EMBER if kind == "fang" else EYE_COLD
+    eye = EMBER if kind == "fang" else hexc("#ff8a8a")   # danger reads red
     ey = 8
     for ex in (5, 9):
         c.put(ex, ey, eye); c.put(ex + 1, ey, eye)

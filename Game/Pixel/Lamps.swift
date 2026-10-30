@@ -50,6 +50,7 @@ struct Order: Codable, Equatable, Identifiable {
     var id: Int
     var who: String           // h d n (Hank, Dora, Lynn) or t1… townsfolk
     var color: LampColor
+    var since: Int?           // the day they first came; after three days without a light they stop coming
     var pay: Int { 6 * color.recipe.count + (color.recipe.count > 1 ? 4 : 0) + (who == "h" ? 0 : 2) }
 }
 
@@ -66,6 +67,8 @@ struct DigSave: Codable {
     var seen: Set<String> = []
     var nightDone = false          // tonight's dig is over: next is the shop
     var deepest = 0
+    var progress: DigProgress?     // a night that was interrupted: picked up again where it stopped
+    var lit: [String]?             // colours lit in the shop so far: they glow on the shelf
 
     static let key = "dig.save.v1"
     static func load() -> DigSave {
@@ -77,12 +80,14 @@ struct DigSave: Codable {
 
     /// Who comes in today. The first days are written; after that people come for colours the dig can reach.
     mutating func openShop() {
-        func add(_ who: String, _ c: LampColor) { orders.append(Order(id: nextOrder, who: who, color: c)); nextOrder += 1 }
+        func add(_ who: String, _ c: LampColor) { orders.append(Order(id: nextOrder, who: who, color: c, since: day)); nextOrder += 1 }
+        // whoever has waited three days without a light has stopped coming
+        orders.removeAll { day - ($0.since ?? day) >= 3 }
         let key = "day\(day)"
         guard !seen.contains(key) else { return }
         seen.insert(key)
         switch day {
-        case 1: add("h", .amber); add("n", .amber); add("d", .blue)
+        case 1: add("h", .amber); add("n", .amber); add("d", .amber)
         case 2: add("t1", .amber); add("n", .green)
         case 3: add("t2", .amber); add("h", .green); add("t3", .blue)
         default:
@@ -101,6 +106,9 @@ struct DigSave: Codable {
     mutating func light(_ order: Order, with picked: [Gem]) -> Bool {
         guard LampColor.mix(picked) == order.color else { return false }
         for g in picked { gems[g, default: 0] -= 1 }
+        var l = lit ?? []
+        if !l.contains(order.color.rawValue) { l.append(order.color.rawValue) }
+        lit = l
         coins += order.pay
         orders.removeAll { $0.id == order.id }
         return true
@@ -120,8 +128,11 @@ struct DigSave: Codable {
 
     static let upgradeCosts: [String: [Int]] = ["claw": [30, 90], "bag": [20, 60], "wick": [20, 60]]
 
-    /// The one thing to do next, shown at the top all the time.
-    var goal: String {
+    var goal: String { goal(depth: nil) }
+
+    /// The one thing to do next, shown at the top all the time. With the depth she's at, a stone she has
+    /// already gone past is pointed back up to.
+    func goal(depth: Int?) -> String {
         let unread = (1...8).first { !memories.contains($0) }
         let depths = DigWorld.depths
         if let o = orders.first(where: { o in o.color.recipe.contains { g in (gems[g] ?? 0) < o.color.recipe.filter { $0 == g }.count } }) {
@@ -134,6 +145,7 @@ struct DigSave: Codable {
         }
         if let n = unread {
             let need = depths[n]! >= 38 && (upgrades["claw"] ?? 0) < 2 ? "，要二级爪子" : depths[n]! >= 18 && (upgrades["claw"] ?? 0) < 1 ? "，要一级爪子" : ""
+            if let d = depth, d > depths[n]! + 1 { return "往上：记忆石 \(n) 在 \(depths[n]!) 米，跟着金箭头" }
             return "往下挖：记忆石 \(n) 在 \(depths[n]!) 米深\(need)"
         }
         if !seen.contains("ending") { return "去最深的地方：\(DigWorld.nestDepth) 米" }
@@ -144,9 +156,9 @@ struct DigSave: Codable {
 enum DigStory {
     static func s(_ who: String, _ t: String) -> Say { Say(who: who, text: t) }
     static let intro: [Say] = [
-        s("h", "主灯的光被一团黑东西偷走了。"), s("h", "灯塔底下的土里有光晶，能把灯重新点亮。"),
-        s("m", "土里的东西……都是我的？"), s("o", "挖到的，拿回来。我在上面拉着线。"),
+        s("h", "灯塔……又黑了。"), s("m", "底下有亮亮的！我的！"), s("o", "……嗯。线我拉着。"),
     ]
+    /// After a night, keyed by how many memory stones have been read: the town answers what she has found.
     static let afterNight: [Int: [Say]] = [
         1: [s("o", "……回来了。"), s("m", "看！好多亮亮的。"), s("h", "天亮了，有人拿着灭掉的灯来找你们。")],
         2: [s("n", "听说灯塔开了灯铺？"), s("m", "我的灯铺。"), s("o", "……我们的。")],
@@ -157,17 +169,9 @@ enum DigStory {
         7: [s("n", "你背包里的东西越来越多了。"), s("m", "都是我的。"), s("n", "嗯。那你的手还空着吗？")],
     ]
 
-    /// The bottom of the well.
-    static let ending: [Say] = [
-        s("", "最深的地方，一个戴歪王冠的小家伙，抱着主灯的光缩成一团。"),
-        s("x", "别过来。这些都是我的。"),
-        s("m", "……我以前也这么说。"),
-        s("", "莫斯放下背包，两手空空，朝他挥了挥手。"),
-        s("", "莫斯托愣了一下，慢慢地，也挥了挥手。"),
-        s("x", "……借你一半。"),
-        s("", "主灯的光顺着光丝爬了上去。灯塔亮了。"),
-        s("o", "……回来吧。两个都回来。"),
-    ]
+    /// The bottom of the well: what's said when she gets there, and after she has put the bag down and waved.
+    static let nestMeet: [Say] = [s("x", "别过来！都是我的！"), s("m", "……我以前也这么说。")]
+    static let ending: [Say] = [s("x", "……借你一半。"), s("o", "……回来吧。两个都回来。")]
     static let endingCard = "第一章 · 完"
     static func memoryLine(_ n: Int) -> String {
         switch n {
@@ -185,4 +189,27 @@ enum DigStory {
     static let customerName: [String: String] = ["t1": "邮差", "t2": "面包师", "t3": "老船长"]
     static let castNames: [String: String] = ["h": "汉克", "d": "朵拉", "n": "琳恩", "o": "奥托", "m": "莫斯", "x": "莫斯托"]
     static func name(_ who: String) -> String { castNames[who] ?? customerName[who] ?? "客人" }
+}
+
+
+/// A night stopped part-way (a call, the app put away): enough to carry on from the same spot.
+struct DigProgress: Codable {
+    var world: DigWorld
+    var x: Double, y: Double
+    var bag: Bag
+    var light: Double
+    var deepest: Int
+}
+
+/// What happens, kept on the device only, so a TestFlight round can be judged on numbers: opens, nights, depths,
+/// stones, the ending, orders, upgrades — one line each, newest last.
+enum Telemetry {
+    static let key = "dig.log.v1"
+    static func log(_ what: String) {
+        var lines = UserDefaults.standard.stringArray(forKey: key) ?? []
+        lines.append("\(Int(Date().timeIntervalSince1970)) \(what)")
+        if lines.count > 800 { lines.removeFirst(lines.count - 800) }
+        UserDefaults.standard.set(lines, forKey: key)
+    }
+    static var lines: [String] { UserDefaults.standard.stringArray(forKey: key) ?? [] }
 }

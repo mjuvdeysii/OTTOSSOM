@@ -5,7 +5,7 @@ import UIKit
 // is Otto's bead flashing.
 
 enum DigPainter {
-    static let gold = PixelArt.hex(0xFFD36B), cream = PixelArt.hex(0xFFF1C4), amber = PixelArt.hex(0xE8A020)
+    static let gold = PixelArt.hex(0xFFD36B), cream = PixelArt.hex(0xFFF1C4), amber = PixelArt.hex(0xE8A020), red = PixelArt.hex(0xFF6A5A)
     static let ink = PixelArt.hex(0x0B0A18)
     static var tileCache: [Int: PSprite] = [:]
 
@@ -27,13 +27,31 @@ enum DigPainter {
         return 0xFF000000 | b << 16 | g << 8 | r
     }
 
+    /// A sprite's silhouette, scaled, as a shadow on the wall.
+    static func shadow(_ s: PSprite, feetX: Double, feetY: Double, scale k: Double, crown: Bool, into f: inout Frame) {
+        let col = PixelArt.hex(0x0A0614)
+        let w = Int(Double(s.w) * k), h = Int(Double(s.h) * k)
+        let x0 = Int(feetX) - w / 2, y0 = Int(feetY) - h
+        for j in 0..<h {
+            for i in 0..<w {
+                let sx = min(s.w - 1, Int(Double(i) / k)), sy = min(s.h - 1, Int(Double(j) / k))
+                if s.px[sy * s.w + sx] >> 24 > 128 { f.blend(x0 + i, y0 + j, col, 0.6) }
+            }
+        }
+        if crown {
+            let cx = x0 + w / 2 + 2, cy = y0 + Int(2 * k)
+            for i in -4...4 { f.blend(cx + i, cy, col, 0.7); f.blend(cx + i, cy - 1, col, 0.7) }
+            for i in [-4, 0, 4] { for j in 2...4 { f.blend(cx + i, cy - j, col, 0.7) } }
+        }
+    }
+
     /// The wall behind a dug cell: what the cell was made of, pushed far back into the dark.
     static func backKind(_ y: Int) -> Cell {
         let d = y - DigWorld.ground
         return d < 8 ? .soil : d < 18 ? .clay : d < 38 ? .stone : .rock
     }
 
-    static func paint(_ sim: DigSim, into f: inout Frame, cam: Double, clock: Double, stick: (CGPoint, CGPoint)?, scale: PixelScale) {
+    static func paint(_ sim: DigSim, into f: inout Frame, cam: Double, clock: Double, stick: (CGPoint, CGPoint)?, scale: PixelScale, hud: V2 = V2(170, 40)) {
         let T = 16, W = DigWorld.W, G = DigWorld.ground
         let x0 = (f.w - W * T) / 2
         let camI = Int(cam.rounded())
@@ -64,7 +82,12 @@ enum DigPainter {
                     continue
                 }
                 if let s = tile(kind, v) {
-                    for j in 0..<T { for i in 0..<T { f.set(sx + i, sy + j, s.px[j * T + i]) } }
+                    if kind.claw > sim.claw {
+                        // too hard for the claw she has: pushed back into the dark, hatched
+                        for j in 0..<T { for i in 0..<T { f.set(sx + i, sy + j, (i + j) % 6 == 0 ? darken(s.px[j * T + i], 0.25) : darken(s.px[j * T + i], 0.55)) } }
+                    } else {
+                        for j in 0..<T { for i in 0..<T { f.set(sx + i, sy + j, s.px[j * T + i]) } }
+                    }
                 }
                 // edges against the dug-out dark: a lit lip on top, ink on the other sides
                 if ty > G {
@@ -106,6 +129,12 @@ enum DigPainter {
                 f.draw(mo, feet: Int(nx) + 8, Int(ny) - 2 + Int(sin(clock * 2) * 2), flip: true)
             }
         }
+        // her own shadow on the wall behind her: it grows with what she carries, and past six things wears a crown
+        if let ms = PixelArt.sprite("moss_idle_0") {
+            let n = Double(sim.bag.count)
+            let k = 1.0 + min(1.3, n * 0.13)
+            shadow(ms, feetX: sim.p.x + off.x - 3 - n * 0.5, feetY: sim.p.y + off.y - 1, scale: k, crown: sim.bag.count >= 6, into: &f)
+        }
         // Moss
         let moving = abs(sim.v.x) > 5 || sim.digging != nil
         let mName = sim.digging != nil ? "moss_run_\(Int(clock * 16) % 4)" : moving ? "moss_run_\(Int(clock * 10) % 4)" : (clock.truncatingRemainder(dividingBy: 3.7) < 0.15 ? "moss_blink" : "moss_idle_\(Int(clock * 2) % 2)")
@@ -125,7 +154,7 @@ enum DigPainter {
                 let k = sim.world.at(tx, ty)
                 let c = V2(Double(x0 + tx * T + 8), Double(ty * T - camI + 9))
                 switch k {
-                case .amber, .blue, .red: lights.append((c, 10, 0.45))
+                case .amber, .blue, .red: if k.claw <= sim.claw { lights.append((c, 10, 0.45)) }
                 case .memory: lights.append((c, 22 + 3 * sin(clock * 3), 0.75))
                 case .mote: lights.append((c, 9, 0.5))
                 default: break
@@ -154,9 +183,25 @@ enum DigPainter {
             if let sp = PixelArt.sprite(name) { f.draw(sp, feet: Int(s.p.x + off.x), Int(s.p.y + off.y) + 1, flip: s.dir < 0) }
         }
         for b in sim.bits { f.set(Int(b.p.x + off.x), Int(b.p.y + off.y), b.color) }
+        if let h = sim.hardAt, sim.t - h.t < 0.5, Int((sim.t - h.t) * 10) % 2 == 0 {
+            let sx = x0 + h.x * T, sy = h.y * T - camI
+            for k in 2..<(T - 2) { f.set(sx + k, sy + k, red); f.set(sx + T - 1 - k, sy + k, red) }
+        }
+        // the very first night, before she's dug at all: a pulse under her says "down here"
+        if !sim.started && sim.t > 1.2 {
+            let c = sim.p + off + V2(0, 8)
+            let r = 6 + (clock.truncatingRemainder(dividingBy: 1)) * 6
+            for k in 0..<24 { let an = Double(k) / 24 * .pi * 2; f.blend(Int(c.x + cos(an) * r), Int(c.y + sin(an) * r * 0.6), cream, 0.8) }
+            let bob = Int(sin(clock * 6) * 2)
+            for j in 0..<5 { for i in -(4 - j)...(4 - j) { f.set(Int(c.x) + i, Int(c.y) + 12 + j + bob, gold) } }
+        }
+        // what she picks up flies to the bag at the top of the screen
         for pop in sim.pops {
-            let a = sim.t - pop.t0
-            if let s = PixelArt.sprite(pop.icon) { f.draw(s, feet: Int(pop.p.x + off.x), Int(pop.p.y + off.y - a * 26), alpha: a < 0.6 ? 1 : max(0, 1 - (a - 0.6) / 0.3)) }
+            let a = min(1, (sim.t - pop.t0) / 0.6)
+            let from = pop.p + off
+            let e = a * a
+            let q = V2(from.x + (hud.x - from.x) * e, from.y + (hud.y - from.y) * e - sin(a * .pi) * 16)
+            if let s = PixelArt.sprite(pop.icon) { f.draw(s, feet: Int(q.x), Int(q.y)) }
         }
         // the flash
         if sim.t - sim.flashAt < 0.2 {
@@ -193,14 +238,10 @@ enum DigPainter {
             }
             dm += 5
         }
-        // the stick, where the finger is
+        // where the finger is
         if let st = stick {
-            let o = st.0, n = st.1
-            let a = V2(Double(o.x / scale.pt), Double(o.y / scale.pt)), b = V2(Double(n.x / scale.pt), Double(n.y / scale.pt))
-            for k in 0..<28 { let an = Double(k) / 28 * .pi * 2; f.blend(Int(a.x + cos(an) * 14), Int(a.y + sin(an) * 14), cream, 0.5) }
-            var d = b - a; if d.len > 14 { d = d.norm * 14 }
-            let kx = Int(a.x + d.x), ky = Int(a.y + d.y)
-            for j in -2...2 { for i in -2...2 where i * i + j * j <= 5 { f.blend(kx + i, ky + j, cream, 0.75) } }
+            let a = V2(Double(st.1.x / scale.pt), Double(st.1.y / scale.pt))
+            for k in 0..<24 { let an = Double(k) / 24 * .pi * 2; f.blend(Int(a.x + cos(an) * 9), Int(a.y + sin(an) * 9), cream, 0.45) }
         }
     }
 }
@@ -223,6 +264,8 @@ final class DigCanvas: UIView {
     var moved = false
     var command: String?            // set from SwiftUI: "reel", "closeMemory"
     var shake = 0.0
+    var drawnPaused = false
+    var hudTarget: V2 { V2(Double(scale.w) - 30, Double(SafeArea.top / scale.pt) + 14) }
 
     init(sim: DigSim, scale: PixelScale) {
         self.sim = sim; self.scale = scale
@@ -231,7 +274,7 @@ final class DigCanvas: UIView {
         layer.magnificationFilter = .nearest
         layer.contentsGravity = .resize
         layer.contentsScale = UIScreen.main.scale / CGFloat(scale.k)
-        isMultipleTouchEnabled = false
+        isMultipleTouchEnabled = true
         backgroundColor = .black
         cam = targetCam()
     }
@@ -261,8 +304,10 @@ final class DigCanvas: UIView {
             command = nil
             if c == "reel" { sim.reelIn() }
             if c == "closeMemory" { sim.openMemory = nil }
+            if c == "drop" { sim.bag = Bag() }
         }
         if demo && !paused { demoSteer() }
+        link?.preferredFrameRateRange = paused ? CAFrameRateRange(minimum: 4, maximum: 10, preferred: 10) : CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
         if !paused && sim.openMemory == nil {
             sim.step(dt)
         }
@@ -284,7 +329,12 @@ final class DigCanvas: UIView {
         onTick?(sim)
         cam += (targetCam() - cam) * min(1, dt * 6)
         let st: (CGPoint, CGPoint)? = origin.flatMap { o in finger.map { (o, $0) } }
-        DigPainter.paint(sim, into: &frame_, cam: cam, clock: clock, stick: st, scale: scale)
+        // paused: one last frame, then nothing until it goes again
+        if paused || sim.openMemory != nil {
+            if drawnPaused { return }
+            drawnPaused = true
+        } else { drawnPaused = false }
+        DigPainter.paint(sim, into: &frame_, cam: cam, clock: clock, stick: st, scale: scale, hud: hudTarget)
         layer.contents = frame_.cgImage()
     }
 
@@ -296,32 +346,56 @@ final class DigCanvas: UIView {
         if sim.shades.contains(where: { $0.p.dist(sim.p) < 30 }) { sim.flash() }
     }
 
+    // Touch: the first finger presses where she should go — beside her to walk or dig that way, below to dig down,
+    // above to jump (once per press) or dig up. A quick tap on Moss herself, or a second finger anywhere, flashes the bead.
+    var driver: UITouch?
+    var pressedOnMoss = false
+
+    func mossOnScreen() -> V2 {
+        let x0 = Double((scale.w - DigWorld.W * 16) / 2)
+        return V2(x0 + sim.p.x, sim.p.y - 8 - cam)
+    }
+
+    /// The one direction a finger at this point means.
+    func direction(_ p: CGPoint) -> V2 {
+        let d = V2(Double(p.x / scale.pt), Double(p.y / scale.pt)) - mossOnScreen()
+        if d.len < 11 { return V2(0, 0) }
+        if abs(d.y) > abs(d.x) * 1.15 { return V2(0, d.y > 0 ? 1 : -1) }
+        return V2(d.x > 0 ? 1 : -1, 0)
+    }
+
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let t = touches.first else { return }
-        origin = t.location(in: self); finger = origin; downAt = t.timestamp; moved = false
+        for t in touches {
+            if driver == nil {
+                driver = t
+                let p = t.location(in: self)
+                finger = p; origin = p; downAt = t.timestamp; moved = false
+                let d = direction(p)
+                pressedOnMoss = d.len == 0
+                sim.push(d)
+                if d.y < 0 { sim.jump() }
+            } else {
+                sim.flash()
+            }
+        }
     }
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let t = touches.first, let o = origin else { return }
+        guard let t = driver, touches.contains(t) else { return }
         let p = t.location(in: self)
+        if let o = origin, hypot(p.x - o.x, p.y - o.y) > 10 { moved = true }
         finger = p
-        let d = V2(Double(p.x - o.x), Double(p.y - o.y))
-        if d.len > 10 { moved = true }
-        // 28 points of push is full stick; past that the ring follows the finger
-        let full = 28.0
-        var s = d * (1 / full)
-        if s.len > 1 { s = s.norm }
-        if d.len > full * 1.6 {
-            let back = d.norm * (full * 1.6)
-            origin = CGPoint(x: p.x - back.x, y: p.y - back.y)
-        }
-        sim.push(d.len > 6 ? s : V2(0, 0))
+        let d = direction(p)
+        if d.y < 0 && sim.stick.y >= 0 { sim.jump() }
+        sim.push(d)
     }
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let t = touches.first else { return }
-        if !moved && t.timestamp - downAt < 0.3 { sim.flash() }
-        sim.push(V2(0, 0)); origin = nil; finger = nil
+        guard let t = driver, touches.contains(t) else { return }
+        if pressedOnMoss && !moved && t.timestamp - downAt < 0.35 { sim.flash() }
+        driver = nil; sim.push(V2(0, 0)); origin = nil; finger = nil
     }
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { sim.push(V2(0, 0)); origin = nil; finger = nil }
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        driver = nil; sim.push(V2(0, 0)); origin = nil; finger = nil
+    }
 }
 
 struct DigCanvasView: UIViewRepresentable {

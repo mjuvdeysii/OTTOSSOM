@@ -96,8 +96,7 @@ def tile_cell(kind, var):
         ip = ic.load()
         for j in range(12):
             for i in range(12):
-                if ip[i, j][3] > 128 and j < 9: c.put(2 + i, 4 + j, ip[i, j][:3])
-        for i in range(2, 14): c.put(i, 12, SOIL_R[1])
+                if ip[i, j][3] > 128: c.put(2 + i, 3 + j, ip[i, j][:3])
     elif kind in (MEMORY, MEMREAD):
         material(c, STONE_R, seed, 0.2, 0.0)
         for y in range(2, T):
@@ -333,7 +332,8 @@ def pile2(p, x, base, n, seed=1):
 
 
 def dark_memory(n):
-    """The deepest dark: no desk, no lamp — only what Moss and Mosto give off."""
+    """The deepest dark: no desk, no lamp — only what Moss and Mosto give off. The dark is laid down first, the two
+    of them on top in their own colours."""
     p = Pic(120, 100, fill=hx("#06050c"))
     r = random.Random(n)
     for _ in range(40):
@@ -343,23 +343,8 @@ def dark_memory(n):
         for y in range(floor, 100):
             p.put(x, y, hx("#0c0a14") if (x + y) % 5 else hx("#120f1e"))
     if n == 8:
-        p.sprite("mosto_carry_1", 84, floor + 2)
-        # he shivers: two little tremble marks
-        for (x, y) in ((70, floor - 22), (98, floor - 24)): p.put(x, y, hx("#a68cf2")); p.put(x, y + 2, hx("#a68cf2"))
-        p.sprite("moss_idle_0", 36, floor + 3)
-        for k in range(8): p.put(44 + k // 3, floor - 12 - k, hx("#55905c")); p.put(45 + k // 3, floor - 12 - k, hx("#3a6a44"))
-        for i in range(-1, 2): p.put(47 + i, floor - 21, hx("#55905c"))
         lights = [((36, floor - 10), 34, 0.9), ((80, floor - 14), 30, 0.8)]
     else:
-        # together: the bead between them, the stolen light floating up above
-        p.sprite("moss_idle_1", 48, floor + 3)
-        p.sprite("mosto_fly_0", 74, floor + 2, flip=True)
-        p.ellipse(61, floor - 4, 3, 3, hx("#b07a48"), INK); p.put(60, floor - 5, hx("#f0d0a0"))
-        for j in range(-6, 7):
-            for i in range(-6, 7):
-                d = i * i + j * j
-                if d <= 36: p.put(61 + i, 26 + j, GOLD[4] if d < 9 else GOLD[3] if d < 20 else GOLD[2])
-        for y in range(34, floor - 20, 3): p.put(61, y, GOLD[3])
         lights = [((61, 26), 70, 1.0), ((61, floor - 8), 30, 0.8)]
     for y in range(100):
         for x in range(120):
@@ -372,6 +357,21 @@ def dark_memory(n):
             m = [0.55, 0.72, 0.88, 1.0][band]
             c = p.get(x, y)
             p.put(x, y, (int(c[0] * m), int(c[1] * m), int(c[2] * (m * 0.85 + 0.15))))
+    if n == 8:
+        p.sprite("mosto_carry_1", 84, floor + 2)
+        for (x, y) in ((70, floor - 22), (98, floor - 24)): p.put(x, y, hx("#a68cf2")); p.put(x, y + 2, hx("#a68cf2"))
+        p.sprite("moss_idle_0", 36, floor + 3)
+        for k in range(8): p.put(44 + k // 3, floor - 12 - k, hx("#55905c")); p.put(45 + k // 3, floor - 12 - k, hx("#3a6a44"))
+        for i in range(-1, 2): p.put(47 + i, floor - 21, hx("#55905c"))
+    else:
+        p.sprite("moss_idle_1", 48, floor + 3)
+        p.sprite("mosto_fly_0", 74, floor + 2, flip=True)
+        p.ellipse(61, floor - 4, 3, 3, hx("#b07a48"), INK); p.put(60, floor - 5, hx("#f0d0a0"))
+        for j in range(-6, 7):
+            for i in range(-6, 7):
+                d = i * i + j * j
+                if d <= 36: p.put(61 + i, 26 + j, GOLD[4] if d < 9 else GOLD[3] if d < 20 else GOLD[2])
+        for y in range(34, floor - 20, 3): p.put(61, y, GOLD[3])
     for x in range(120): p.put(x, 0, INK); p.put(x, 99, INK)
     for y in range(100): p.put(0, y, INK); p.put(119, y, INK)
     p.save(f"memory_{n}")

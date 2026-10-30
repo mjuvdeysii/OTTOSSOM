@@ -28,7 +28,7 @@ struct DigGameView: View {
             case "shop":
                 ph = .shop; sv.gems = [.amber: 3, .blue: 1]; sv.coins = 24; sv.openShop()
             case "shoptalk":
-                ph = .shop; sv.gems = [.amber: 2]; sv.openShop(); tk = DigStory.afterNight[1] ?? []
+                ph = .shop; sv.gems = [.amber: 2]; sv.openShop(); tk = DigStory.afterNight[1] ?? []; sv.memories = [1]
             case "evening":
                 ph = .evening; sv.coins = 46; sv.upgrades = ["bag": 1]; sv.memories = [1]
             default: ph = .title
@@ -67,18 +67,20 @@ struct DigGameView: View {
         if !save.seen.contains("intro") {
             save.seen.insert("intro"); save.save()
             talk = DigStory.intro
-            afterTalk = { go(.night); Sound.shared.music(3) }
+            afterTalk = { go(.night); Sound.shared.music(2) }
         } else if save.nightDone {
             save.openShop(); save.save(); go(.shop); Sound.shared.music(1)
-        } else { go(.night); Sound.shared.music(3) }
+        } else { go(.night); Sound.shared.music(2) }
     }
 
     private func endNight() {
         if probe != nil { return }
         save.openShop(); save.save()
         go(.shop); Sound.shared.music(1)
-        if let lines = DigStory.afterNight[save.day], !save.seen.contains("after\(save.day)") {
-            save.seen.insert("after\(save.day)"); save.save()
+        // the town answers what she has found: a few lines for the newest memory stone, once
+        let n = save.memories.count
+        if n > 0, let lines = DigStory.afterNight[min(n, 7)], !save.seen.contains("story\(min(n, 7))") {
+            save.seen.insert("story\(min(n, 7))"); save.save()
             talk = lines; afterTalk = nil
         }
     }
@@ -86,7 +88,7 @@ struct DigGameView: View {
     private func startNight() {
         save.day += 1; save.nightDone = false; save.save()
         nightID += 1
-        go(.night); Sound.shared.music(3)
+        go(.night); Sound.shared.music(2)
     }
 }
 
@@ -148,69 +150,92 @@ struct DigNight: View {
     var demo = false
     var memoryProbe = false
     var done: () -> Void
+    @Environment(\.scenePhase) private var phase
     @State private var sim: DigSim
     @State private var hud = HUD()
     @State private var command: String?
-    @State private var hint: String?
     @State private var memory: Int?
     @State private var result: DigSim?
     @State private var banked = 0
-    @State private var ending: [Say] = []
+    @State private var talk: [Say] = []
+    @State private var nestStage = 0          // 0 not there; 1 met him; 2 bag put down; 3 waved: the ending
     @State private var endCard = false
+    @State private var away = false
+    @State private var box = SimBox()
+    @State private var pulse = false
 
-    struct HUD: Equatable { var light = 1.0; var depth = 0; var bag = 0; var cap = 8; var secs = 0 }
+    struct HUD: Equatable { var light = 1.0; var depth = 0; var bag = 0; var cap = 8 }
+    final class SimBox { var sim: DigSim? }
 
     init(save: Binding<DigSave>, scale: PixelScale, demo: Bool, memoryProbe: Bool, endingProbe: Bool = false, done: @escaping () -> Void) {
         _save = save; self.scale = scale; self.demo = demo; self.memoryProbe = memoryProbe; self.done = done
         let s = save.wrappedValue
         var sim = DigSim(world: s.world, upgrades: s.upgrades, seed: UInt64(s.day) * 977 + 13)
         sim.nestDone = s.seen.contains("ending")
+        sim.forgiving = s.day == 1
+        if let pr = s.progress {
+            // carry on from where the night was stopped
+            sim.world = pr.world; sim.p = V2(pr.x, pr.y); sim.bag = pr.bag; sim.light = pr.light
+            sim.deepest = pr.deepest; sim.started = true
+            sim.thread = [sim.otto + V2(-6, -25), sim.p]
+        } else if s.day > 1 {
+            sim.regrow()
+        }
         _sim = State(initialValue: sim)
         if memoryProbe { _memory = State(initialValue: 6) }
-        if endingProbe { _ending = State(initialValue: Array(DigStory.ending.dropFirst(3))) }
+        if endingProbe { _nestStage = State(initialValue: 2) }
     }
 
     var body: some View {
         let pt = scale.pt, k = scale.k
+        let full = hud.bag >= hud.cap
         ZStack {
-            DigCanvasView(sim: sim, scale: scale, paused: memory != nil || result != nil || !ending.isEmpty || endCard, demo: demo, command: $command,
+            DigCanvasView(sim: sim, scale: scale, paused: result != nil || !talk.isEmpty || endCard || away, demo: demo, command: $command,
                           onEvents: handle, onTick: tick)
                 .frame(width: CGFloat(scale.w) * pt, height: CGFloat(scale.h) * pt)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .ignoresSafeArea()
             VStack(spacing: pt * 4) {
-                HStack(spacing: pt * 6) {
-                    PixelImage(name: "mote_0", pt: pt)
-                    PixelBar(value: hud.light, color: hud.light < 0.25 ? Color(0xff8a8a) : pxGold, pt: pt)
-                    Text("\(hud.depth) 米").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream).monospacedDigit()
-                    Counter(icon: "icon_amber", text: "\(hud.bag)/\(hud.cap)", scale: scale, color: hud.bag >= hud.cap ? Color(0xff8a8a) : pxCream)
+                VStack(alignment: .leading, spacing: pt * 3) {
+                    HStack(spacing: pt * 6) {
+                        PixelImage(name: "mote_0", pt: pt)
+                        PixelBar(value: hud.light, color: hud.light < 0.25 ? Color(0xff8a8a) : pxGold, pt: pt)
+                        Text("\(hud.depth) 米").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream).monospacedDigit()
+                        Counter(icon: "icon_amber", text: "\(hud.bag)/\(hud.cap)", scale: scale, color: full ? Color(0xff8a8a) : pxCream)
+                            .opacity(full && pulse ? 0.35 : 1)
+                    }
+                    HStack(spacing: pt * 4) {
+                        Rectangle().fill(pxGold).frame(width: pt * 3, height: pt * 3)
+                        Text(goalText).font(PixelFont.font(1, k: k)).foregroundStyle(pxCream).lineLimit(1).minimumScaleFactor(0.7)
+                        Spacer(minLength: 0)
+                    }
                 }
-                .padding(.horizontal, pt * 6).padding(.vertical, pt * 3)
+                .padding(.horizontal, pt * 6).padding(.vertical, pt * 4)
                 .modifier(PixelPanel(pt: pt, fill: Color(0x141024).opacity(0.92)))
-                GoalLine(text: hint ?? save.goal, scale: scale)
+                if let n = memory { MemoryToast(n: n, scale: scale) { closeMemory() }.transition(.move(edge: .top).combined(with: .opacity)) }
                 Spacer()
                 HStack {
                     Spacer()
-                    PixelButton(title: "收线回家", k: k, primary: hud.bag >= hud.cap || hud.light < 0.2) { command = "reel" }
-                }
-            }
-            .padding(.horizontal, pt * 6).padding(.top, pt * 30).padding(.bottom, pt * 22)
-            if let n = memory { MemoryPanel(n: n, scale: scale) { closeMemory(n) } }
-            if !ending.isEmpty {
-                ZStack {
-                    Color.black.opacity(0.75).ignoresSafeArea()
-                    VStack {
-                        PixelImage(name: "memory_9", pt: pt * 1.5).overlay(Rectangle().strokeBorder(pxEdge, lineWidth: pt))
-                            .padding(.top, pt * 40)
-                        Spacer()
+                    switch nestStage {
+                    case 1:
+                        PixelButton(title: "放下背包", k: k) { putDown() }
+                    case 2:
+                        PixelButton(title: "朝他挥挥手", k: k) { wave() }
+                    default:
+                        PixelButton(title: "收线回家", k: k, primary: full || hud.light < 0.2) { command = "reel" }
+                            .scaleEffect(full && pulse ? 1.08 : 1)
                     }
-                    TalkBox(scale: scale, lines: $ending) { endChapter() }
                 }
             }
+            .padding(.horizontal, pt * 6)
+            .padding(.top, SafeArea.top + pt * 2)
+            .padding(.bottom, max(SafeArea.bottom, pt * 6) + pt * 4)
+            if !talk.isEmpty { TalkBox(scale: scale, lines: $talk) { talkDone() } }
             if endCard {
                 ZStack {
                     Color.black.ignoresSafeArea()
                     VStack(spacing: pt * 10) {
+                        PixelImage(name: "memory_9", pt: pt).overlay(Rectangle().strokeBorder(pxEdge, lineWidth: pt))
                         Text(DigStory.endingCard).font(PixelFont.font(2, k: k)).foregroundStyle(pxGold)
                         Text("灯塔亮了。往下还有更深的地方。").font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
                         PixelButton(title: "回到灯塔", k: k) { endCard = false; command = "reel" }
@@ -221,104 +246,172 @@ struct DigNight: View {
             if let r = result { NightResult(sim: r, coins: banked, scale: scale) { done() } }
         }
         .frame(width: CGFloat(scale.w) * scale.pt)
+        .animation(.easeInOut(duration: 0.25), value: memory)
         .onAppear {
-            if !save.seen.contains("hint_move") {
-                save.seen.insert("hint_move")
-                hint = "按住屏幕拖动：往哪推，莫斯就往哪走、往哪挖"
-                Task { try? await Task.sleep(for: .seconds(7)); if hint?.hasPrefix("按住") == true { hint = nil } }
-            }
+            Telemetry.log("night_start day=\(save.day)")
+            withAnimation(.easeInOut(duration: 0.45).repeatForever(autoreverses: true)) { pulse = true }
+        }
+        .onChange(of: phase) { _, p in
+            // put away or interrupted: stop the night and keep it, so nothing is lost and no light burns
+            if p != .active { away = true; keepProgress() } else { away = false }
         }
     }
 
+    private var goalText: String {
+        if nestStage == 1 { return "放下背包" }
+        if nestStage == 2 { return "朝莫斯托挥挥手" }
+        return save.goal(depth: hud.depth)
+    }
+
     private func tick(_ s: DigSim) {
-        let h = HUD(light: s.light / s.lightMax, depth: s.depth, bag: s.bag.count, cap: s.capacity, secs: s.secondsLeft)
-        if h.light < 0.2 && h.light > 0 && Int(s.t) != Int(s.t - 1.0 / 60) && Int(s.t) % 2 == 0 && result == nil { Sound.shared.heartbeat(); Haptic.light() }
+        box.sim = s
+        let h = HUD(light: (s.light / s.lightMax * 40).rounded(.up) / 40, depth: s.depth, bag: s.bag.count, cap: s.capacity)
+        if s.light / s.lightMax < 0.2 && s.light > 0 && Int(s.t) != Int(s.t - 1.0 / 60) && Int(s.t) % 2 == 0 && result == nil && s.outcome == 0 {
+            Sound.shared.heartbeat(); Feel.play(.heartbeat)
+        }
+        if h.depth != hud.depth && probeIsReal { Sound.shared.music(h.depth >= 38 ? 3 : 2) }
         if h != hud { hud = h }
         if result == nil && s.outcome != 0 { finish(s) }
     }
-
-    private func say(_ key: String, _ text: String, _ secs: Double = 5) {
-        guard !save.seen.contains(key) else { return }
-        save.seen.insert(key)
-        hint = text
-        Task { try? await Task.sleep(for: .seconds(secs)); if hint == text { hint = nil } }
-    }
+    private var probeIsReal: Bool { !demo }
 
     private func handle(_ evs: [DigEvent]) {
+        let gotGem = evs.contains { if case .gem = $0 { return true }; return false }
         for e in evs {
             switch e {
             case .dug(let t):
+                if gotGem { break }
                 switch t {
                 case .soil, .grass, .mote, .trinket: Sound.shared.digSoft()
                 case .clay: Sound.shared.digClay()
                 default: Sound.shared.digStone()
                 }
-            case .gem(let g): Sound.shared.chime(g == .amber ? 0 : g == .blue ? 1 : 2); Haptic.light(); say("hint_gem", "光晶装进背包了：背回灯铺能点灯")
-            case .trinket: Sound.shared.touch(); say("hint_trinket", "「我的！」纽扣、硬币、瓶盖能换钱")
-            case .mote: Sound.shared.light()
-            case .full: Sound.shared.no(); say("hint_full", "背包满了：点「收线回家」", 6)
-            case .hard: Sound.shared.no(); say("hint_hard", "这块太硬：白天去琳恩那里升级爪子", 6)
+            case .crack(let n): Sound.shared.crack(n)
+            case .gem(let g): Sound.shared.chime(g == .amber ? 0 : g == .blue ? 1 : 2); Feel.play(.gem)
+            case .trinket: Sound.shared.touch(); Feel.play(.light)
+            case .mote: Sound.shared.take()
+            case .full: Sound.shared.no(); Feel.play(.hard)
+            case .hard: Sound.shared.no(); Feel.play(.hard)
             case .memory(let n):
-                Sound.shared.motif(.moss); Haptic.success()
-                if !save.memories.contains(n) { save.memories.append(n); save.save() }
-                if demo { command = "closeMemory" } else { memory = n }
+                Sound.shared.motif(.moss); Feel.play(.memory)
+                if !save.memories.contains(n) { save.memories.append(n); save.save(); Telemetry.log("memory n=\(n) day=\(save.day)") }
+                command = "closeMemory"          // the dig carries on: the memory shows over it
+                if !demo { memory = n; Sound.shared.duck(true) }
             case .flash(let n):
-                Sound.shared.light()
-                if n > 0 { Haptic.success() }
-            case .hurt: Sound.shared.dim(); Haptic.warn(); say("hint_shade", "影子会吸走灯光：轻点屏幕，灯珠一闪就赶走它们", 6)
+                if n > 0 { Sound.shared.light(); Feel.play(.gem) } else { Sound.shared.flashMiss() }
+            case .hurt: Sound.shared.dim(); Feel.play(.hurt)
+            case .jump: Sound.shared.jump()
             case .home, .dark: break
             case .step: break
             case .land: Sound.shared.step()
             case .nest:
-                Sound.shared.motif(.mosto); Haptic.success()
+                Sound.shared.motif(.mosto); Feel.play(.nest)
                 if demo { break }
-                ending = DigStory.ending
+                talk = DigStory.nestMeet
+                nestStage = 1
             }
         }
     }
 
-    private func endChapter() {
-        save.seen.insert("ending"); save.save()
-        Sound.shared.win()
-        withAnimation(.easeInOut(duration: 0.6)) { endCard = true }
+    /// The end of the well: she puts everything down, then waves — and only then does it go on.
+    private func putDown() {
+        command = "drop"
+        Sound.shared.step(); Feel.play(.light)
+        nestStage = 2
+    }
+    private func wave() {
+        Sound.shared.motif(.moss); Feel.play(.memory)
+        nestStage = 3
+        talk = DigStory.ending
+    }
+    private func talkDone() {
+        if nestStage == 3 {
+            save.seen.insert("ending"); save.save()
+            Telemetry.log("ending day=\(save.day)")
+            Sound.shared.music(0)
+            withAnimation(.easeInOut(duration: 0.6)) { endCard = true }
+        }
     }
 
-    private func closeMemory(_ n: Int) {
+    private func closeMemory() {
         memory = nil
-        command = "closeMemory"
+        Sound.shared.duck(false)
+    }
+
+    private func keepProgress() {
+        guard let s = box.sim, s.outcome == 0, result == nil, !demo else { return }
+        save.progress = DigProgress(world: s.world, x: s.p.x, y: s.p.y, bag: s.bag, light: s.light, deepest: s.deepest)
+        save.save()
     }
 
     private func finish(_ s: DigSim) {
         var sv = save
         sv.world = s.world
+        sv.progress = nil
         banked = sv.bank(s.bag)
         sv.deepest = max(sv.deepest, s.deepest)
         sv.nightDone = true
         sv.save()
         save = sv
         result = s
-        if s.outcome == 1 { Sound.shared.win() } else { Sound.shared.dim() }
+        Telemetry.log("night_end day=\(sv.day) depth=\(s.deepest) bag=\(s.bag.count) outcome=\(s.outcome) secs=\(Int(s.t))")
+        if s.outcome == 1 { Sound.shared.take() } else { Sound.shared.dim() }
     }
 }
 
-struct MemoryPanel: View {
+/// A memory stone, shown over the dig without stopping it; it folds away by itself. The words stay in the album.
+struct MemoryToast: View {
     let n: Int
     let scale: PixelScale
     var close: () -> Void
     var body: some View {
         let pt = scale.pt, k = scale.k
-        VStack(spacing: pt * 6) {
-            Text("记忆石 · \(n)").font(PixelFont.font(1, k: k)).foregroundStyle(pxGold)
-            PixelImage(name: "memory_\(n)", pt: pt * 1.5)
+        VStack(spacing: pt * 4) {
+            PixelImage(name: "memory_\(n)", pt: pt)
                 .overlay(Rectangle().strokeBorder(pxEdge, lineWidth: pt))
             Text(DigStory.memoryLine(n)).font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
                 .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).lineSpacing(pt * 2)
-            PixelButton(title: "继续", k: k) { close() }
         }
-        .padding(.vertical, pt * 8).padding(.horizontal, pt * 4)
+        .padding(pt * 6)
+        .modifier(PixelPanel(pt: pt, fill: Color(0x141024).opacity(0.95)))
+        .onTapGesture { close() }
+        .task(id: n) {
+            try? await Task.sleep(for: .seconds(5))
+            close()
+        }
+    }
+}
+
+/// The memories found so far, with their words, from the evening stall.
+struct MemoryAlbum: View {
+    let found: [Int]
+    let scale: PixelScale
+    var close: () -> Void
+    @State private var page = 0
+    var body: some View {
+        let pt = scale.pt, k = scale.k
+        let list = found.sorted()
+        VStack(spacing: pt * 6) {
+            Text("记忆相册 · \(list.count)/8").font(PixelFont.font(1, k: k)).foregroundStyle(pxGold)
+            if list.isEmpty {
+                Text("还没有找到记忆石").font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
+            } else {
+                let n = list[min(page, list.count - 1)]
+                PixelImage(name: "memory_\(n)", pt: pt).overlay(Rectangle().strokeBorder(pxEdge, lineWidth: pt))
+                Text(DigStory.memoryLine(n)).font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).lineSpacing(pt * 2)
+                HStack(spacing: pt * 6) {
+                    PixelButton(title: "上一块", k: k, primary: false) { page = max(0, page - 1) }.opacity(page > 0 ? 1 : 0.4)
+                    PixelButton(title: "下一块", k: k, primary: false) { page = min(list.count - 1, page + 1) }.opacity(page < list.count - 1 ? 1 : 0.4)
+                }
+            }
+            PixelButton(title: "合上", k: k) { close() }
+        }
+        .padding(pt * 8)
         .modifier(PixelPanel(pt: pt, fill: Color(0x141024)))
+        .padding(.horizontal, pt * 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(0.7).ignoresSafeArea())
+        .background(Color.black.opacity(0.75).ignoresSafeArea())
     }
 }
 
@@ -384,7 +477,7 @@ struct LampShop: View {
     var body: some View {
         let pt = scale.pt, k = scale.k
         ZStack {
-            PixelBackdrop(name: "shop_bg", scale: scale)
+            ShopBackdrop(scale: scale, lit: save.lit ?? [])
             VStack(spacing: pt * 4) {
                 HStack {
                     Text("第 \(save.day) 天 · 灯铺").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
@@ -394,7 +487,7 @@ struct LampShop: View {
                 .padding(.horizontal, pt * 8).padding(.vertical, pt * 4)
                 .modifier(PixelPanel(pt: pt))
                 if let o = current {
-                    GoalLine(text: "\(o.color.name)：放 \(o.color.recipe.map(gemName).joined(separator: " + "))", scale: scale)
+                    GoalLine(text: save.seen.contains("recipe_\(o.color.rawValue)") ? "点亮\(DigStory.name(o.who))的灯" : "\(o.color.name)：放 \(o.color.recipe.map(gemName).joined(separator: " + "))", scale: scale)
                     Spacer(minLength: pt * 4)
                     customer(o)
                     Spacer(minLength: pt * 4)
@@ -409,7 +502,7 @@ struct LampShop: View {
                     Spacer()
                 }
             }
-            .padding(.horizontal, pt * 6).padding(.top, pt * 30).padding(.bottom, pt * 22)
+            .padding(.horizontal, pt * 6).padding(.top, SafeArea.top + pt * 2).padding(.bottom, max(SafeArea.bottom, pt * 6) + pt * 4)
         }
     }
 
@@ -492,6 +585,8 @@ struct LampShop: View {
         guard !picked.isEmpty, lit == nil else { return }
         let mix = LampColor.mix(picked)
         if mix == o.color, save.light(o, with: picked) {
+            save.seen.insert("recipe_\(o.color.rawValue)")
+            Telemetry.log("order_done day=\(save.day) color=\(o.color.rawValue)")
             lit = o.color; Sound.shared.win(); Haptic.success()
             thanks = "谢谢！"
             save.save()
@@ -513,6 +608,7 @@ struct Evening: View {
     @Binding var save: DigSave
     let scale: PixelScale
     var night: () -> Void
+    @State private var album = false
     static let items: [(String, String, [String])] = [
         ("claw", "爪子", ["能挖石头和蓝晶", "能挖硬岩和红晶"]),
         ("bag", "背包", ["多装 4 件", "再多装 4 件"]),
@@ -523,7 +619,8 @@ struct Evening: View {
         ZStack {
             PixelBackdrop(name: "town", scale: scale)
             VStack(spacing: pt * 4) {
-                HStack {
+                HStack(spacing: pt * 4) {
+                    PixelImage(name: "npc_lynn", pt: pt)
                     Text("傍晚 · 琳恩的小摊").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
                     Spacer()
                     Counter(icon: "icon_coin", text: "\(save.coins)", scale: scale, color: pxGold)
@@ -559,13 +656,49 @@ struct Evening: View {
                     .modifier(PixelPanel(pt: pt))
                 }
                 HStack {
-                    Text("记忆石 \(save.memories.count)/4").font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
+                    PixelButton(title: "记忆 \(save.memories.count)/8", k: k, primary: false) { album = true }
                     Spacer()
                     PixelButton(title: "入夜，下井", k: k) { night() }
                 }
                 .padding(.top, pt * 4)
             }
-            .padding(.horizontal, pt * 6).padding(.top, pt * 30).padding(.bottom, pt * 22)
+            .padding(.horizontal, pt * 6).padding(.top, SafeArea.top + pt * 2).padding(.bottom, max(SafeArea.bottom, pt * 6) + pt * 4)
+            if album { MemoryAlbum(found: save.memories, scale: scale) { album = false } }
         }
+    }
+}
+
+/// The shop's back wall, with the colours lit so far glowing on the shelf and Otto dozing behind the counter.
+struct ShopBackdrop: View {
+    let scale: PixelScale
+    let lit: [String]
+    // the shelf lamps' glass in the picture (x, y of the glass's top-left), left to right, top shelf first
+    static let glass: [(Int, Int)] = [130, 190].flatMap { sy in stride(from: 22, to: 190, by: 28).map { ($0 - 4, sy - 15) } }
+    var body: some View {
+        GeometryReader { g in
+            if let s = PixelArt.sprite("shop_bg") {
+                let pt = scale.pt
+                let w = CGFloat(s.w) * pt, h = CGFloat(s.h) * pt
+                let ox = (g.size.width - w) / 2, oy = g.size.height - h
+                ZStack(alignment: .topLeading) {
+                    PixelImage(name: "shop_bg", pt: pt)
+                    ForEach(Array(lit.prefix(ShopBackdrop.glass.count).enumerated()), id: \.offset) { i, name in
+                        let c = LampColor(rawValue: name).map { Color($0.rgb) } ?? pxGold
+                        let gl = ShopBackdrop.glass[i]
+                        Rectangle().fill(c).frame(width: 9 * pt, height: 12 * pt)
+                            .shadow(color: c.opacity(0.8), radius: pt * 6)
+                            .offset(x: CGFloat(gl.0) * pt, y: CGFloat(gl.1) * pt)
+                    }
+                    if let o = PixelArt.sprite("otto_sleep") {
+                        PixelImage(name: "otto_sleep", pt: pt * 2)
+                            .offset(x: CGFloat(150) * pt, y: CGFloat(296 - o.h * 2) * pt)
+                    }
+                }
+                .frame(width: w, height: h, alignment: .topLeading)
+                .offset(x: ox, y: oy)
+            }
+        }
+        .background(Color(0x070a18))
+        .ignoresSafeArea()
     }
 }

@@ -76,7 +76,29 @@ final class Sound {
         musicPlayer.volume = 0.55
         engine.mainMixerNode.outputVolume = 0.9
         try? engine.start()
+        // a call or another app takes the audio: when it gives it back, start again where we were
+        let nc = NotificationCenter.default
+        nc.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] n in
+            guard let self, let raw = n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
+            self.resume()
+        }
+        nc.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self, !self.engine.isRunning else { return }
+            self.resume()
+        }
     }
+
+    private func resume() {
+        try? AVAudioSession.sharedInstance().setActive(true)
+        try? engine.start()
+        let theme = musicTheme
+        musicTheme = -1
+        if theme >= 0 { music(theme) }
+    }
+
+    /// Music down low under something that needs the room (a memory), and back up.
+    func duck(_ on: Bool) { musicPlayer.volume = musicOn && enabled ? (on ? 0.15 : 0.55) : 0 }
 
     /// A slow loop for each chapter (0 = title), composed here from a scale, a pad and a few plucked notes.
     func music(_ theme: Int) {
@@ -236,6 +258,31 @@ final class Sound {
         voice.windGain = enabled ? 0.012 : 0
     }
 
+    /// A short knock: a pitch falling from f0 to f1 with a little noise on the front — for digging, with enough
+    /// above 200 Hz to be heard out of a phone speaker.
+    private func knock(_ f0: Double, _ f1: Double, _ dur: Double, _ vol: Float, noise: Float = 0.3, harmonic: Double = 0) {
+        guard enabled else { return }
+        start()
+        guard let fmt = format, engine.isRunning else { return }
+        let sr = fmt.sampleRate
+        let n = Int(dur * sr)
+        guard n > 0, let buf = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: AVAudioFrameCount(n)) else { return }
+        buf.frameLength = AVAudioFrameCount(n)
+        let out = buf.floatChannelData![0]
+        var ph = 0.0, ph2 = 0.0
+        for i in 0..<n {
+            let t = Double(i) / sr, k = t / dur
+            let f = f0 + (f1 - f0) * k
+            ph += f / sr; ph2 += f * 2 / sr
+            let env = Float(min(1, t / 0.004) * exp(-k * 5))
+            let nz = t < 0.04 ? Float.random(in: -1...1) * noise * Float(1 - t / 0.04) : 0
+            out[i] = (Float(sin(ph * 2 * .pi) + harmonic * sin(ph2 * 2 * .pi)) + nz) * env * vol
+        }
+        let p = players[next % players.count]; next += 1
+        p.scheduleBuffer(buf, at: nil, options: [], completionHandler: nil)
+        if !p.isPlaying { p.play() }
+    }
+
     private func tones(_ freqs: [Double], _ dur: Double, _ vol: Float, square: Bool = false) {
         guard enabled else { return }
         start()
@@ -291,11 +338,19 @@ final class Sound {
     func no() { tones([150], 0.12, 0.03, square: true) }
     func win() { tones([392, 523, 659, 784], 0.5, 0.07) }
     // the dig: each ground has its own sound
-    func digSoft() { tones([96, 72], 0.07, 0.07) }
-    func digClay() { tones([82, 64], 0.09, 0.08, square: true) }
-    func digStone() { tones([620, 410], 0.06, 0.05, square: true) }
+    func digSoft() { knock(240, 180, 0.08, 0.10, noise: 0.5) }
+    func digClay() { knock(200, 150, 0.10, 0.10, noise: 0.35) }
+    func digStone() { knock(520, 380, 0.07, 0.07, noise: 0.25) }
+    /// A crack running through what she's digging: each stage a little higher.
+    func crack(_ stage: Int) { knock(300 * pow(1.12, Double(stage)), 260 * pow(1.12, Double(stage)), 0.025, 0.06, noise: 0.6) }
     func chime(_ k: Int) { tones([[1046, 1568], [1175, 1760], [880, 1318]][k % 3], 0.4, 0.06) }
-    func heartbeat() { tones([58, 52], 0.12, 0.09) }
+    func heartbeat() {
+        knock(140, 130, 0.09, 0.12, noise: 0, harmonic: 0.5)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) { self.knock(140, 128, 0.09, 0.09, noise: 0, harmonic: 0.5) }
+    }
+    /// The bead flashing at nothing: a small plain note, not a reward.
+    func flashMiss() { tones([784], 0.15, 0.04) }
+    func jump() { knock(330, 440, 0.06, 0.05, noise: 0.1) }
 }
 
 enum Haptic {

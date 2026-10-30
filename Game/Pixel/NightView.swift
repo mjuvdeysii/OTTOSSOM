@@ -18,7 +18,7 @@ struct PixelScale {
     init(size: CGSize) {
         let s = UIScreen.main.scale
         let wp = Int(size.width * s), hp = Int(size.height * s)
-        k = max(2, Int((Double(wp) / 192).rounded()))
+        k = max(2, wp / 192)     // whole game pixels, and never narrower than the 192-pixel world
         w = wp / k; h = hp / k
     }
     var pt: CGFloat { CGFloat(k) / UIScreen.main.scale }     // points per game pixel
