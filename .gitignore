@@ -3,3 +3,4 @@ build/
 *.xcodeproj/
 __pycache__/
 Tools/fast/libfast.so
+.tmpdoc/
