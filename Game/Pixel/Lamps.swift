@@ -69,7 +69,8 @@ struct DigSave: Codable {
 
     static let key = "dig.save.v1"
     static func load() -> DigSave {
-        guard let d = UserDefaults.standard.data(forKey: key), let s = try? JSONDecoder().decode(DigSave.self, from: d) else { return DigSave() }
+        guard let d = UserDefaults.standard.data(forKey: key), var s = try? JSONDecoder().decode(DigSave.self, from: d) else { return DigSave() }
+        s.world.ensureMemories()
         return s
     }
     func save() { if let d = try? JSONEncoder().encode(self) { UserDefaults.standard.set(d, forKey: DigSave.key) } }
@@ -121,8 +122,8 @@ struct DigSave: Codable {
 
     /// The one thing to do next, shown at the top all the time.
     var goal: String {
-        let unread = [1, 2, 3, 4].first { !memories.contains($0) }
-        let depths = [1: 6, 2: 15, 3: 26, 4: 42]
+        let unread = (1...8).first { !memories.contains($0) }
+        let depths = DigWorld.depths
         if let o = orders.first(where: { o in o.color.recipe.contains { g in (gems[g] ?? 0) < o.color.recipe.filter { $0 == g }.count } }) {
             let missing = o.color.recipe.first { g in (gems[g] ?? 0) < o.color.recipe.filter { $0 == g }.count }!
             let gname = missing == .amber ? "琥珀晶" : missing == .blue ? "蓝晶" : "红晶"
@@ -131,8 +132,12 @@ struct DigSave: Codable {
             }
             return "\(DigStory.name(o.who))要\(o.color.name)：去挖\(gname)"
         }
-        if let n = unread { return "往下挖：记忆石 \(n) 在 \(depths[n]!) 米深" }
-        return "往更深的地方挖"
+        if let n = unread {
+            let need = depths[n]! >= 38 && (upgrades["claw"] ?? 0) < 2 ? "，要二级爪子" : depths[n]! >= 18 && (upgrades["claw"] ?? 0) < 1 ? "，要一级爪子" : ""
+            return "往下挖：记忆石 \(n) 在 \(depths[n]!) 米深\(need)"
+        }
+        if !seen.contains("ending") { return "去最深的地方：\(DigWorld.nestDepth) 米" }
+        return "点亮镇上的灯，往深处找光晶"
     }
 }
 
@@ -146,13 +151,34 @@ enum DigStory {
         1: [s("o", "……回来了。"), s("m", "看！好多亮亮的。"), s("h", "天亮了，有人拿着灭掉的灯来找你们。")],
         2: [s("n", "听说灯塔开了灯铺？"), s("m", "我的灯铺。"), s("o", "……我们的。")],
         3: [s("d", "地底下有一块会发光的石头吗？"), s("m", "有！上面刻着一个小石头。"), s("o", "像你。")],
+        4: [s("t3", "我年轻时下过那口井。越往下，越觉得有人在背后跟着。"), s("m", "是影子吧。"), s("t3", "影子会戴王冠吗？")],
+        5: [s("h", "主灯还是暗的。光被偷到最深的地方去了。"), s("o", "……那就挖到最深。")],
+        6: [s("m", "奥托，我的影子呢？"), s("o", "……在你脚下。"), s("m", "它刚才是不是没跟上？")],
+        7: [s("n", "你背包里的东西越来越多了。"), s("m", "都是我的。"), s("n", "嗯。那你的手还空着吗？")],
     ]
+
+    /// The bottom of the well.
+    static let ending: [Say] = [
+        s("", "最深的地方，一个戴歪王冠的小家伙，抱着主灯的光缩成一团。"),
+        s("x", "别过来。这些都是我的。"),
+        s("m", "……我以前也这么说。"),
+        s("", "莫斯放下背包，两手空空，朝他挥了挥手。"),
+        s("", "莫斯托愣了一下，慢慢地，也挥了挥手。"),
+        s("x", "……借你一半。"),
+        s("", "主灯的光顺着光丝爬了上去。灯塔亮了。"),
+        s("o", "……回来吧。两个都回来。"),
+    ]
+    static let endingCard = "第一章 · 完"
     static func memoryLine(_ n: Int) -> String {
         switch n {
         case 1: return "台灯底下，一颗小石头站了起来。"
         case 2: return "它朝墙挥了挥手，墙上的影子也挥了挥手。它第一次有了伴。"
         case 3: return "它开始把东西一样一样搬回身边。墙上的影子还举着手，等它回头。"
         case 4: return "它抱紧一颗珠子，背过身去。墙上的影子也背过身去，头顶多了一顶歪王冠。"
+        case 5: return "它越搬越多，抱都抱不过来。影子越来越大，王冠越来越清楚。它一次也没回头。"
+        case 6: return "它松开珠子去够一颗新纽扣。影子从墙上下来，抢过珠子，跑进了台灯背后的暗处。"
+        case 7: return "它回过头，脚下没有影子了。它放下瓶盖，放下硬币，两手空空，往暗处摸过去。"
+        case 8: return "暗处最里面，小魔王抱着珠子在发抖。它看着他，朝他挥了挥手。"
         default: return ""
         }
     }

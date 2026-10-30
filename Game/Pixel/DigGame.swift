@@ -19,7 +19,7 @@ struct DigGameView: View {
             sv = DigSave()
             sv.seen = ["intro"]
             switch p {
-            case "dig", "memory": ph = .night
+            case "dig", "memory", "ending": ph = .night
             case "deep":
                 ph = .night
                 // a shaft already dug part of the way down
@@ -46,7 +46,7 @@ struct DigGameView: View {
                 case .title:
                     PixelTitle(scale: sc, resume: save.day > 1 || save.seen.contains("intro")) { begin() }
                 case .night:
-                    DigNight(save: $save, scale: sc, demo: probe != nil, memoryProbe: probe == "memory") { endNight() }.id(nightID)
+                    DigNight(save: $save, scale: sc, demo: probe != nil, memoryProbe: probe == "memory", endingProbe: probe == "ending") { endNight() }.id(nightID)
                 case .shop:
                     LampShop(save: $save, scale: sc) { go(.evening) }
                 case .evening:
@@ -155,20 +155,25 @@ struct DigNight: View {
     @State private var memory: Int?
     @State private var result: DigSim?
     @State private var banked = 0
+    @State private var ending: [Say] = []
+    @State private var endCard = false
 
     struct HUD: Equatable { var light = 1.0; var depth = 0; var bag = 0; var cap = 8; var secs = 0 }
 
-    init(save: Binding<DigSave>, scale: PixelScale, demo: Bool, memoryProbe: Bool, done: @escaping () -> Void) {
+    init(save: Binding<DigSave>, scale: PixelScale, demo: Bool, memoryProbe: Bool, endingProbe: Bool = false, done: @escaping () -> Void) {
         _save = save; self.scale = scale; self.demo = demo; self.memoryProbe = memoryProbe; self.done = done
         let s = save.wrappedValue
-        _sim = State(initialValue: DigSim(world: s.world, upgrades: s.upgrades, seed: UInt64(s.day) * 977 + 13))
-        if memoryProbe { _memory = State(initialValue: 3) }
+        var sim = DigSim(world: s.world, upgrades: s.upgrades, seed: UInt64(s.day) * 977 + 13)
+        sim.nestDone = s.seen.contains("ending")
+        _sim = State(initialValue: sim)
+        if memoryProbe { _memory = State(initialValue: 6) }
+        if endingProbe { _ending = State(initialValue: Array(DigStory.ending.dropFirst(3))) }
     }
 
     var body: some View {
         let pt = scale.pt, k = scale.k
         ZStack {
-            DigCanvasView(sim: sim, scale: scale, paused: memory != nil || result != nil, demo: demo, command: $command,
+            DigCanvasView(sim: sim, scale: scale, paused: memory != nil || result != nil || !ending.isEmpty || endCard, demo: demo, command: $command,
                           onEvents: handle, onTick: tick)
                 .frame(width: CGFloat(scale.w) * pt, height: CGFloat(scale.h) * pt)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -191,6 +196,28 @@ struct DigNight: View {
             }
             .padding(.horizontal, pt * 6).padding(.top, pt * 30).padding(.bottom, pt * 22)
             if let n = memory { MemoryPanel(n: n, scale: scale) { closeMemory(n) } }
+            if !ending.isEmpty {
+                ZStack {
+                    Color.black.opacity(0.75).ignoresSafeArea()
+                    VStack {
+                        PixelImage(name: "memory_9", pt: pt * 1.5).overlay(Rectangle().strokeBorder(pxEdge, lineWidth: pt))
+                            .padding(.top, pt * 40)
+                        Spacer()
+                    }
+                    TalkBox(scale: scale, lines: $ending) { endChapter() }
+                }
+            }
+            if endCard {
+                ZStack {
+                    Color.black.ignoresSafeArea()
+                    VStack(spacing: pt * 10) {
+                        Text(DigStory.endingCard).font(PixelFont.font(2, k: k)).foregroundStyle(pxGold)
+                        Text("灯塔亮了。往下还有更深的地方。").font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
+                        PixelButton(title: "回到灯塔", k: k) { endCard = false; command = "reel" }
+                    }
+                }
+                .transition(.opacity)
+            }
             if let r = result { NightResult(sim: r, coins: banked, scale: scale) { done() } }
         }
         .frame(width: CGFloat(scale.w) * scale.pt)
@@ -205,6 +232,7 @@ struct DigNight: View {
 
     private func tick(_ s: DigSim) {
         let h = HUD(light: s.light / s.lightMax, depth: s.depth, bag: s.bag.count, cap: s.capacity, secs: s.secondsLeft)
+        if h.light < 0.2 && h.light > 0 && Int(s.t) != Int(s.t - 1.0 / 60) && Int(s.t) % 2 == 0 && result == nil { Sound.shared.heartbeat(); Haptic.light() }
         if h != hud { hud = h }
         if result == nil && s.outcome != 0 { finish(s) }
     }
@@ -219,8 +247,13 @@ struct DigNight: View {
     private func handle(_ evs: [DigEvent]) {
         for e in evs {
             switch e {
-            case .dug(let t): if t == .soil || t == .clay || t == .grass { Sound.shared.push() }
-            case .gem: Sound.shared.take(); Haptic.light(); say("hint_gem", "光晶装进背包了：背回灯铺能点灯")
+            case .dug(let t):
+                switch t {
+                case .soil, .grass, .mote, .trinket: Sound.shared.digSoft()
+                case .clay: Sound.shared.digClay()
+                default: Sound.shared.digStone()
+                }
+            case .gem(let g): Sound.shared.chime(g == .amber ? 0 : g == .blue ? 1 : 2); Haptic.light(); say("hint_gem", "光晶装进背包了：背回灯铺能点灯")
             case .trinket: Sound.shared.touch(); say("hint_trinket", "「我的！」纽扣、硬币、瓶盖能换钱")
             case .mote: Sound.shared.light()
             case .full: Sound.shared.no(); say("hint_full", "背包满了：点「收线回家」", 6)
@@ -234,9 +267,20 @@ struct DigNight: View {
                 if n > 0 { Haptic.success() }
             case .hurt: Sound.shared.dim(); Haptic.warn(); say("hint_shade", "影子会吸走灯光：轻点屏幕，灯珠一闪就赶走它们", 6)
             case .home, .dark: break
-            case .step, .land: break
+            case .step: break
+            case .land: Sound.shared.step()
+            case .nest:
+                Sound.shared.motif(.mosto); Haptic.success()
+                if demo { break }
+                ending = DigStory.ending
             }
         }
+    }
+
+    private func endChapter() {
+        save.seen.insert("ending"); save.save()
+        Sound.shared.win()
+        withAnimation(.easeInOut(duration: 0.6)) { endCard = true }
     }
 
     private func closeMemory(_ n: Int) {

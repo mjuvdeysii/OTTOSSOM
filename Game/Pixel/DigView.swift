@@ -91,6 +91,13 @@ enum DigPainter {
         if groundY > -40, let o = PixelArt.sprite(sim.light < sim.lightMax * 0.25 ? "otto_dim" : "otto_idle_\(Int(clock * 3) % 4)") {
             f.draw(o, feet: Int(sim.otto.x + off.x), Int(sim.otto.y + off.y) - 1)
         }
+        // Mosto in his nest at the bottom, with the stolen light
+        if !sim.nestDone {
+            let nx = Double(x0 + DigWorld.nestX * T), ny = Double((DigWorld.nestY + 1) * T - camI)
+            if ny > -40 && ny < Double(f.h) + 40, let mo = PixelArt.sprite("mosto_carry_\(Int(clock * 4) % 2)") {
+                f.draw(mo, feet: Int(nx) + 8, Int(ny) - 2 + Int(sin(clock * 2) * 2), flip: true)
+            }
+        }
         // Moss
         let moving = abs(sim.v.x) > 5 || sim.digging != nil
         let mName = sim.digging != nil ? "moss_run_\(Int(clock * 16) % 4)" : moving ? "moss_run_\(Int(clock * 10) % 4)" : (clock.truncatingRemainder(dividingBy: 3.7) < 0.15 ? "moss_blink" : "moss_idle_\(Int(clock * 2) % 2)")
@@ -117,6 +124,7 @@ enum DigPainter {
                 }
             }
         }
+        if !sim.nestDone { lights.append((V2(Double(x0 + DigWorld.nestX * T + 8), Double((DigWorld.nestY + 1) * T - camI - 14)), 46, 0.95)) }
         // above ground it's night, not the dark
         if groundY > 0 { lights.append((V2(Double(f.w) / 2, Double(groundY) - 60), 140, 0.6)) }
         f.night(base: 0.3, lights: lights)
@@ -149,8 +157,10 @@ enum DigPainter {
             for k in 0..<40 { let a = Double(k) / 40 * .pi * 2; f.set(Int(c.x + cos(a) * r), Int(c.y + sin(a) * r), cream) }
         }
         // a gold arrow at the edge toward the next memory stone, when it's off screen
-        if let m = sim.world.memories.sorted(by: { $0.key < $1.key }).first(where: { Cell(rawValue: sim.world.cells[$0.value]) == .memory }) {
-            let mx = m.value % W, my = m.value / W
+        let nextMemory = sim.world.memories.sorted(by: { $0.key < $1.key }).first(where: { Cell(rawValue: sim.world.cells[$0.value]) == .memory })?.value
+        let goalCell: Int? = nextMemory ?? (sim.nestDone ? nil : DigWorld.nestY * W + DigWorld.nestX)
+        if let m = goalCell {
+            let mx = m % W, my = m / W
             let c = V2(Double(x0 + mx * T + 8), Double(my * T - camI + 8))
             if c.y > Double(f.h) - 20 || c.y < 40 {
                 let down = c.y > Double(f.h) - 20
@@ -204,6 +214,7 @@ final class DigCanvas: UIView {
     var downAt: CFTimeInterval = 0
     var moved = false
     var command: String?            // set from SwiftUI: "reel", "closeMemory"
+    var shake = 0.0
 
     init(sim: DigSim, scale: PixelScale) {
         self.sim = sim; self.scale = scale
@@ -247,7 +258,21 @@ final class DigCanvas: UIView {
         if !paused && sim.openMemory == nil {
             sim.step(dt)
         }
-        if !sim.events.isEmpty { onEvents?(sim.events); sim.events = [] }
+        if !sim.events.isEmpty {
+            for e in sim.events {
+                switch e {
+                case .land: shake = max(shake, 0.12)
+                case .gem, .hurt, .nest: shake = max(shake, 0.18)
+                default: break
+                }
+            }
+            onEvents?(sim.events); sim.events = []
+        }
+        if shake > 0 {
+            shake -= dt
+            let a = CGFloat(scale.pt) * (shake > 0 ? 1 : 0)
+            transform = CGAffineTransform(translationX: Int(clock * 60) % 2 == 0 ? a : -a, y: Int(clock * 47) % 2 == 0 ? a : 0)
+        } else if transform != .identity { transform = .identity }
         onTick?(sim)
         cam += (targetCam() - cam) * min(1, dt * 6)
         let st: (CGPoint, CGPoint)? = origin.flatMap { o in finger.map { (o, $0) } }

@@ -331,10 +331,58 @@ def pile2(p, x, base, n, seed=1):
             for i in range(8):
                 if ip[i, j][3] > 128: p.put(ox + i, oy + j, ip[i, j][:3])
 
+
+def dark_memory(n):
+    """The deepest dark: no desk, no lamp — only what Moss and Mosto give off."""
+    p = Pic(120, 100, fill=hx("#06050c"))
+    r = random.Random(n)
+    for _ in range(40):
+        p.put(r.randrange(120), r.randrange(100), hx("#0e0c18"))
+    floor = 80
+    for x in range(120):
+        for y in range(floor, 100):
+            p.put(x, y, hx("#0c0a14") if (x + y) % 5 else hx("#120f1e"))
+    if n == 8:
+        p.sprite("mosto_carry_1", 84, floor + 2)
+        # he shivers: two little tremble marks
+        for (x, y) in ((70, floor - 22), (98, floor - 24)): p.put(x, y, hx("#a68cf2")); p.put(x, y + 2, hx("#a68cf2"))
+        p.sprite("moss_idle_0", 36, floor + 3)
+        for k in range(8): p.put(44 + k // 3, floor - 12 - k, hx("#55905c")); p.put(45 + k // 3, floor - 12 - k, hx("#3a6a44"))
+        for i in range(-1, 2): p.put(47 + i, floor - 21, hx("#55905c"))
+        lights = [((36, floor - 10), 34, 0.9), ((80, floor - 14), 30, 0.8)]
+    else:
+        # together: the bead between them, the stolen light floating up above
+        p.sprite("moss_idle_1", 48, floor + 3)
+        p.sprite("mosto_fly_0", 74, floor + 2, flip=True)
+        p.ellipse(61, floor - 4, 3, 3, hx("#b07a48"), INK); p.put(60, floor - 5, hx("#f0d0a0"))
+        for j in range(-6, 7):
+            for i in range(-6, 7):
+                d = i * i + j * j
+                if d <= 36: p.put(61 + i, 26 + j, GOLD[4] if d < 9 else GOLD[3] if d < 20 else GOLD[2])
+        for y in range(34, floor - 20, 3): p.put(61, y, GOLD[3])
+        lights = [((61, 26), 70, 1.0), ((61, floor - 8), 30, 0.8)]
+    for y in range(100):
+        for x in range(120):
+            l = 0.0
+            for (cx, cy), rad, k in lights:
+                d = math.hypot(x - cx, (y - cy) * 1.1)
+                if d < rad: l = max(l, k * (1 - d / rad))
+            v = l * 3.3 + BAYER[y % 4][x % 4] / 16 * 0.9
+            band = min(3, int(v))
+            m = [0.35, 0.6, 0.82, 1.0][band]
+            c = p.get(x, y)
+            p.put(x, y, (int(c[0] * m), int(c[1] * m), int(c[2] * (m * 0.85 + 0.15))))
+    for x in range(120): p.put(x, 0, INK); p.put(x, 99, INK)
+    for y in range(100): p.put(0, y, INK); p.put(119, y, INK)
+    p.save(f"memory_{n}")
+    return p
+
 def memory(n):
     """Panels of 《影子》: 120 × 100. The lamp on the left throws the shadow onto the wall on the right."""
     p = Pic(120, 100)
     top = 72
+    if n >= 8:
+        return dark_memory(n)
     room(p, top)
     bulb = desk_lamp2(p, 14, top)
     if n == 1:
@@ -356,7 +404,25 @@ def memory(n):
         p.sprite("moss_mine", 44, top + 3, flip=True)
         p.ellipse(39, top - 9, 3, 3, hx("#b07a48"), INK); p.put(38, top - 10, hx("#f0d0a0"))
         wall_shadow(p, "moss_mine", 92, top - 4, 2.0, crown=True, flip=True)
-    light_room(p, bulb, top)
+    elif n == 5:
+        pile2(p, 62, top + 3, 16, 5)
+        pile2(p, 76, top + 3, 8, 6)
+        p.sprite("moss_mine", 42, top + 3, flip=True)
+        wall_shadow(p, "moss_mine", 94, top - 2, 2.35, crown=True, flip=True)
+    elif n == 6:
+        # the shadow has come down off the wall: a little crowned thing runs off behind the lamp with the bead
+        pile2(p, 64, top + 3, 14, 7)
+        p.sprite("moss_idle_1", 82, top + 3)
+        p.line(75, top - 8, 70, top - 6, hx("#3a6a44"))
+        p.sprite("mosto_fly_1", 46, top - 22, flip=True)
+        p.ellipse(38, top - 30, 3, 3, hx("#b07a48"), INK)
+    elif n == 7:
+        # no shadow; the things left along the desk; she goes off empty-handed into the dark
+        pile2(p, 30, top + 3, 4, 8)
+        pile2(p, 58, top + 3, 2, 9)
+        p.sprite("moss_run_1", 96, top + 3)
+    if n <= 7:
+        light_room(p, bulb, top)
     # a frame line so the panel reads as a remembered picture
     for x in range(p.w): p.put(x, 0, INK); p.put(x, p.h - 1, INK)
     for y in range(p.h): p.put(0, y, INK); p.put(p.w - 1, y, INK)
@@ -367,7 +433,7 @@ if __name__ == "__main__":
     for k in ("amber", "blue", "red", "button", "coin", "cap", "bead"): icon(k)
     out = [tiles()]
     lamp()
-    pics = [surface(), shop()] + [memory(n) for n in (1, 2, 3, 4)]
+    pics = [surface(), shop()] + [memory(n) for n in range(1, 10)]
     if "--sheet" in sys.argv:
         path = sys.argv[sys.argv.index("--sheet") + 1]
         W = 4 + sum(pc.w * 2 + 4 for pc in pics) + T * VARIANTS * 4 + 4

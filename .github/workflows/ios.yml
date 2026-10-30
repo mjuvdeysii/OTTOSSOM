@@ -74,7 +74,7 @@ jobs:
             echo "-- test failures --"; grep -E "XCTAssert|failed|Fatal error|crashed|unexpected exit|Precondition|out of range" build.log 2>/dev/null | sed "s#$PWD/##" | sort -u | head -40
             echo "-- crash --"; grep -E "encountered an error|Crash:|Fatal error|EXC_|SIGABRT|SIGTRAP" build.log 2>/dev/null | head -20
             echo "-- dig tests --"; grep -E "Test Case .*Dig" build.log 2>/dev/null | tail -24
-            echo "-- night balance --"; grep -E "^NIGHTBAL" build.log 2>/dev/null | sort -u
+            echo "-- dig pacing --"; grep -E "^DIGBAL" build.log 2>/dev/null | awk '!seen[$0]++' | head -20
             echo "-- warnings (project files) --"; grep -E "warning:" build.log 2>/dev/null | grep "/Game/" | sed "s#$PWD/##" | sort -u | head -40
           } > report/build.txt
           cp levels-js.txt levels-swift.txt levels-swift.txt.rpg report/ 2>/dev/null || true

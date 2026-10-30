@@ -105,3 +105,26 @@ final class DigPaintTests: XCTestCase {
         XCTAssertGreaterThan(sim.depth, 3)
     }
 }
+
+/// Pacing: the rule player over two weeks of days. A decent player should find the first memory stone on the
+/// first night, need the claw to go past the clay, and reach the bottom within about two weeks.
+final class DigPacingTests: XCTestCase {
+    func testTwoWeeks() {
+        var s = DigSave()
+        var lines: [String] = []
+        var firstMemoryDay = 0, endingDay = 0
+        for _ in 0..<16 {
+            let d = s.day
+            let sim = DigBot.day(&s)
+            let up = "爪\(s.upgrades["claw"] ?? 0)包\(s.upgrades["bag"] ?? 0)芯\(s.upgrades["wick"] ?? 0)"
+            lines.append("DIGBAL day \(d): deepest \(sim.deepest)m bag \(sim.bag.count) \(sim.outcome == 1 ? "home" : "dark") · memories \(s.memories.count) · coins \(s.coins) · \(up) · orders \(s.orders.count)")
+            if firstMemoryDay == 0 && !s.memories.isEmpty { firstMemoryDay = d }
+            if endingDay == 0 && s.seen.contains("ending") { endingDay = d }
+        }
+        lines.append("DIGBAL first memory day \(firstMemoryDay), ending day \(endingDay)")
+        for l in lines { print(l) }
+        XCTAssertGreaterThan(firstMemoryDay, 0)
+        XCTAssertLessThanOrEqual(firstMemoryDay, 2)
+        XCTAssertGreaterThanOrEqual(s.memories.count, 4, lines.joined(separator: "\n"))
+    }
+}

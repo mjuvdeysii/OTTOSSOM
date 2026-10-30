@@ -290,6 +290,12 @@ final class Sound {
     func talk() { tones([660], 0.05, 0.03) }
     func no() { tones([150], 0.12, 0.03, square: true) }
     func win() { tones([392, 523, 659, 784], 0.5, 0.07) }
+    // the dig: each ground has its own sound
+    func digSoft() { tones([96, 72], 0.07, 0.07) }
+    func digClay() { tones([82, 64], 0.09, 0.08, square: true) }
+    func digStone() { tones([620, 410], 0.06, 0.05, square: true) }
+    func chime(_ k: Int) { tones([[1046, 1568], [1175, 1760], [880, 1318]][k % 3], 0.4, 0.06) }
+    func heartbeat() { tones([58, 52], 0.12, 0.09) }
 }
 
 enum Haptic {

@@ -446,31 +446,57 @@ if __name__ == "__main__":
     print(len(pics), "scenes")
 
 def icon():
-    """The app icon: 64 × 64 pixels shown 16× — the three of them on the lighthouse gallery at night, the thread of
-    light between Otto and Moss, Mosto above with the stolen fire, and the far small sun on the sea."""
+    """The app icon: 64 × 64 pixels shown 16×. Night above, the ground cut open below: Otto on the ground holding
+    the thread of light, which runs down a dug shaft to Moss among the crystals; Mosto overhead with the stolen
+    fire; the far small sun on the sea."""
     p = Pic(64, 64)
-    p.grad(0, 0, 64, 40, [SKY[0], SKY[1], SKY[2], SKY[3], hx("#2c3060")])
-    stars(p, 0, 30, 22, 40, bright=0.3)
+    p.grad(0, 0, 64, 34, [SKY[0], SKY[1], SKY[2], SKY[3], hx("#2c3060")])
+    stars(p, 0, 26, 18, 40, bright=0.3)
     for i in range(64):
-        hh = 3 + 2 * math.sin(i * 0.2)
-        p.rect(i, 40 - hh, 1, hh, hx("#232a50"))
-    p.rect(0, 39, 64, 1, hx("#3a4478"))
-    sea(p, 40, 50, 41, glint_x=53)
-    # the far sun, low and small
+        hh = 2 + 2 * math.sin(i * 0.2)
+        p.rect(i, 34 - hh, 1, hh, hx("#232a50"))
+    p.rect(0, 33, 64, 1, hx("#3a4478"))
+    sea(p, 34, 38, 41, glint_x=9)
     for j in range(-3, 1):
         for i in range(-4, 5):
-            if i * i + j * j * 1.4 <= 16: p.put(53 + i, 40 + j, GOLD[2] if i * i + j * j < 6 else GOLD[1])
+            if i * i + j * j * 1.4 <= 16: p.put(9 + i, 34 + j, GOLD[2] if i * i + j * j < 6 else GOLD[1])
     for a in (-50, 0, 50):
         r = math.radians(a - 90)
-        for k in (6, 7): p.put(53 + math.cos(r) * k, 40 + math.sin(r) * k + (k - 6), GOLD[1])
-    p.rect(0, 50, 64, 14, STONE[2]); p.rect(0, 50, 64, 1, STONE[4]); p.rect(0, 51, 64, 1, STONE[0])
-    for x in range(0, 64, 7): p.rect(x, 52, 1, 12, STONE[1])
-    # glow round Otto's bead on the ground and air
-    p.sprite("mosto_carry_0", 40, 27, flip=True)
-    p.sprite("moss_idle_0", 13, 62)
-    p.sprite("otto_idle_0", 41, 61)
-    p.line(35, 37, 18, 47, GOLD[3])
-    for (x, y) in ((34, 36), (36, 36), (35, 35), (35, 38)): p.put(x, y, GOLD[4])
+        for k in (6, 7): p.put(9 + math.cos(r) * k, 34 + math.sin(r) * k + (k - 6), GOLD[1])
+    # the ground, cut open: grass, soil, clay, stone in bands
+    soil = [hx(c) for c in ("#1a120e", "#2a1c14", "#3a281c", "#4c3626")]
+    clay = [hx(c) for c in ("#1e100e", "#341a16", "#4a2620", "#5e342a")]
+    stn = [hx(c) for c in ("#14141c", "#22222e", "#323244", "#46465c")]
+    rnd = random.Random(9)
+    for y in range(38, 64):
+        for x in range(64):
+            band = soil if y < 47 else clay if y < 56 else stn
+            v = 2 if rnd.random() > 0.25 else 1
+            if rnd.random() < 0.06: v = 3
+            p.put(x, y, band[v])
+    for x in range(64):
+        p.put(x, 38, MOSS[2]); p.put(x, 39, MOSS[1] if x % 3 else MOSS[2])
+    # the shaft Moss dug, and her tunnel at the bottom
+    for y in range(38, 64):
+        for x in range(36, 48): p.put(x, y, hx("#0e0a10"))
+    for y in range(50, 64):
+        for x in range(28, 60): p.put(x, y, hx("#0e0a10"))
+    for y in range(38, 64): p.put(35, y, INK) if y < 50 else None; p.put(48, y, INK) if y < 50 else None
+    for x in range(28, 60): p.put(x, 49, INK) if not (36 <= x < 48) else None
+    # crystals in the walls, lit by the bead
+    def shard(x0, y0, h, ramp):
+        for j in range(h):
+            p.put(x0, y0 - j, ramp[3]); p.put(x0 + 1, y0 - j, ramp[2] if j < h - 1 else ramp[3])
+    amber = [hx(c) for c in ("#5a3a14", "#a86a18", "#e8a020", "#ffd36b")]
+    blue = [hx(c) for c in ("#16285a", "#2a52a8", "#4a8ae8", "#8ac4ff")]
+    shard(23, 47, 4, amber); shard(26, 46, 3, amber); shard(57, 47, 4, blue); shard(60, 48, 3, blue); shard(10, 58, 4, blue); shard(14, 59, 3, amber)
+    # Mosto overhead with the fire, Otto on the grass, Moss at the bottom of the shaft
+    p.sprite("mosto_carry_0", 20, 25)
+    p.sprite("otto_idle_0", 53, 38)
+    p.sprite("moss_idle_0", 42, 63)
+    # the thread: from Otto's bead, out over the shaft and down to Moss
+    p.line(48, 10, 44, 24, GOLD[3]); p.line(44, 24, 42, 47, GOLD[3])
+    for (x, y) in ((47, 9), (49, 9), (48, 8), (48, 11)): p.put(x, y, GOLD[4])
     big = p.im.resize((1024, 1024), Image.NEAREST)
     big.save(os.path.join(ROOT, "Game", "Resources", "Assets.xcassets", "AppIcon.appiconset", "icon.png"))
     return p

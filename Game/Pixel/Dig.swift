@@ -102,11 +102,23 @@ struct DigWorld: Codable {
                 if dx * dx + dy * dy <= 1.1 { cells[y * W + x] = Cell.air.rawValue }
             } }
         }
-        // memory stones at fixed depths, in the middle third so they're found
-        for (n, d) in [(1, 6), (2, 15), (3, 26), (4, 42)] {
-            let x = 3 + Int(r.unit() * Double(W - 6)), y = G + d
-            cells[y * W + x] = Cell.memory.rawValue
-            memories[n] = y * W + x
+        // Mosto's nest: a room at the very bottom
+        for y in (DigWorld.nestY - 2)...(DigWorld.nestY) { for x in (DigWorld.nestX - 3)...(DigWorld.nestX + 2) { cells[y * W + x] = Cell.air.rawValue } }
+        ensureMemories()
+    }
+
+    static let depths: [Int: Int] = [1: 6, 2: 15, 3: 26, 4: 42, 5: 55, 6: 66, 7: 78, 8: 88]
+    static let nestX = 6, nestY = 97
+    static var nestDepth: Int { nestY - ground }
+
+    /// Memory stones at fixed depths; worlds saved before there were eight get the rest placed now.
+    mutating func ensureMemories() {
+        var r = Rng(77)
+        for n in 1...8 {
+            let x = 3 + Int(r.unit() * Double(DigWorld.W - 6)), y = DigWorld.ground + DigWorld.depths[n]!
+            guard memories[n] == nil else { continue }
+            cells[y * DigWorld.W + x] = Cell.memory.rawValue
+            memories[n] = y * DigWorld.W + x
         }
     }
 
@@ -142,7 +154,7 @@ struct Shade {
     var moth = false
 }
 
-enum DigEvent: Equatable { case dug(Cell), gem(Gem), trinket(Trinket), mote, full, memory(Int), flash(Int), hurt, home, dark, hard, step, land }
+enum DigEvent: Equatable { case dug(Cell), gem(Gem), trinket(Trinket), mote, full, memory(Int), flash(Int), hurt, home, dark, hard, step, land, nest }
 
 struct DigSim {
     static let T = 16.0
@@ -168,6 +180,8 @@ struct DigSim {
     var thread: [V2] = []          // the light thread back up to Otto: Moss's path with the loops taken out
     var deepest = 0
     var openMemory: Int?           // a memory stone she's touching
+    var nestDone = false           // the ending has been seen: Mosto isn't in the nest any more
+    var atNest = false
     var pops: [(p: V2, icon: String, t0: Double)] = []   // what she just picked up, rising off her
     var bits: [Spark] = []         // chips of what she dug
     var rng: Rng
@@ -244,6 +258,9 @@ struct DigSim {
         bits.removeAll { $0.life <= 0 }
         pops.removeAll { t - $0.t0 > 0.9 }
         deepest = max(deepest, depth)
+        if !nestDone && !atNest && p.dist(V2((Double(DigWorld.nestX) + 0.0) * DigSim.T, Double(DigWorld.nestY + 1) * DigSim.T)) < 30 {
+            atNest = true; events.append(.nest)
+        }
         if light <= 0 { light = 0; outcome = -1; bag.halve(); events.append(.dark) }
     }
 
@@ -319,7 +336,10 @@ struct DigSim {
                 q2.y = floor((q.y + v.y * dt) / DigSim.T) * DigSim.T
                 if blocked(q2) { q2.y = q.y }
                 grounded = true
-                if !was && v.y > 120 { events.append(.land) }
+                if !was && v.y > 120 {
+                    events.append(.land)
+                    for k in 0..<6 { bits.append(Spark(p: V2(q.x + Double(k - 3) * 2, q2.y - 1), v: V2(Double(k - 3) * 14, -20 - Double(k % 3) * 8), life: 0.3, color: 0xFF46566A)) }
+                }
             } else { q2.y = q.y }
             v.y = 0
         } else { grounded = false }

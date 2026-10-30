@@ -15,7 +15,7 @@ enum Snapshots {
     static func run(_ router: Router) async {
         Sound.shared.enabled = false
         router.screen = .dig("title"); await wait(4.5); say("00_title"); await wait(6.0)
-        for (what, hold) in [("dig", 9.0), ("deep", 9.0), ("memory", 4.0), ("shop", 4.0), ("shoptalk", 4.0), ("evening", 4.0)] {
+        for (what, hold) in [("dig", 9.0), ("deep", 9.0), ("memory", 4.0), ("ending", 4.0), ("shop", 4.0), ("shoptalk", 4.0), ("evening", 4.0)] {
             router.screen = .dig(what); await wait(hold)
             say("dg_\(what)"); await wait(8.0)
         }
