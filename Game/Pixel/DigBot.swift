@@ -33,7 +33,7 @@ struct DigBot {
             for dy in -1...8 { for x in 0..<DigWorld.W {
                 let y = fy + dy
                 let c = sim.world.at(x, y)
-                guard c == .amber || c == .trinket || c == .blue || c == .red, c.claw <= sim.claw, reachable(sim, x, y) else { continue }
+                guard c == .amber || c == .trinket || c == .blue || c == .red, c.claw <= sim.claw, reachable(sim, x, y), dy >= 0 || x == fx else { continue }
                 let d = Double(abs(x - fx)) + Double(abs(dy)) * 1.4
                 if d < best { best = d; goal = (x, y) }
             } }

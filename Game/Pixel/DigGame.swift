@@ -621,7 +621,7 @@ struct Evening: View {
             VStack(spacing: pt * 4) {
                 HStack(spacing: pt * 4) {
                     PixelImage(name: "npc_lynn", pt: pt)
-                    Text("傍晚 · 琳恩的小摊").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
+                    Text("琳恩的小摊").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream).lineLimit(1)
                     Spacer()
                     Counter(icon: "icon_coin", text: "\(save.coins)", scale: scale, color: pxGold)
                 }
