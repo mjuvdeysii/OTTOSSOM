@@ -130,9 +130,11 @@ struct Frame {
             let cx = Int(c.x) + ox, cy = Int(c.y) + oy
             let ry = Int(r / 1.15) + 1, rx = Int(r) + 1
             let r2 = r * r
-            for y in max(0, cy - ry)..<min(h, cy + ry + 1) {
+            let ya = max(0, cy - ry), yb = min(h, cy + ry + 1), xa = max(0, cx - rx), xb = min(w, cx + rx + 1)
+            guard ya < yb, xa < xb else { continue }
+            for y in ya..<yb {
                 let dy = Double(y - cy) * 1.15
-                for x in max(0, cx - rx)..<min(w, cx + rx + 1) {
+                for x in xa..<xb {
                     let dx = Double(x - cx)
                     let d2 = dx * dx + dy * dy
                     if d2 < r2 { let v = k * (1 - d2.squareRoot() / r); if v > lm[y * w + x] { lm[y * w + x] = v } }
