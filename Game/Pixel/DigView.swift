@@ -148,6 +148,33 @@ enum DigPainter {
             let c = sim.p + off + V2(0, -8)
             for k in 0..<40 { let a = Double(k) / 40 * .pi * 2; f.set(Int(c.x + cos(a) * r), Int(c.y + sin(a) * r), cream) }
         }
+        // a gold arrow at the edge toward the next memory stone, when it's off screen
+        if let m = sim.world.memories.sorted(by: { $0.key < $1.key }).first(where: { Cell(rawValue: sim.world.cells[$0.value]) == .memory }) {
+            let mx = m.value % W, my = m.value / W
+            let c = V2(Double(x0 + mx * T + 8), Double(my * T - camI + 8))
+            if c.y > Double(f.h) - 20 || c.y < 40 {
+                let down = c.y > Double(f.h) - 20
+                let ay = down ? f.h - 46 : 70
+                let ax = Int(max(12, min(Double(f.w - 12), c.x)))
+                let bob = Int(sin(clock * 5) * 2)
+                for j in 0..<6 {
+                    for i in -j...j {
+                        f.set(ax + i, ay + (down ? j : -j) + bob, j == 5 || abs(i) == j ? ink : gold)
+                    }
+                }
+            }
+        }
+        // a depth ruler down the left edge
+        let firstMark = max(0, (camI / T - G) / 5 * 5)
+        var dm = firstMark
+        while true {
+            let y = (G + dm) * T - camI
+            if y > f.h { break }
+            if y >= 0 && dm > 0 {
+                for i in 0..<4 { f.blend(i, y, cream, 0.35) }
+            }
+            dm += 5
+        }
         // the stick, where the finger is
         if let st = stick {
             let o = st.0, n = st.1
