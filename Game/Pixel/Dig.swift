@@ -77,10 +77,10 @@ struct DigWorld: Codable {
         for _ in 0..<12 { walk(5 + Int(r.next() % 7), Int(r.next() % UInt64(W)), G + 24 + Int(r.next() % 30), .clay, [.stone], grid: &grid, rng: &r) }
         for _ in 0..<16 { walk(6 + Int(r.next() % 8), Int(r.next() % UInt64(W)), G + 34 + Int(r.next() % UInt64(H - G - 36)), .stone, [.rock], grid: &grid, rng: &r) }
         // crystal veins: amber near the top, blue in clay and stone, red in the deep rock
-        for _ in 0..<9 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 3 + Int(r.next() % 16), .amber, [.soil, .clay], grid: &grid, rng: &r) }
-        for _ in 0..<7 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 20 + Int(r.next() % 40), .amber, [.clay, .stone], grid: &grid, rng: &r) }
-        for _ in 0..<10 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 12 + Int(r.next() % 40), .blue, [.clay, .stone], grid: &grid, rng: &r) }
-        for _ in 0..<9 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 30 + Int(r.next() % UInt64(H - G - 32)), .red, [.rock, .stone], grid: &grid, rng: &r) }
+        for _ in 0..<7 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 3 + Int(r.next() % 16), .amber, [.soil, .clay], grid: &grid, rng: &r) }
+        for _ in 0..<5 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 20 + Int(r.next() % 40), .amber, [.clay, .stone], grid: &grid, rng: &r) }
+        for _ in 0..<7 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 12 + Int(r.next() % 40), .blue, [.clay, .stone], grid: &grid, rng: &r) }
+        for _ in 0..<7 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 30 + Int(r.next() % UInt64(H - G - 32)), .red, [.rock, .stone], grid: &grid, rng: &r) }
         cells = grid
         // odds and ends: the things Moss can't leave, and motes of old light
         for y in (G + 1)..<(H - 1) {
