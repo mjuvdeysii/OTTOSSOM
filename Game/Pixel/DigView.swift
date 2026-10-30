@@ -76,12 +76,20 @@ enum DigPainter {
             }
         }
         // the crack in what she's digging
-        if let d = sim.digging, d.t > 0, let base = sim.world.at(d.x, d.y).dig, let cr = PixelArt.sprite("cracks") {
-            let need = base * pow(0.75, Double(sim.claw))
-            let stage = min(2, Int(d.t / need * 3))
+        if let cr = PixelArt.sprite("cracks") {
+            for (key, t) in sim.damage where t > 0 {
+                let cx = key % W, cy = key / W
+                guard let base = sim.world.at(cx, cy).dig else { continue }
+                let need = base * pow(0.75, Double(sim.claw))
+                let stage = min(2, Int(t / need * 3))
+                let sx = x0 + cx * T, sy = cy * T - camI
+                guard sy > -T, sy < f.h else { continue }
+                for j in 0..<T { for i in 0..<T where cr.px[j * cr.w + stage * T + i] >> 24 > 128 { f.set(sx + i, sy + j, ink) } }
+            }
+        }
+        if let d = sim.digging, d.t > 0 {
+            // chips fly off what she's digging now
             let sx = x0 + d.x * T, sy = d.y * T - camI
-            for j in 0..<T { for i in 0..<T where cr.px[j * cr.w + stage * T + i] >> 24 > 128 { f.set(sx + i, sy + j, ink) } }
-            // chips fly
             let ph = Int(clock * 20) % 4
             f.set(sx + 4 + ph * 2, sy - 1 - ph, cream)
         }

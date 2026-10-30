@@ -184,6 +184,7 @@ struct DigSim {
     var atNest = false
     var pops: [(p: V2, icon: String, t0: Double)] = []   // what she just picked up, rising off her
     var bits: [Spark] = []         // chips of what she dug
+    var damage: [Int: Double] = [:] // how far each cell has been dug
     var rng: Rng
     var nextID = 0
     let otto: V2
@@ -303,11 +304,12 @@ struct DigSim {
                 }
                 digging = nil
             } else if let base = tile.dig, tile.claw <= claw {
-                if let d = digging, d.x == tx, d.y == ty {
-                    let need = base * pow(0.75, Double(claw))
-                    let nt = d.t + dt
-                    if nt >= need { finishDig(tx, ty, tile) } else { digging = (tx, ty, nt) }
-                } else { digging = (tx, ty, 0) }
+                // the damage stays on a cell, so a dig interrupted by a hop or a step goes on where it stopped
+                let key = ty * DigWorld.W + tx
+                let need = base * pow(0.75, Double(claw))
+                let nt = (damage[key] ?? 0) + dt
+                damage[key] = nt
+                if nt >= need { damage[key] = nil; finishDig(tx, ty, tile) } else { digging = (tx, ty, nt) }
             } else {
                 if digging == nil || digging!.x != tx || digging!.y != ty { events.append(.hard) }
                 digging = (tx, ty, -999)    // can't: remembered so the "too hard" note isn't repeated every frame
