@@ -122,13 +122,6 @@ enum DigPainter {
         if groundY > -40, let o = PixelArt.sprite(sim.light < sim.lightMax * 0.25 ? "otto_dim" : "otto_idle_\(Int(clock * 3) % 4)") {
             f.draw(o, feet: Int(sim.otto.x + off.x), Int(sim.otto.y + off.y) - 1)
         }
-        // Mosto in his nest at the bottom, with the stolen light
-        if !sim.nestDone {
-            let nx = Double(x0 + DigWorld.nestX * T), ny = Double((DigWorld.nestY + 1) * T - camI)
-            if ny > -40 && ny < Double(f.h) + 40, let mo = PixelArt.sprite("mosto_carry_\(Int(clock * 4) % 2)") {
-                f.draw(mo, feet: Int(nx) + 8, Int(ny) - 2 + Int(sin(clock * 2) * 2), flip: true)
-            }
-        }
         // her own shadow on the wall behind her: it grows with what she carries, and past six things wears a crown
         if let ms = PixelArt.sprite("moss_idle_0") {
             let n = Double(sim.bag.count)
@@ -166,6 +159,13 @@ enum DigPainter {
         if groundY > 0 { lights.append((V2(Double(f.w) / 2, Double(groundY) - 60), 140, 0.6)) }
         f.night(base: 0.3, lights: lights)
 
+        // Mosto in his nest at the bottom, with the stolen light, over the dark so he reads in his own colours
+        if !sim.nestDone {
+            let nx = Double(x0 + DigWorld.nestX * T), ny = Double((DigWorld.nestY + 1) * T - camI)
+            if ny > -40 && ny < Double(f.h) + 40, let mo = PixelArt.sprite("mosto_carry_\(Int(clock * 4) % 2)") {
+                f.draw(mo, feet: Int(nx) + 8, Int(ny) - 2 + Int(sin(clock * 2) * 2), flip: true)
+            }
+        }
         // the thread back up to Otto, over the dark: it is light
         let th = sim.thread
         if th.count > 1 {
@@ -202,6 +202,13 @@ enum DigPainter {
             let e = a * a
             let q = V2(from.x + (hud.x - from.x) * e, from.y + (hud.y - from.y) * e - sin(a * .pi) * 16)
             if let s = PixelArt.sprite(pop.icon) { f.draw(s, feet: Int(q.x), Int(q.y)) }
+        }
+        // a shadow near and the bead ready: a ring on her says "tap me" (stronger right after the bead showed how)
+        if sim.flashWanted || sim.t - sim.demoFlashAt < 1.6 {
+            let c = sim.p + off + V2(0, -8)
+            let r = 9 + (clock * 1.6).truncatingRemainder(dividingBy: 1) * 7
+            let a = sim.t - sim.demoFlashAt < 1.6 ? 0.9 : 0.55
+            for k in 0..<28 { let an = Double(k) / 28 * .pi * 2; f.blend(Int(c.x + cos(an) * r), Int(c.y + sin(an) * r), cream, a) }
         }
         // the flash
         if sim.t - sim.flashAt < 0.2 {
@@ -307,6 +314,11 @@ final class DigCanvas: UIView {
             if c == "drop" { sim.bag = Bag() }
         }
         if demo && !paused { demoSteer() }
+        // a held finger keeps meaning "toward here", even as she walks past it or the view scrolls
+        if let p = finger, driver != nil, !paused {
+            let d = direction(p)
+            if !(d.y < 0 && sim.stick.y < 0) { sim.push(d) }
+        }
         link?.preferredFrameRateRange = paused ? CAFrameRateRange(minimum: 4, maximum: 10, preferred: 10) : CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
         if !paused && sim.openMemory == nil {
             sim.step(dt)
@@ -358,10 +370,7 @@ final class DigCanvas: UIView {
 
     /// The one direction a finger at this point means.
     func direction(_ p: CGPoint) -> V2 {
-        let d = V2(Double(p.x / scale.pt), Double(p.y / scale.pt)) - mossOnScreen()
-        if d.len < 11 { return V2(0, 0) }
-        if abs(d.y) > abs(d.x) * 1.15 { return V2(0, d.y > 0 ? 1 : -1) }
-        return V2(d.x > 0 ? 1 : -1, 0)
+        DigInput.direction(V2(Double(p.x / scale.pt), Double(p.y / scale.pt)) - mossOnScreen())
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -415,5 +424,15 @@ struct DigCanvasView: UIViewRepresentable {
     func updateUIView(_ v: DigCanvas, context: Context) {
         v.paused = paused
         if let c = command { v.command = c; DispatchQueue.main.async { command = nil } }
+    }
+}
+
+/// Where a finger is, relative to Moss (in game pixels), as the one way she should go: none on her, else the
+/// stronger of across and up/down (a little bias to across, so a press beside her and slightly low still walks).
+enum DigInput {
+    static func direction(_ d: V2) -> V2 {
+        if d.len < 11 { return V2(0, 0) }
+        if abs(d.y) > abs(d.x) * 1.15 { return V2(0, d.y > 0 ? 1 : -1) }
+        return V2(d.x > 0 ? 1 : -1, 0)
     }
 }

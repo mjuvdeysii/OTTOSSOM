@@ -58,7 +58,9 @@ struct DigGameView: View {
         }
         .ignoresSafeArea()
         .statusBarHidden()
-        .onAppear { if probe == nil { Sound.shared.music(0) } }
+        .onAppear {
+            if probe == nil { Sound.shared.music(0); Telemetry.log("open day=\(save.day)") }
+        }
     }
 
     private func go(_ p: Phase) { withAnimation(.easeInOut(duration: 0.3)) { phase = p } }
@@ -78,9 +80,9 @@ struct DigGameView: View {
         save.openShop(); save.save()
         go(.shop); Sound.shared.music(1)
         // the town answers what she has found: a few lines for the newest memory stone, once
-        let n = save.memories.count
-        if n > 0, let lines = DigStory.afterNight[min(n, 7)], !save.seen.contains("story\(min(n, 7))") {
-            save.seen.insert("story\(min(n, 7))"); save.save()
+        let n = min(save.memories.count, 7)
+        if let k = (1...max(1, n)).first(where: { n > 0 && !save.seen.contains("story\($0)") }), let lines = DigStory.afterNight[k] {
+            save.seen.insert("story\(k)"); save.save()
             talk = lines; afterTalk = nil
         }
     }
@@ -173,6 +175,7 @@ struct DigNight: View {
         var sim = DigSim(world: s.world, upgrades: s.upgrades, seed: UInt64(s.day) * 977 + 13)
         sim.nestDone = s.seen.contains("ending")
         sim.forgiving = s.day == 1
+        sim.demoFlashDone = s.seen.contains("demoflash")
         if let pr = s.progress {
             // carry on from where the night was stopped
             sim.world = pr.world; sim.p = V2(pr.x, pr.y); sim.bag = pr.bag; sim.light = pr.light
@@ -190,7 +193,7 @@ struct DigNight: View {
         let pt = scale.pt, k = scale.k
         let full = hud.bag >= hud.cap
         ZStack {
-            DigCanvasView(sim: sim, scale: scale, paused: result != nil || !talk.isEmpty || endCard || away, demo: demo, command: $command,
+            DigCanvasView(sim: sim, scale: scale, paused: result != nil || !talk.isEmpty || endCard || away || nestStage == 1 || nestStage == 2, demo: demo, command: $command,
                           onEvents: handle, onTick: tick)
                 .frame(width: CGFloat(scale.w) * pt, height: CGFloat(scale.h) * pt)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -237,7 +240,8 @@ struct DigNight: View {
                     VStack(spacing: pt * 10) {
                         PixelImage(name: "memory_9", pt: pt).overlay(Rectangle().strokeBorder(pxEdge, lineWidth: pt))
                         Text(DigStory.endingCard).font(PixelFont.font(2, k: k)).foregroundStyle(pxGold)
-                        Text("灯塔亮了。往下还有更深的地方。").font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
+                        Text("灯塔亮了。汉克送来 60 枚硬币作谢礼。").font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
+                            .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                         PixelButton(title: "回到灯塔", k: k) { endCard = false; command = "reel" }
                     }
                 }
@@ -248,7 +252,7 @@ struct DigNight: View {
         .frame(width: CGFloat(scale.w) * scale.pt)
         .animation(.easeInOut(duration: 0.25), value: memory)
         .onAppear {
-            Telemetry.log("night_start day=\(save.day)")
+            if save.progress == nil { Telemetry.log("night_start day=\(save.day)") } else { Telemetry.log("night_resume day=\(save.day)") }
             withAnimation(.easeInOut(duration: 0.45).repeatForever(autoreverses: true)) { pulse = true }
         }
         .onChange(of: phase) { _, p in
@@ -290,7 +294,7 @@ struct DigNight: View {
             case .gem(let g): Sound.shared.chime(g == .amber ? 0 : g == .blue ? 1 : 2); Feel.play(.gem)
             case .trinket: Sound.shared.touch(); Feel.play(.light)
             case .mote: Sound.shared.take()
-            case .full: Sound.shared.no(); Feel.play(.hard)
+            case .full: Sound.shared.bagFull(); Feel.play(.hard)
             case .hard: Sound.shared.no(); Feel.play(.hard)
             case .memory(let n):
                 Sound.shared.motif(.moss); Feel.play(.memory)
@@ -298,7 +302,8 @@ struct DigNight: View {
                 command = "closeMemory"          // the dig carries on: the memory shows over it
                 if !demo { memory = n; Sound.shared.duck(true) }
             case .flash(let n):
-                if n > 0 { Sound.shared.light(); Feel.play(.gem) } else { Sound.shared.flashMiss() }
+                if n > 0 { Sound.shared.light(); Feel.play(.light) } else { Sound.shared.flashMiss() }
+                if box.sim?.demoFlashDone == true && !save.seen.contains("demoflash") { save.seen.insert("demoflash"); save.save() }
             case .hurt: Sound.shared.dim(); Feel.play(.hurt)
             case .jump: Sound.shared.jump()
             case .home, .dark: break
@@ -326,7 +331,9 @@ struct DigNight: View {
     }
     private func talkDone() {
         if nestStage == 3 {
-            save.seen.insert("ending"); save.save()
+            save.seen.insert("ending")
+            save.coins += 60          // the lighthouse's thanks, sent down by Hank
+            save.save()
             Telemetry.log("ending day=\(save.day)")
             Sound.shared.music(0)
             withAnimation(.easeInOut(duration: 0.6)) { endCard = true }
@@ -649,6 +656,7 @@ struct Evening: View {
                             PixelButton(title: "\(c)", k: k, primary: save.coins >= c) {
                                 guard save.coins >= c else { Sound.shared.no(); return }
                                 save.coins -= c; save.upgrades[it.0] = lv + 1; save.save(); Sound.shared.light(); Haptic.success()
+                                Telemetry.log("upgrade \(it.0)=\(lv + 1) day=\(save.day)")
                             }
                         }
                     }

@@ -328,14 +328,16 @@ final class Sound {
         if !p.isPlaying { p.play() }
     }
 
-    func step() { tones([180], 0.06, 0.05) }
+    func step() { knock(260, 220, 0.05, 0.06, noise: 0.4) }
     func light() { tones([523, 784, 1046], 0.35, 0.08) }
     func dim() { tones([392, 262, 196], 0.4, 0.08) }
     func take() { tones([660, 990], 0.25, 0.07) }
     func push() { tones([110, 92], 0.12, 0.09) }
     func touch() { tones([880, 1320], 0.3, 0.05) }
     func talk() { tones([660], 0.05, 0.03) }
-    func no() { tones([150], 0.12, 0.03, square: true) }
+    func no() { knock(280, 230, 0.10, 0.07, noise: 0.15) }
+    /// The bag is full: two notes going down, nothing like "too hard".
+    func bagFull() { tones([392, 330], 0.14, 0.06) }
     func win() { tones([392, 523, 659, 784], 0.5, 0.07) }
     // the dig: each ground has its own sound
     func digSoft() { knock(240, 180, 0.08, 0.10, noise: 0.5) }

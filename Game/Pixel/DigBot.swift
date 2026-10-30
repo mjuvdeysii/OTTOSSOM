@@ -75,7 +75,7 @@ struct DigBot {
         while sim.outcome == 0 && n < 30 * 400 {
             bot.steer(&sim, dt)
             sim.step(dt)
-            if sim.atNest && !sim.nestDone { sim.nestDone = true; sim.reelIn() }
+            if sim.atNest && !sim.nestDone { sim.nestDone = true; sim.bag = Bag(); sim.reelIn() }
             sim.events = []
             n += 1
         }
@@ -91,7 +91,7 @@ struct DigBot {
         for n in 1...8 where sim.world.memories[n].map({ Cell(rawValue: sim.world.cells[$0]) == .memoryRead }) == true && !s.memories.contains(n) {
             s.memories.append(n)
         }
-        if sim.nestDone { s.seen.insert("ending") }
+        if sim.nestDone && !s.seen.contains("ending") { s.seen.insert("ending"); s.coins += 60 }
         s.openShop()
         for o in s.orders where o.color.recipe.allSatisfy({ g in (s.gems[g] ?? 0) >= o.color.recipe.filter { $0 == g }.count }) {
             _ = s.light(o, with: o.color.recipe)

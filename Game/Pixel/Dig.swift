@@ -214,7 +214,8 @@ struct DigSim {
     var coyote = 0.0               // and one pressed a moment after she walks off an edge
     var freeze = 0.0               // a hair of stillness when a cell breaks
     var hardAt: (x: Int, y: Int, t: Double)?
-    var demoFlashDone = false      // the first shadow: the bead shows how it's done once
+    var demoFlashDone = false      // the first shadow ever: the bead shows how it's done, once
+    var demoFlashAt = -9.0
     var greedTimer = 0.0           // a full arms grows her shadow; past six things it starts calling moths
     var rng: Rng
     var nextID = 0
@@ -458,6 +459,7 @@ struct DigSim {
         }
         if !demoFlashDone, shades.contains(where: { !$0.moth && $0.p.dist(me) < 30 }) {
             demoFlashDone = true
+            demoFlashAt = t
             flash()
         }
         guard hurtCD <= 0 else { return }
@@ -502,6 +504,9 @@ struct DigSim {
             thread.append(p)
         }
     }
+
+    /// A shadow close enough that the bead could reach it, with the bead ready: the time to tap her.
+    var flashWanted: Bool { flashCD <= 0 && shades.contains { $0.p.dist(p + V2(0, -4)) < 50 } }
 
     /// What's left to do before it's too dark: seconds of light.
     var secondsLeft: Int { Int(light / drain) }

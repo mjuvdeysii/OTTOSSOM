@@ -121,6 +121,53 @@ final class DigTests: XCTestCase {
         XCTAssertEqual(still.light, l0, "the light doesn't burn before she has dug in")
     }
 
+    func testInputDirection() {
+        XCTAssertEqual(DigInput.direction(V2(3, 4)), V2(0, 0), "on her: no direction (a tap there flashes)")
+        XCTAssertEqual(DigInput.direction(V2(40, 10)), V2(1, 0))
+        XCTAssertEqual(DigInput.direction(V2(-30, 20)), V2(-1, 0), "beside and a little low still walks")
+        XCTAssertEqual(DigInput.direction(V2(5, 40)), V2(0, 1))
+        XCTAssertEqual(DigInput.direction(V2(-4, -30)), V2(0, -1))
+    }
+
+    func testCoyoteJump() {
+        var w = DigWorld(seed: 12)
+        for x in 0..<DigWorld.W { for y in 0..<(DigWorld.ground + 4) { w.set(x, y, .air) } }
+        for x in 0..<7 { w.set(x, DigWorld.ground + 4, .stone) }
+        var sim = DigSim(world: w, upgrades: [:], seed: 12)
+        sim.p = V2(100, Double(DigWorld.ground + 4) * 16)
+        for _ in 0..<10 { sim.step(1.0 / 60) }
+        XCTAssertTrue(sim.grounded)
+        sim.push(V2(1, 0))
+        var left = false
+        for _ in 0..<40 {
+            sim.step(1.0 / 60)
+            if !sim.grounded && !left { left = true; sim.step(1.0 / 60); sim.jump(); sim.step(1.0 / 60); break }
+        }
+        XCTAssertTrue(left)
+        XCTAssertLessThan(sim.v.y, 0, "a jump just after walking off the edge still jumps")
+    }
+
+    func testOldSaveStillLoads() throws {
+        var s = DigSave(); s.orders = [Order(id: 1, who: "h", color: .amber)]
+        var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(s)) as! [String: Any]
+        json.removeValue(forKey: "progress"); json.removeValue(forKey: "lit")
+        var orders = json["orders"] as! [[String: Any]]
+        orders[0].removeValue(forKey: "since"); json["orders"] = orders
+        let back = try JSONDecoder().decode(DigSave.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertEqual(back.orders.count, 1)
+        XCTAssertNil(back.progress)
+    }
+
+    func testProgressCarriesOn() throws {
+        var s = DigSave()
+        var w = s.world; w.set(4, 12, .air)
+        s.progress = DigProgress(world: w, x: 72, y: 200, bag: Bag(gems: [.blue: 2], trinkets: [:]), light: 33, deepest: 7)
+        let back = try JSONDecoder().decode(DigSave.self, from: JSONEncoder().encode(s))
+        XCTAssertEqual(back.progress?.light, 33)
+        XCTAssertEqual(back.progress?.bag.gems[.blue], 2)
+        XCTAssertEqual(back.progress?.world.at(4, 12), .air)
+    }
+
     func testSaveRoundTrip() throws {
         var s = DigSave(); s.gems = [.blue: 2]; s.memories = [1]; s.world.set(3, 9, .air)
         let d = try JSONEncoder().encode(s)
@@ -174,15 +221,19 @@ final class DigPacingTests: XCTestCase {
         var s = DigSave()
         var lines: [String] = []
         var firstMemoryDay = 0, endingDay = 0
+        var bags: [Int] = []
         for _ in 0..<16 {
             let d = s.day
             let sim = DigBot.day(&s)
             let up = "爪\(s.upgrades["claw"] ?? 0)包\(s.upgrades["bag"] ?? 0)芯\(s.upgrades["wick"] ?? 0)"
             lines.append("DIGBAL day \(d): deepest \(sim.deepest)m bag \(sim.bag.count) \(sim.outcome == 1 ? "home" : "dark") · memories \(s.memories.count) · coins \(s.coins) · \(up) · orders \(s.orders.count)")
+            bags.append(sim.bag.count)
             if firstMemoryDay == 0 && !s.memories.isEmpty { firstMemoryDay = d }
             if endingDay == 0 && s.seen.contains("ending") { endingDay = d }
         }
         lines.append("DIGBAL first memory day \(firstMemoryDay), ending day \(endingDay)")
+        XCTAssertTrue((7...10).contains(endingDay), "the chapter should end on day 7–10, not \(endingDay)")
+        XCTAssertTrue(bags.dropFirst(8).allSatisfy { $0 >= 4 }, "after day 9 every night should bring at least 4 things: \(bags)")
         for l in lines { print(l) }
         XCTAssertGreaterThan(firstMemoryDay, 0)
         XCTAssertLessThanOrEqual(firstMemoryDay, 2)

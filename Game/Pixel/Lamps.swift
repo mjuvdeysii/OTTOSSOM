@@ -88,8 +88,10 @@ struct DigSave: Codable {
         seen.insert(key)
         switch day {
         case 1: add("h", .amber); add("n", .amber); add("d", .amber)
-        case 2: add("t1", .amber); add("n", .green)
-        case 3: add("t2", .amber); add("h", .green); add("t3", .blue)
+        case 2: add("t1", .amber); add("n", (upgrades["claw"] ?? 0) >= 1 ? .green : .amber)
+        case 3:
+            let blue = (upgrades["claw"] ?? 0) >= 1
+            add("t2", .amber); add("h", blue ? .green : .amber); add("t3", blue ? .blue : .amber)
         default:
             var pool: [LampColor] = [.amber, .amber]
             if (upgrades["claw"] ?? 0) >= 1 { pool += [.blue, .green, .green] }
