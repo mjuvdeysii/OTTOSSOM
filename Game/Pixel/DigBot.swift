@@ -19,34 +19,48 @@ struct DigBot {
         lastP = sim.p
         if stuck > 1.2 { side = -side; sideFor = 0.5; stuck = 0; sim.push(V2(0, -1)); return }
         if sideFor > 0 { sideFor -= dt; sim.push(V2(side, 0)); return }
-        // a crystal or trinket right beside: take it
-        for dx in [-1, 1] {
-            let c = sim.world.at(fx + dx, fy)
-            if (c == .amber || c == .trinket || (c == .blue && sim.claw >= 1) || (c == .red && sim.claw >= 2)) && sim.bag.count < sim.capacity {
-                sim.push(V2(Double(dx), 0)); return
-            }
-        }
-        // the next memory stone, if it's not far below: line up with it
+        // the next memory stone, if it's not far below: go for it first
+        var goal: (Int, Int)?
         if let m = sim.world.memories.sorted(by: { $0.key < $1.key }).first(where: { Cell(rawValue: sim.world.cells[$0.value]) == .memory })?.value {
             let mx = m % DigWorld.W, my = m / DigWorld.W
-            if my >= fy && my - fy <= 14 {
-                if my == fy { sim.push(V2(mx > fx ? 1 : -1, 0)); return }
-                if mx != fx && my - fy <= 3 { sim.push(V2(mx > fx ? 1 : -1, 0)); return }
-                if mx != fx && my - fy > 3 && sim.grounded {
-                    // dig down, but drift toward its column on the way
-                    side = mx > fx ? 1 : -1
-                }
-            }
-        } else if !sim.nestDone {
-            let nx = DigWorld.nestX
-            if abs(nx - fx) > 1 && sim.grounded && sim.depth > 80 { sim.push(V2(nx > fx ? 1 : -1, 0)); return }
+            if my >= fy - 1 && my - fy <= 12 && reachable(sim, mx, my) { goal = (mx, my) }
+        } else if !sim.nestDone && sim.depth > 70 {
+            goal = (DigWorld.nestX, DigWorld.nestY)
+        }
+        // otherwise the nearest crystal or trinket it can dig, not above it
+        if goal == nil && sim.bag.count < sim.capacity {
+            var best = 1e9
+            for dy in -1...8 { for x in 0..<DigWorld.W {
+                let y = fy + dy
+                let c = sim.world.at(x, y)
+                guard c == .amber || c == .trinket || c == .blue || c == .red, c.claw <= sim.claw, reachable(sim, x, y) else { continue }
+                let d = Double(abs(x - fx)) + Double(abs(dy)) * 1.4
+                if d < best { best = d; goal = (x, y) }
+            } }
+        }
+        if let g = goal {
+            let gx = g.0, gy = g.1
+            if gy < fy { sim.push(V2(0, -1)); sideFor = 0.25; side = gx > fx ? 1 : -1; return }
+            if gy == fy { sim.push(V2(gx > fx ? 1 : -1, 0)); return }
+            if gx != fx && gy - fy <= 2 { sim.push(V2(gx > fx ? 1 : -1, 0)); return }
+            if gx != fx { side = gx > fx ? 1 : -1 }
         }
         // dig down; if the ground below is too hard, go sideways for a bit
         let below = sim.world.at(fx, fy + 1)
         if below.solid && below.claw > sim.claw || below == .bedrock || below == .memoryRead {
-            sideFor = 0.45; sim.push(V2(side, 0)); return
+            sideFor = 0.8; sim.push(V2(side, 0)); return
+        }
+        if let g = goal, g.0 != fx, sim.grounded, below.solid == false || below.claw <= sim.claw {
+            // drift toward the goal's column on the way down
+            if Int(sim.t * 2) % 3 == 0 { sim.push(V2(side, 0)); return }
         }
         sim.push(V2(0, 1))
+    }
+
+    /// Whether a cell can be dug or walked into with the claw it has (the cell itself, not the way there).
+    private func reachable(_ sim: DigSim, _ x: Int, _ y: Int) -> Bool {
+        let c = sim.world.at(x, y)
+        return c == .air || c == .memory || (c.dig != nil && c.claw <= sim.claw)
     }
 
     /// One night, to the end.
@@ -82,6 +96,9 @@ struct DigBot {
         }
         for key in ["claw", "bag", "wick", "claw", "bag", "wick"] {
             let lv = s.upgrades[key] ?? 0
+            // the claw first: it opens the stone
+            if key != "claw" && (s.upgrades["claw"] ?? 0) < 1 { continue }
+            if key != "claw" && (s.upgrades["claw"] ?? 0) < 2 && s.deepest >= 30 && s.coins < 90 + 20 { continue }
             if let costs = DigSave.upgradeCosts[key], lv < costs.count, s.coins >= costs[lv] {
                 s.coins -= costs[lv]; s.upgrades[key] = lv + 1
             }
