@@ -239,87 +239,127 @@ def shop():
 
 # ---------------------------------------------------------------- memories of 《影子》
 
-def desk(p, top=78):
-    """A desk top in lamplight, the wall behind."""
-    p.grad(0, 0, p.w, top, [hx("#1c1830"), hx("#24203c"), hx("#2c2646")])
-    p.rect(0, top, p.w, p.h - top, WOOD[2]); p.rect(0, top, p.w, 1, WOOD[4]); p.rect(0, top + 1, p.w, 1, INK)
-    for x in range(0, p.w, 13): p.rect(x, top + 2, 1, p.h, WOOD[1])
+WALL = [hx(c) for c in ("#1a1426", "#221a32", "#2a2040")]
+DESK = [hx(c) for c in ("#2a1810", "#3e2618", "#563620", "#6e4a2c", "#8a6038")]
 
-def desk_lamp(p, x, top, on=True):
-    p.rect(x - 1, top - 34, 2, 30, INK); p.rect(x - 7, top - 4, 14, 4, INK); p.rect(x - 6, top - 3, 12, 2, STONE[3])
-    for j in range(10):
-        w = 4 + j
-        p.rect(x - w + 6, top - 44 + j, 2 * w - 4, 1, hx("#2a6a52") if j < 9 else INK)
-    if on:
-        for j in range(30):
-            for i in range(-j, j + 1):
-                X, Y = x + 6 + i, top - 34 + j
-                if (X + Y) % 2 == 0 and 0 <= X < p.w:
-                    c = p.get(X, Y)
-                    if c: p.put(X, Y, tuple(min(255, int(v * 1.25 + 14)) for v in c))
-        p.rect(x + 2, top - 35, 8, 1, GOLD[4])
+def room(p, top):
+    """The wall (faint stripes) and the desk top seen a little from above."""
+    for y in range(top):
+        for x in range(p.w):
+            p.put(x, y, WALL[1] if (x // 6) % 2 else WALL[2])
+    for x in range(p.w): p.put(x, top - 1, WALL[0])
+    for y in range(top, p.h):
+        for x in range(p.w):
+            k = 3 if y < top + 2 else 2
+            if (x + (y - top) * 9) % 23 == 0: k = 1
+            p.put(x, y, DESK[k])
+    for x in range(p.w): p.put(x, top, DESK[4])
+
+def desk_lamp2(p, x, top):
+    """A green desk lamp: round base, a jointed arm, a cone shade tipped toward the middle."""
+    for i in range(-7, 8): p.put(x + i, top - 1, INK); 
+    for i in range(-6, 7): p.put(x + i, top - 2, STONE[3]); p.put(x + i, top - 3, INK if abs(i) == 6 else STONE[2])
+    p.line(x, top - 3, x - 3, top - 22, INK); p.line(x + 1, top - 3, x - 2, top - 22, STONE[3])
+    p.line(x - 3, top - 22, x + 8, top - 34, INK); p.line(x - 2, top - 22, x + 9, top - 33, STONE[3])
+    for j in range(9):
+        w = 3 + j
+        for i in range(-w, w + 1):
+            p.put(x + 12 + i + j // 2, top - 38 + j, hx("#2a6a52") if i < w - 1 else hx("#1a4a3a"))
+        p.put(x + 12 - w - 1 + j // 2, top - 38 + j, INK); p.put(x + 12 + w + 1 + j // 2, top - 38 + j, INK)
+    for i in range(-11, 12): p.put(x + 16 + i, top - 29, GOLD[4] if abs(i) < 6 else GOLD[3])
+    return (x + 16, top - 28)
+
+def light_room(p, bulb, top, warm=1.0):
+    """Lamplight: bright under the shade, falling off in bands with a dither, warm; the rest in blue dark."""
+    bx, by = bulb
+    for y in range(p.h):
+        for x in range(p.w):
+            c = p.get(x, y)
+            dx, dy = x - bx, (y - by) * 1.1
+            d = math.hypot(dx, dy)
+            below = y >= by - 1
+            l = max(0.0, 1 - d / 95) * (1.0 if below else 0.45)
+            v = l * 3.3 + BAYER[y % 4][x % 4] / 16 * 0.9
+            band = min(3, int(v))
+            m = [0.42, 0.62, 0.82, 1.0][band]
+            r, g, b = c
+            wr = 1 + 0.18 * warm * band / 3
+            p.put(x, y, (min(255, int(r * m * wr)), min(255, int(g * m * (1 + 0.06 * band / 3))), int(b * (m * 0.85 + 0.12))))
 
 def mint(p, x, top):
     p.rect(x - 6, top - 10, 12, 10, hx("#7a4a3a")); p.rect(x - 7, top - 11, 14, 2, hx("#9a5a44")); p.rect(x - 6, top - 1, 12, 1, INK)
-    for (dx, h) in ((-4, 10), (-1, 14), (2, 12), (4, 8)):
-        p.line(x + dx, top - 11, x + dx, top - 11 - h, MOSS[2])
-        p.put(x + dx - 1, top - 11 - h + 2, hx("#7fd3a8")); p.put(x + dx + 1, top - 11 - h + 4, hx("#46a07a"))
+    p.rect(x - 7, top - 11, 1, 11, INK); p.rect(x + 6, top - 11, 1, 11, INK)
+    for (dx, h) in ((-4, 10), (-1, 15), (2, 12), (4, 8)):
+        p.line(x + dx, top - 12, x + dx, top - 12 - h, MOSS[2])
+        p.put(x + dx - 1, top - 12 - h + 2, hx("#7fd3a8")); p.put(x + dx + 1, top - 12 - h + 4, hx("#46a07a")); p.put(x + dx - 1, top - 12 - h + 6, hx("#46a07a"))
 
-def shadow_on_wall(p, x, base, scale=1.0, crown=False, wave=False, back=False):
-    """Moss's shadow on the wall: her shape in flat dark violet, bigger as it grows."""
-    s = Image.open(os.path.join(OUT, "moss_idle_0.png")).convert("RGBA")
-    if back: s = s.transpose(Image.FLIP_LEFT_RIGHT)
+def wall_shadow(p, sprite, cx, base, scale, crown=False, wave=False, flip=False, hug=False):
+    s = Image.open(os.path.join(OUT, sprite + ".png")).convert("RGBA")
+    if flip: s = s.transpose(Image.FLIP_LEFT_RIGHT)
     w, h = int(s.width * scale), int(s.height * scale)
-    s = s.resize((w, h), Image.NEAREST)
-    sp = s.load()
-    col = hx("#120e22")
+    s = s.resize((w, h), Image.NEAREST); sp = s.load()
+    col = hx("#0c0816")
+    x0, y0 = cx - w // 2, base - h
     for j in range(h):
         for i in range(w):
-            if sp[i, j][3] > 128: p.put(x - w // 2 + i, base - h + j, col)
+            if sp[i, j][3] > 128: p.put(x0 + i, y0 + j, col)
     if wave:
-        for k in range(int(6 * scale)): p.put(x + w // 2 + k // 2, base - h + 4 - k, col); p.put(x + w // 2 + k // 2 + 1, base - h + 4 - k, col)
+        # an arm raised from the side of the body, a hand open
+        ax, ay = x0 + w - int(3 * scale), y0 + int(h * 0.45)
+        for k in range(int(9 * scale)):
+            p.put(ax + k // 3, ay - k, col); p.put(ax + k // 3 + 1, ay - k, col)
+        hx_, hy = ax + int(9 * scale) // 3, ay - int(9 * scale)
+        for i in range(-2, 3):
+            for j in range(-2, 2): p.put(hx_ + i, hy + j, col)
     if crown:
-        cx, cy = x + int(2 * scale), base - h - 1
-        for i in range(-3, 4): p.put(cx + i, cy, col)
-        for i in (-3, 0, 3): p.put(cx + i, cy - 1, col); p.put(cx + i, cy - 2, col)
-        p.put(cx - 2, cy - 1, col); p.put(cx + 2, cy - 1, col)
+        cxx, cy = x0 + w // 2 + int(2 * scale), y0 + int(1 * scale)
+        for i in range(-int(4 * scale), int(4 * scale) + 1): p.put(cxx + i, cy, col); p.put(cxx + i, cy - 1, col)
+        for i in (-int(4 * scale), 0, int(4 * scale)):
+            for j in range(2, 2 + int(3 * scale)): p.put(cxx + i, cy - j, col)
+        p.put(cxx + int(2 * scale), cy - 3, col); p.put(cxx - int(2 * scale), cy - 3, col)
 
-def pile(p, x, base, n):
-    r = random.Random(n)
-    icons = ["button", "coin", "cap", "button", "coin"]
+def pile2(p, x, base, n, seed=1):
+    r = random.Random(seed)
+    icons = ["button", "coin", "cap", "coin", "button"]
+    spots = []
     for k in range(n):
-        ic = Image.open(os.path.join(OUT, f"icon_{icons[k % 5]}.png")).convert("RGBA").resize((8, 8), Image.NEAREST)
-        ip = ic.load()
-        ox, oy = x - 14 + (k * 7) % 28 + r.randrange(-1, 2), base - 8 - (k // 4) * 4
+        row = 0 if k < 6 else 1 if k < 10 else 2
+        spots.append((x - 16 + (k % 6 if row == 0 else (k - 6) % 4 + 1 if row == 1 else (k - 10) % 3 + 2) * 6 + r.randrange(-1, 2), base - 8 - row * 5))
+    for k, (ox, oy) in enumerate(spots):
+        ic = Image.open(os.path.join(OUT, f"icon_{icons[k % 5]}.png")).convert("RGBA").resize((8, 8), Image.NEAREST); ip = ic.load()
         for j in range(8):
             for i in range(8):
                 if ip[i, j][3] > 128: p.put(ox + i, oy + j, ip[i, j][:3])
 
 def memory(n):
-    """Panels of 《影子》, 120 × 100, shown 2× in the game."""
+    """Panels of 《影子》: 120 × 100. The lamp on the left throws the shadow onto the wall on the right."""
     p = Pic(120, 100)
-    top = 74
-    desk(p, top)
+    top = 72
+    room(p, top)
+    bulb = desk_lamp2(p, 14, top)
     if n == 1:
-        desk_lamp(p, 24, top); mint(p, 88, top)
-        p.sprite("moss_blink", 64, top + 2)
-        for (x, y) in ((58, top - 24), (70, top - 24)): p.put(x, y, GOLD[3])
+        # the mint pot, and a little stone that has just stood up
+        mint(p, 96, top + 2)
+        p.sprite("moss_blink", 58, top + 3)
+        for (x, y) in ((53, top - 22), (64, top - 24), (59, top - 27)): p.put(x, y, GOLD[3])
+        wall_shadow(p, "moss_idle_0", 76, top - 6, 1.1)
     elif n == 2:
-        desk_lamp(p, 16, top)
-        shadow_on_wall(p, 82, top - 4, 1.0, wave=True)
-        p.sprite("moss_idle_1", 50, top + 2)
-        for k in range(5): p.put(64 + k // 2, top - 18 - k, MOSS[2]); p.put(65 + k // 2, top - 18 - k, MOSS[2])
+        p.sprite("moss_idle_1", 50, top + 3)
+        p.line(57, top - 12, 61, top - 18, hx("#3a6a44")); p.put(61, top - 19, hx("#55905c")); p.put(62, top - 19, hx("#55905c"))
+        wall_shadow(p, "moss_idle_1", 82, top - 6, 1.35, wave=True)
     elif n == 3:
-        desk_lamp(p, 16, top)
-        shadow_on_wall(p, 94, top - 4, 1.15, wave=True)
-        pile(p, 52, top + 2, 9)
-        p.sprite("moss_mine", 36, top + 2, flip=True)
+        pile2(p, 58, top + 3, 9, 3)
+        p.sprite("moss_mine", 38, top + 3, flip=True)
+        wall_shadow(p, "moss_idle_1", 90, top - 6, 1.5, wave=True)
     elif n == 4:
-        desk_lamp(p, 16, top)
-        shadow_on_wall(p, 84, top - 4, 1.6, crown=True, back=True)
-        pile(p, 58, top + 2, 14)
-        p.sprite("moss_mine", 42, top + 2, flip=True)
-        p.ellipse(46, top - 10, 3, 3, hx("#b07a48"), INK)
+        pile2(p, 66, top + 3, 13, 4)
+        p.sprite("moss_mine", 44, top + 3, flip=True)
+        p.ellipse(39, top - 9, 3, 3, hx("#b07a48"), INK); p.put(38, top - 10, hx("#f0d0a0"))
+        wall_shadow(p, "moss_mine", 92, top - 4, 2.0, crown=True, flip=True)
+    light_room(p, bulb, top)
+    # a frame line so the panel reads as a remembered picture
+    for x in range(p.w): p.put(x, 0, INK); p.put(x, p.h - 1, INK)
+    for y in range(p.h): p.put(0, y, INK); p.put(p.w - 1, y, INK)
     p.save(f"memory_{n}")
     return p
 

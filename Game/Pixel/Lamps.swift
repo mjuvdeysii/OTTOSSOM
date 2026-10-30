@@ -157,5 +157,6 @@ enum DigStory {
         }
     }
     static let customerName: [String: String] = ["t1": "邮差", "t2": "面包师", "t3": "老船长"]
-    static func name(_ who: String) -> String { GameModel.names[who] ?? customerName[who] ?? "客人" }
+    static let castNames: [String: String] = ["h": "汉克", "d": "朵拉", "n": "琳恩", "o": "奥托", "m": "莫斯", "x": "莫斯托"]
+    static func name(_ who: String) -> String { castNames[who] ?? customerName[who] ?? "客人" }
 }
