@@ -7,7 +7,7 @@ final class DigTests: XCTestCase {
         let w = DigWorld(seed: 20261030)
         XCTAssertEqual(w.cells.count, DigWorld.W * DigWorld.H)
         for x in 0..<DigWorld.W { XCTAssertEqual(w.at(x, DigWorld.H - 1), .bedrock); XCTAssertEqual(w.at(x, DigWorld.ground), .grass) }
-        XCTAssertEqual(Set(w.memories.keys), [1, 2, 3, 4])
+        XCTAssertEqual(Set(w.memories.keys), Set(1...8))
         for (_, i) in w.memories { XCTAssertEqual(Cell(rawValue: w.cells[i]), .memory) }
     }
 
@@ -109,6 +109,24 @@ final class DigPaintTests: XCTestCase {
 /// Pacing: the rule player over two weeks of days. A decent player should find the first memory stone on the
 /// first night, need the claw to go past the clay, and reach the bottom within about two weeks.
 final class DigPacingTests: XCTestCase {
+    func testTrace() {
+        let s = DigSave()
+        var sim = DigSim(world: s.world, upgrades: [:], seed: 990)
+        var bot = DigBot()
+        let dt = 1.0 / 30
+        for n in 0..<(30 * 30) {
+            bot.steer(&sim, dt)
+            sim.step(dt)
+            sim.events = []
+            if n % 15 == 0 {
+                let (fx, fy) = sim.tileAt(sim.p + V2(0, -1))
+                let below = sim.world.at(fx, fy + 1), left = sim.world.at(fx - 1, fy), right = sim.world.at(fx + 1, fy)
+                print("DIGTRACE t\(n / 30) p(\(Int(sim.p.x)),\(Int(sim.p.y))) f(\(fx),\(fy)) stick(\(sim.stick.x),\(sim.stick.y)) g\(sim.grounded) dig\(sim.digging.map { "\($0.x),\($0.y),\(String(format: "%.2f", $0.t))" } ?? "-") below \(below) l \(left) r \(right) side\(bot.side) sf\(String(format: "%.2f", bot.sideFor))")
+            }
+            if sim.outcome != 0 { break }
+        }
+    }
+
     func testTwoWeeks() {
         var s = DigSave()
         var lines: [String] = []
