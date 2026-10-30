@@ -102,7 +102,7 @@ enum DigPainter {
         // the dark, with light where there is light
         var lights: [(V2, Double, Double)] = []
         let frac = max(0, sim.light / sim.lightMax)
-        lights.append((sim.p + off + V2(0, -10), 34 + 46 * frac, 1.0))
+        lights.append((sim.p + off + V2(0, -10), 48 + 58 * frac, 1.0))
         lights.append((sim.otto + off + V2(-6, -25), 70, 0.9))
         if sim.t - sim.flashAt < 0.25 { lights.append((sim.p + off + V2(0, -8), 60, 1.0)) }
         for ty in r0...r1 {
@@ -110,7 +110,7 @@ enum DigPainter {
                 let k = sim.world.at(tx, ty)
                 let c = V2(Double(x0 + tx * T + 8), Double(ty * T - camI + 9))
                 switch k {
-                case .amber, .blue, .red: lights.append((c, 15, 0.55))
+                case .amber, .blue, .red: lights.append((c, 10, 0.45))
                 case .memory: lights.append((c, 22 + 3 * sin(clock * 3), 0.75))
                 case .mote: lights.append((c, 9, 0.5))
                 default: break
@@ -119,7 +119,7 @@ enum DigPainter {
         }
         // above ground it's night, not the dark
         if groundY > 0 { lights.append((V2(Double(f.w) / 2, Double(groundY) - 60), 140, 0.6)) }
-        f.night(base: 0.16, lights: lights)
+        f.night(base: 0.3, lights: lights)
 
         // the thread back up to Otto, over the dark: it is light
         let th = sim.thread

@@ -53,11 +53,11 @@ struct DigWorld: Codable {
                 if y == H - 1 { t = .bedrock }
                 else if d == 0 { t = .grass }
                 else if d < 8 {
-                    t = u < 0.08 ? .mote : u < 0.13 ? .trinket : (u < 0.19 && d > 2) ? .amber : u < 0.30 ? .clay : .soil
+                    t = u < 0.06 ? .mote : u < 0.10 ? .trinket : (u < 0.15 && d > 2) ? .amber : u < 0.28 ? .clay : .soil
                 } else if d < 18 {
-                    t = u < 0.08 ? .amber : u < 0.12 ? .trinket : u < 0.16 ? .mote : u < 0.28 ? .stone : (u < 0.33 && d > 11) ? .blue : u < 0.75 ? .clay : .soil
+                    t = u < 0.06 ? .amber : u < 0.09 ? .trinket : u < 0.12 ? .mote : u < 0.26 ? .stone : (u < 0.30 && d > 11) ? .blue : u < 0.75 ? .clay : .soil
                 } else if d < 38 {
-                    t = u < 0.09 ? .blue : u < 0.12 ? .amber : u < 0.16 ? .trinket : u < 0.20 ? .mote : (u < 0.24 && d > 28) ? .red : u < 0.30 ? .rock : u < 0.45 ? .clay : .stone
+                    t = u < 0.07 ? .blue : u < 0.09 ? .amber : u < 0.12 ? .trinket : u < 0.15 ? .mote : (u < 0.18 && d > 28) ? .red : u < 0.26 ? .rock : u < 0.42 ? .clay : .stone
                 } else {
                     t = u < 0.08 ? .red : u < 0.12 ? .blue : u < 0.16 ? .trinket : u < 0.20 ? .mote : u < 0.6 ? .rock : .stone
                 }
