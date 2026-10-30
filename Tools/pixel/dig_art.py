@@ -369,7 +369,7 @@ def dark_memory(n):
                 if d < rad: l = max(l, k * (1 - d / rad))
             v = l * 3.3 + BAYER[y % 4][x % 4] / 16 * 0.9
             band = min(3, int(v))
-            m = [0.35, 0.6, 0.82, 1.0][band]
+            m = [0.55, 0.72, 0.88, 1.0][band]
             c = p.get(x, y)
             p.put(x, y, (int(c[0] * m), int(c[1] * m), int(c[2] * (m * 0.85 + 0.15))))
     for x in range(120): p.put(x, 0, INK); p.put(x, 99, INK)
