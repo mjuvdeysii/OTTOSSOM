@@ -110,11 +110,12 @@ final class DigPaintTests: XCTestCase {
 /// first night, need the claw to go past the clay, and reach the bottom within about two weeks.
 final class DigPacingTests: XCTestCase {
     func testTrace() {
-        let s = DigSave()
-        var sim = DigSim(world: s.world, upgrades: [:], seed: 990)
+        var s = DigSave()
+        _ = DigBot.day(&s); _ = DigBot.day(&s)
+        var sim = DigSim(world: s.world, upgrades: s.upgrades, seed: 990)
         var bot = DigBot()
         let dt = 1.0 / 30
-        for n in 0..<(30 * 30) {
+        for n in 0..<(30 * 40) {
             bot.steer(&sim, dt)
             sim.step(dt)
             sim.events = []
