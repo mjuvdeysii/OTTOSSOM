@@ -288,7 +288,7 @@ struct DigSim {
         let (fx, fy) = tileAt(p + V2(0, -1))
         if wantDown && grounded { target = (fx, fy + 1) }
         else if sx != 0 {
-            let (tx, ty) = tileAt(p + V2(sx * (DigSim.halfW + 1), -7))
+            let (tx, ty) = tileAt(p + V2(sx * (DigSim.halfW + 3), -7))
             if world.at(tx, ty).solid { target = (tx, ty) }
         } else if wantUp && grounded && world.at(fx, fy - 1).solid {
             target = (fx, fy - 1)
