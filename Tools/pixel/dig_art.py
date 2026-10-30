@@ -188,7 +188,7 @@ def lamp():
     for x in range(3, 13): put(x, 3, INK); put(x, 4, WOOD[3]); put(x, 18, WOOD[3]); put(x, 19, INK)
     for y in range(5, 18):
         put(2, y, INK); put(13, y, INK); put(3, y, WOOD[2]); put(12, y, WOOD[2])
-        for x in range(4, 12): put(x, y, (200, 200, 200))   # glass (tinted at runtime)
+        pass   # the glass is left clear: the game puts the light behind it
     for x in range(4, 12): put(x, 2, WOOD[2])
     for x in range(5, 11): put(x, 20, WOOD[1]); put(x, 21, INK)
     im.save(os.path.join(OUT, "lamp.png"))

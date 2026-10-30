@@ -107,7 +107,7 @@ struct PixelBar: View {
             }
         }
         .frame(height: pt * 5)
-        .padding(pt).background(pxInk)
+        .padding(pt).background(pxInk, ignoresSafeAreaEdges: [])
     }
 }
 
@@ -189,10 +189,11 @@ struct DigNight: View {
                     PixelButton(title: "收线回家", k: k, primary: hud.bag >= hud.cap || hud.light < 0.2) { command = "reel" }
                 }
             }
-            .padding(.horizontal, pt * 6).padding(.top, pt * 30).padding(.bottom, pt * 16)
+            .padding(.horizontal, pt * 6).padding(.top, pt * 30).padding(.bottom, pt * 22)
             if let n = memory { MemoryPanel(n: n, scale: scale) { closeMemory(n) } }
             if let r = result { NightResult(sim: r, coins: banked, scale: scale) { done() } }
         }
+        .frame(width: CGFloat(scale.w) * scale.pt)
         .onAppear {
             if !save.seen.contains("hint_move") {
                 save.seen.insert("hint_move")
@@ -227,7 +228,7 @@ struct DigNight: View {
             case .memory(let n):
                 Sound.shared.motif(.moss); Haptic.success()
                 if !save.memories.contains(n) { save.memories.append(n); save.save() }
-                memory = n
+                if demo { command = "closeMemory" } else { memory = n }
             case .flash(let n):
                 Sound.shared.light()
                 if n > 0 { Haptic.success() }
@@ -270,9 +271,8 @@ struct MemoryPanel: View {
                 .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).lineSpacing(pt * 2)
             PixelButton(title: "继续", k: k) { close() }
         }
-        .padding(pt * 10)
+        .padding(.vertical, pt * 8).padding(.horizontal, pt * 4)
         .modifier(PixelPanel(pt: pt, fill: Color(0x141024)))
-        .padding(.horizontal, pt * 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.7).ignoresSafeArea())
     }
@@ -350,7 +350,7 @@ struct LampShop: View {
                 .padding(.horizontal, pt * 8).padding(.vertical, pt * 4)
                 .modifier(PixelPanel(pt: pt))
                 if let o = current {
-                    GoalLine(text: "点亮\(DigStory.name(o.who))的灯：\(o.color.name) = \(o.color.recipe.map(gemName).joined(separator: " + "))", scale: scale)
+                    GoalLine(text: "\(o.color.name)：放 \(o.color.recipe.map(gemName).joined(separator: " + "))", scale: scale)
                     Spacer(minLength: pt * 4)
                     customer(o)
                     Spacer(minLength: pt * 4)
@@ -365,7 +365,7 @@ struct LampShop: View {
                     Spacer()
                 }
             }
-            .padding(.horizontal, pt * 6).padding(.top, pt * 30).padding(.bottom, pt * 16)
+            .padding(.horizontal, pt * 6).padding(.top, pt * 30).padding(.bottom, pt * 22)
         }
     }
 
@@ -375,7 +375,7 @@ struct LampShop: View {
         let pt = scale.pt, k = scale.k
         VStack(spacing: pt * 4) {
             HStack(alignment: .top, spacing: pt * 6) {
-                PixelImage(name: LampShop.portrait(o.who), pt: pt * 3)
+                PixelImage(name: LampShop.portrait(o.who), pt: pt * 2)
                 VStack(alignment: .leading, spacing: pt * 3) {
                     Text(DigStory.name(o.who)).font(PixelFont.font(1, k: k)).foregroundStyle(pxGold)
                     HStack(spacing: pt * 4) {
@@ -395,10 +395,10 @@ struct LampShop: View {
             // the lamp: its glass takes the colour of what's put in
             ZStack {
                 let mix = LampColor.mix(picked)
-                Rectangle().fill(lit.map { Color($0.rgb) } ?? mix.map { Color($0.rgb).opacity(0.45) } ?? Color(0x1c2238))
-                    .frame(width: pt * 8 * 4, height: pt * 13 * 4).offset(y: pt * 3)
-                    .shadow(color: lit.map { Color($0.rgb) } ?? .clear, radius: lit == nil ? 0 : pt * 12)
-                PixelImage(name: "lamp", pt: pt * 4)
+                Rectangle().fill(lit.map { Color($0.rgb) } ?? mix.map { Color($0.rgb).opacity(0.5) } ?? Color(0x1c2238))
+                    .frame(width: pt * 8 * 3, height: pt * 13 * 3)
+                    .shadow(color: lit.map { Color($0.rgb) } ?? .clear, radius: lit == nil ? 0 : pt * 14)
+                PixelImage(name: "lamp", pt: pt * 3)
             }
             .offset(x: shake ? pt * 3 : 0)
             // what's been put in
@@ -521,7 +521,7 @@ struct Evening: View {
                 }
                 .padding(.top, pt * 4)
             }
-            .padding(.horizontal, pt * 6).padding(.top, pt * 30).padding(.bottom, pt * 16)
+            .padding(.horizontal, pt * 6).padding(.top, pt * 30).padding(.bottom, pt * 22)
         }
     }
 }

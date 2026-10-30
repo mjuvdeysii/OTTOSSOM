@@ -38,10 +38,10 @@ struct PixelPanel: ViewModifier {
     var fill: Color = pxPanel
     func body(content: Self.Content) -> some View {
         content
-            .background(fill)
+            .background(fill, ignoresSafeAreaEdges: [])
             .overlay(Rectangle().strokeBorder(pxEdge, lineWidth: pt))
             .padding(pt)
-            .background(pxInk)
+            .background(pxInk, ignoresSafeAreaEdges: [])
     }
 }
 
@@ -56,9 +56,9 @@ struct PixelButton: View {
             Text(title).font(PixelFont.font(1, k: k)).foregroundStyle(primary ? pxInk : pxCream)
                 .padding(.horizontal, pt * 8).padding(.vertical, pt * 4)
                 .frame(minWidth: pt * 70)
-                .background(primary ? pxGold : pxPanel)
+                .background(primary ? pxGold : pxPanel, ignoresSafeAreaEdges: [])
                 .overlay(alignment: .bottom) { Rectangle().fill(primary ? Color(0xa86a18) : pxInk).frame(height: pt * 2) }
-                .padding(pt).background(pxInk)
+                .padding(pt).background(pxInk, ignoresSafeAreaEdges: [])
         }
         .buttonStyle(.plain)
     }

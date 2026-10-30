@@ -127,11 +127,11 @@ struct DigSave: Codable {
             let missing = o.color.recipe.first { g in (gems[g] ?? 0) < o.color.recipe.filter { $0 == g }.count }!
             let gname = missing == .amber ? "琥珀晶" : missing == .blue ? "蓝晶" : "红晶"
             if missing != .amber && (upgrades["claw"] ?? 0) < (missing == .blue ? 1 : 2) {
-                return "\(DigStory.name(o.who))要\(o.color.name)：\(gname)在石头里，先升级爪子"
+                return "\(gname)在石头里：先在琳恩那里升级爪子"
             }
             return "\(DigStory.name(o.who))要\(o.color.name)：去挖\(gname)"
         }
-        if let n = unread { return "往下挖：第 \(n) 块记忆石在 \(depths[n]!) 米" }
+        if let n = unread { return "往下挖：记忆石 \(n) 在 \(depths[n]!) 米深" }
         return "往更深的地方挖"
     }
 }
