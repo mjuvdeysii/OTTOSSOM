@@ -1,0 +1,91 @@
+commit a8c7a28137e30427a5dbad8b14f69766d3f39907
+Xcode 26.3 Build version 17C529 
+TEST SUCCEEDED
+-- errors --
+-- test failures --
+-- crash --
+-- dig tests --
+Test Case '-[OTTOSSOMTests.DigTests testGoalPointsBackUp]' started.
+Test Case '-[OTTOSSOMTests.DigTests testGoalPointsBackUp]' passed (0.003 seconds).
+Test Case '-[OTTOSSOMTests.DigTests testHardTileNeedsClaw]' started.
+Test Case '-[OTTOSSOMTests.DigTests testHardTileNeedsClaw]' passed (0.001 seconds).
+Test Case '-[OTTOSSOMTests.DigTests testInputDirection]' started.
+Test Case '-[OTTOSSOMTests.DigTests testInputDirection]' passed (0.000 seconds).
+Test Case '-[OTTOSSOMTests.DigTests testJumpIsOncePerPress]' started.
+Test Case '-[OTTOSSOMTests.DigTests testJumpIsOncePerPress]' passed (0.001 seconds).
+Test Case '-[OTTOSSOMTests.DigTests testLightOutHalvesTheBag]' started.
+Test Case '-[OTTOSSOMTests.DigTests testLightOutHalvesTheBag]' passed (0.001 seconds).
+Test Case '-[OTTOSSOMTests.DigTests testMixingAndPaying]' started.
+Test Case '-[OTTOSSOMTests.DigTests testMixingAndPaying]' passed (0.001 seconds).
+Test Case '-[OTTOSSOMTests.DigTests testOldSaveStillLoads]' started.
+Test Case '-[OTTOSSOMTests.DigTests testOldSaveStillLoads]' passed (0.026 seconds).
+Test Case '-[OTTOSSOMTests.DigTests testProgressCarriesOn]' started.
+Test Case '-[OTTOSSOMTests.DigTests testProgressCarriesOn]' passed (0.007 seconds).
+Test Case '-[OTTOSSOMTests.DigTests testRegrowthAndTheFirstNight]' started.
+Test Case '-[OTTOSSOMTests.DigTests testRegrowthAndTheFirstNight]' passed (0.002 seconds).
+Test Case '-[OTTOSSOMTests.DigTests testSaveRoundTrip]' started.
+Test Case '-[OTTOSSOMTests.DigTests testSaveRoundTrip]' passed (0.004 seconds).
+Test Case '-[OTTOSSOMTests.DigTests testWalksAndDigsSideways]' started.
+Test Case '-[OTTOSSOMTests.DigTests testWalksAndDigsSideways]' passed (0.001 seconds).
+Test Case '-[OTTOSSOMTests.DigTests testWorld]' started.
+Test Case '-[OTTOSSOMTests.DigTests testWorld]' passed (0.001 seconds).
+-- dig trace --
+DIGTRACE t0 p(101,80) f(6,4) stick(-1.0,0.0) gfalse dig- below air l air r air side1.0 sf0.00
+DIGTRACE t0 p(89,170) f(5,10) stick(1.0,0.0) gfalse dig- below memoryRead l soil r air side1.0 sf0.00
+DIGTRACE t1 p(104,201) f(6,12) stick(1.0,0.0) gfalse dig7,11,0.13 below air l clay r clay side1.0 sf0.00
+DIGTRACE t1 p(104,320) f(6,19) stick(-1.0,0.0) gtrue dig5,19,0.03 below memoryRead l stone r air side-1.0 sf0.77
+DIGTRACE t2 p(101,320) f(6,19) stick(-1.0,0.0) gtrue dig- below memoryRead l air r air side-1.0 sf0.27
+DIGTRACE t2 p(88,320) f(5,19) stick(0.0,1.0) gtrue dig5,20,0.20 below trinket l stone r air side-1.0 sf-0.03
+DIGTRACE t3 p(88,336) f(5,20) stick(0.0,1.0) gtrue dig5,21,0.20 below clay l stone r memoryRead side-1.0 sf-0.03
+DIGTRACE t3 p(88,336) f(5,20) stick(-1.0,0.0) gtrue dig4,20,0.50 below clay l stone r memoryRead side-1.0 sf-0.03
+DIGTRACE t4 p(88,375) f(5,23) stick(0.0,1.0) gfalse dig- below air l stone r clay side-1.0 sf-0.03
+DIGTRACE t4 p(88,416) f(5,25) stick(0.0,1.0) gtrue dig5,26,0.33 below stone l stone r blue side-1.0 sf-0.03
+DIGTRACE t5 p(88,416) f(5,25) stick(-1.0,0.0) gtrue dig4,25,0.50 below stone l stone r blue side-1.0 sf-0.03
+DIGTRACE t5 p(88,432) f(5,26) stick(0.0,1.0) gtrue dig5,27,0.03 below stone l stone r mote side-1.0 sf-0.03
+DIGTRACE t6 p(88,432) f(5,26) stick(0.0,1.0) gfalse dig- below air l stone r mote side-1.0 sf-0.03
+DIGTRACE t6 p(88,448) f(5,27) stick(-1.0,0.0) gtrue dig4,27,0.23 below stone l stone r stone side-1.0 sf-0.03
+DIGTRACE t7 p(88,448) f(5,27) stick(0.0,1.0) gtrue dig5,28,0.50 below stone l stone r stone side-1.0 sf-0.03
+DIGTRACE t7 p(88,464) f(5,28) stick(0.0,1.0) gtrue dig5,29,0.20 below stone l stone r air side-1.0 sf-0.03
+DIGTRACE t8 p(88,464) f(5,28) stick(-1.0,0.0) gtrue dig4,28,0.50 below stone l stone r air side-1.0 sf-0.03
+DIGTRACE t8 p(88,468) f(5,29) stick(-1.0,0.0) gfalse dig- below blue l stone r blue side-1.0 sf-0.03
+DIGTRACE t9 p(88,480) f(5,29) stick(-1.0,0.0) gtrue dig4,29,0.43 below blue l stone r blue side-1.0 sf-0.03
+DIGTRACE t9 p(72,480) f(4,29) stick(0.0,1.0) gtrue dig4,30,0.23 below stone l stone r air side-1.0 sf-0.03
+DIGTRACE t10 p(72,490) f(4,30) stick(0.0,1.0) gfalse dig- below memory l stone r blue side-1.0 sf-0.03
+DIGTRACE t10 p(72,496) f(4,30) stick(1.0,0.0) gtrue dig5,30,0.40 below memoryRead l stone r blue side-1.0 sf-0.03
+DIGTRACE t11 p(86,496) f(5,30) stick(1.0,0.0) gtrue dig- below stone l air r blue side-1.0 sf-0.03
+DIGTRACE t11 p(89,496) f(5,30) stick(1.0,0.0) gtrue dig6,30,0.47 below stone l air r blue side-1.0 sf-0.03
+DIGTRACE t12 p(88,496) f(5,30) stick(0.0,1.0) gtrue dig5,31,0.27 below stone l air r air side-1.0 sf-0.03
+DIGTRACE t12 p(88,510) f(5,31) stick(0.0,1.0) gfalse dig- below blue l memoryRead r stone side-1.0 sf-0.03
+DIGTRACE t13 p(88,512) f(5,31) stick(0.0,1.0) gtrue dig5,32,0.47 below blue l memoryRead r stone side-1.0 sf-0.03
+DIGTRACE t13 p(88,528) f(5,32) stick(0.0,1.0) gtrue dig5,33,0.07 below blue l stone r stone side-1.0 sf-0.03
+DIGTRACE t14 p(88,528) f(5,32) stick(0.0,1.0) gtrue dig5,33,0.57 below blue l stone r stone side-1.0 sf-0.03
+DIGTRACE t14 p(88,544) f(5,33) stick(-1.0,0.0) gtrue dig4,33,0.27 below clay l blue r clay side-1.0 sf-0.03
+DIGTRACE t15 p(81,544) f(5,33) stick(-1.0,0.0) gtrue dig- below clay l air r clay side-1.0 sf-0.03
+DIGTRACE t15 p(70,544) f(4,33) stick(-1.0,0.0) gtrue dig3,33,0.33 below clay l stone r air side-1.0 sf-0.03
+DIGTRACE t16 p(55,544) f(3,33) stick(-1.0,0.0) gtrue dig2,33,0.03 below clay l stone r air side-1.0 sf-0.03
+DIGTRACE t16 p(53,544) f(3,33) stick(-1.0,0.0) gtrue dig- below clay l air r air side-1.0 sf-0.03
+DIGTRACE t17 p(38,544) f(2,33) stick(-1.0,0.0) gtrue dig1,33,0.20 below stone l stone r air side-1.0 sf-0.03
+DIGTRACE t17 p(30,544) f(1,33) stick(-1.0,0.0) gtrue dig- below red l trinket r air side-1.0 sf-0.03
+DIGTRACE t18 p(28,544) f(1,33) stick(1.0,0.0) gtrue dig- below red l air r air side1.0 sf0.67
+DIGTRACE t18 p(60,544) f(3,33) stick(1.0,0.0) gtrue dig- below clay l air r air side1.0 sf0.17
+DIGTRACE t19 p(72,544) f(4,33) stick(0.0,1.0) gtrue dig4,34,0.30 below clay l air r air side-1.0 sf-0.03
+DIGTRACE t19 p(72,608) f(4,37) stick(0.0,1.0) gtrue dig- below stone l amber r stone side1.0 sf-0.03
+-- dig pacing --
+DIGBAL day 1: deepest 21m bag 5 home · memories 2 · coins 0 · 爪1包0芯0 · orders 0
+DIGBAL day 2: deepest 14m bag 8 home · memories 2 · coins 12 · 爪1包0芯0 · orders 1
+DIGBAL day 3: deepest 29m bag 8 home · memories 3 · coins 30 · 爪1包1芯1 · orders 0
+DIGBAL day 4: deepest 38m bag 10 home · memories 3 · coins 59 · 爪1包1芯1 · orders 0
+DIGBAL day 5: deepest 38m bag 1 home · memories 3 · coins 83 · 爪1包1芯1 · orders 0
+DIGBAL day 6: deepest 38m bag 0 home · memories 3 · coins 35 · 爪2包1芯1 · orders 0
+DIGBAL day 7: deepest 74m bag 10 home · memories 6 · coins 45 · 爪2包1芯1 · orders 3
+DIGBAL day 8: deepest 39m bag 12 home · memories 6 · coins 50 · 爪2包2芯1 · orders 1
+DIGBAL day 9: deepest 91m bag 0 home · memories 8 · coins 50 · 爪2包2芯2 · orders 4
+DIGBAL day 10: deepest 78m bag 16 home · memories 8 · coins 74 · 爪2包2芯2 · orders 4
+DIGBAL day 11: deepest 94m bag 16 home · memories 8 · coins 98 · 爪2包2芯2 · orders 4
+DIGBAL day 12: deepest 94m bag 8 home · memories 8 · coins 124 · 爪2包2芯2 · orders 2
+DIGBAL day 13: deepest 94m bag 7 home · memories 8 · coins 147 · 爪2包2芯2 · orders 3
+DIGBAL day 14: deepest 94m bag 8 home · memories 8 · coins 163 · 爪2包2芯2 · orders 3
+DIGBAL day 15: deepest 94m bag 9 home · memories 8 · coins 168 · 爪2包2芯2 · orders 4
+DIGBAL day 16: deepest 94m bag 5 home · memories 8 · coins 189 · 爪2包2芯2 · orders 3
+DIGBAL first memory day 1, ending day 9
+-- warnings (project files) --
