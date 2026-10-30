@@ -11,7 +11,7 @@ struct ChangyeApp: App {
     }
 }
 
-enum Screen: Equatable { case title, chapter(Int), snap(Int, String), scene(Int, String, String), rules, adventure(Bool), probe(String), pixel(String) }
+enum Screen: Equatable { case title, chapter(Int), snap(Int, String), scene(Int, String, String), rules, adventure(Bool), probe(String), pixel(String), dig(String) }
 
 final class Router: ObservableObject {
     @Published var screen: Screen = .title
@@ -28,7 +28,8 @@ struct RootView: View {
         ZStack {
             nightBG.ignoresSafeArea()
             switch router.screen {
-            case .title: PixelGameView().transition(.opacity)
+            case .title: DigGameView().transition(.opacity)
+            case .dig(let what): DigGameView(probe: what).id(what)
             case .pixel(let what): PixelGameView(probe: what).id(what)
             case .chapter(let id):
                 if let ch = Content.chapters.first(where: { $0.id == id }) {

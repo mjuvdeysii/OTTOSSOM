@@ -14,10 +14,10 @@ enum Snapshots {
 
     static func run(_ router: Router) async {
         Sound.shared.enabled = false
-        router.screen = .pixel("title"); await wait(4.5); say("00_title"); await wait(2.0)
-        for (what, hold) in [("town", 3.0), ("talk", 4.0), ("shop", 3.0), ("night1", 4.0), ("night3", 9.0), ("night5", 9.0), ("result", 4.0)] {
-            router.screen = .pixel(what); await wait(hold)
-            say("px_\(what)"); await wait(8.0)
+        router.screen = .dig("title"); await wait(4.5); say("00_title"); await wait(6.0)
+        for (what, hold) in [("dig", 9.0), ("deep", 9.0), ("memory", 4.0), ("shop", 4.0), ("shoptalk", 4.0), ("evening", 4.0)] {
+            router.screen = .dig(what); await wait(hold)
+            say("dg_\(what)"); await wait(8.0)
         }
         router.screen = .title; await wait(1)
         say("done")

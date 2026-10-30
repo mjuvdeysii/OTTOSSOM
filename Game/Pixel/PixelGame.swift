@@ -101,7 +101,7 @@ struct PixelGameView: View {
             ZStack {
                 Color.black.ignoresSafeArea()
                 switch screen {
-                case .title: PixelTitle(scale: sc, save: save) { go(.town) }
+                case .title: PixelTitle(scale: sc, resume: save.unlocked > 1 || save.motes > 0) { go(.town) }
                 case .town: PixelTown(scale: sc, save: $save, shop: $shop, play: { n in startNight(n) })
                 case .night(let n):
                     NightScreen(spec: ChapterOne.nights[n - 1], scale: sc, save: $save, demo: probe != nil, preset: probe == "result" ? 1 : 0) { won in endNight(n, won) }.id(n)
@@ -221,7 +221,7 @@ extension Frame {
 
 struct PixelTitle: View {
     let scale: PixelScale
-    let save: PixelSave
+    let resume: Bool
     var start: () -> Void
     @State private var t = 0.0
     var body: some View {
@@ -236,7 +236,7 @@ struct PixelTitle: View {
                     .shadow(color: Color(0xa86a18), radius: 0, x: 0, y: pt * 2)
                 Text("OTTOSSOM").font(PixelFont.font(1, k: k)).foregroundStyle(Color(0xb8c0e0)).tracking(pt * 3)
                 Spacer().frame(height: pt * 14)
-                PixelButton(title: save.unlocked > 1 || save.motes > 0 ? "继续守夜" : "开始守夜", k: k) { start() }
+                PixelButton(title: resume ? "继续" : "开始", k: k) { start() }
                     .opacity(t > 0 ? 1 : 0.6)
                 Spacer()
             }

@@ -340,6 +340,46 @@ def lynn():
     for (x, y) in ((3, 18), (4, 20), (5, 18), (6, 20), (7, 18), (4, 19), (6, 19)): c.put(x, y, hexc("#d6c8a0"))
     c.outline(); return c
 
+def postman():
+    """The postman: a round sky-blue pebble in a peaked cap, a satchel strap across."""
+    c = Canvas(22, 24)
+    c.blob(11, 15, 8.5, 8.5, [hexc(x) for x in ("#1a2a4a", "#2a4a7a", "#3e6aa8", "#6a96d0", "#a8c8f0")], bottom_flat=23)
+    for x in range(3, 19):
+        for y in range(5, 9):
+            if (x - 11) ** 2 / 60 + (y - 9) ** 2 / 14 <= 1: c.put(x, y, hexc("#24305a"))
+    c.line([(9, 9), (20, 9)], hexc("#141c3a"))
+    c.put(10, 6, GOLD[2])
+    eyes(c, 13, (8, 13))
+    c.line([(5, 15), (16, 22)], hexc("#6a4a2a"))
+    c.outline(); return c
+
+def baker():
+    """The baker: a warm wheat-coloured round in a tall white hat, flour on the cheek."""
+    c = Canvas(22, 26)
+    c.blob(11, 17, 8.5, 8.5, [hexc(x) for x in ("#5a3a1a", "#8a5a2a", "#c08a48", "#e0b070", "#f8dca8")], bottom_flat=25)
+    for x in range(5, 18):
+        for y in range(1, 10):
+            if (y > 4 and 6 <= x <= 16) or ((x - 8) ** 2 + (y - 4) ** 2 <= 9) or ((x - 14) ** 2 + (y - 4) ** 2 <= 9):
+                c.put(x, y, hexc("#f4f0e8") if x < 13 else hexc("#d0ccd8"))
+    eyes(c, 15, (8, 13))
+    c.put(15, 18, hexc("#ffffff")); c.put(16, 19, hexc("#ffffff"))
+    c.line([(9, 19), (12, 19)], hexc("#5a2a1a"))
+    c.outline(); return c
+
+def captain():
+    """The old captain: a grey-green weathered stone, navy cap, a white beard, one squint."""
+    c = Canvas(22, 24)
+    c.blob(11, 15, 9, 8.5, [hexc(x) for x in ("#1e2a26", "#2e403a", "#465c52", "#64806e", "#90ac96")], bottom_flat=23)
+    for x in range(3, 20):
+        for y in range(4, 9):
+            if (x - 11) ** 2 / 70 + (y - 8.5) ** 2 / 16 <= 1: c.put(x, y, hexc("#1a2040"))
+    c.line([(2, 9), (14, 9)], hexc("#10142a"))
+    c.put(11, 6, hexc("#e8e4d8"))
+    eyes(c, 12, (8,), shine=False); c.line([(12, 12.5), (15, 12.5)], INK)
+    for (x, y) in ((6, 16), (7, 17), (8, 18), (9, 18), (10, 19), (11, 19), (12, 19), (13, 18), (14, 18), (15, 17), (16, 16), (9, 17), (12, 17), (11, 18)):
+        c.put(x, y, hexc("#eeeaf0"))
+    c.outline(); return c
+
 def jobs():
     for f in range(4):
         yield f"otto_idle_{f}", otto(f, bob=1 if f in (1, 2) else 0)
@@ -366,6 +406,9 @@ def jobs():
     yield "npc_hank", hank()
     yield "npc_dora", dora()
     yield "npc_lynn", lynn()
+    yield "npc_post", postman()
+    yield "npc_baker", baker()
+    yield "npc_captain", captain()
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
