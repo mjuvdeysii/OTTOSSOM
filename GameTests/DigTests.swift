@@ -86,3 +86,22 @@ final class DigTests: XCTestCase {
         XCTAssertEqual(back.gems[.blue], 2); XCTAssertEqual(back.world.at(3, 9), .air)
     }
 }
+
+final class DigPaintTests: XCTestCase {
+    func testPaintsAWholeDive() {
+        var sim = DigSim(world: DigWorld(seed: 20261030), upgrades: ["claw": 1], seed: 7)
+        let scale = PixelScale(size: CGSize(width: 402, height: 874))
+        var f = Frame(w: scale.w, h: scale.h)
+        var cam = 0.0
+        for i in 0..<(60 * 20) {
+            sim.push(i % 300 < 200 ? V2(0, 1) : V2(i % 600 < 450 ? 1 : -1, 0))
+            if i % 90 == 0 { sim.flash() }
+            sim.step(1.0 / 60)
+            sim.events = []
+            cam += (sim.p.y - Double(scale.h) * 0.45 - cam) * 0.1
+            if i % 10 == 0 { DigPainter.paint(sim, into: &f, cam: cam, clock: Double(i) / 60, stick: (CGPoint(x: 100, y: 500), CGPoint(x: 120, y: 520)), scale: scale) }
+        }
+        XCTAssertNotNil(f.cgImage())
+        XCTAssertGreaterThan(sim.depth, 3)
+    }
+}
