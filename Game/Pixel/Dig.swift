@@ -45,23 +45,52 @@ struct DigWorld: Codable {
         var r = Rng(seed)
         let W = DigWorld.W, H = DigWorld.H, G = DigWorld.ground
         cells = [UInt8](repeating: 0, count: W * H)
+        // layers with ragged boundaries: soil, clay, stone, rock
+        var edges: [[Int]] = []
+        for base in [8, 18, 36] {
+            var row: [Int] = []
+            var e = base
+            for _ in 0..<W { e = max(base - 2, min(base + 2, e + Int(r.next() % 3) - 1)); row.append(e) }
+            edges.append(row)
+        }
         for y in G..<H {
             let d = y - G
             for x in 0..<W {
-                var t: Cell
-                let u = r.unit()
-                if y == H - 1 { t = .bedrock }
-                else if d == 0 { t = .grass }
-                else if d < 8 {
-                    t = u < 0.06 ? .mote : u < 0.10 ? .trinket : (u < 0.15 && d > 2) ? .amber : u < 0.28 ? .clay : .soil
-                } else if d < 18 {
-                    t = u < 0.06 ? .amber : u < 0.09 ? .trinket : u < 0.12 ? .mote : u < 0.26 ? .stone : (u < 0.30 && d > 11) ? .blue : u < 0.75 ? .clay : .soil
-                } else if d < 38 {
-                    t = u < 0.07 ? .blue : u < 0.09 ? .amber : u < 0.12 ? .trinket : u < 0.15 ? .mote : (u < 0.18 && d > 28) ? .red : u < 0.26 ? .rock : u < 0.42 ? .clay : .stone
-                } else {
-                    t = u < 0.08 ? .red : u < 0.12 ? .blue : u < 0.16 ? .trinket : u < 0.20 ? .mote : u < 0.6 ? .rock : .stone
-                }
+                let t: Cell = y == H - 1 ? .bedrock : d == 0 ? .grass : d < edges[0][x] ? .soil : d < edges[1][x] ? .clay : d < edges[2][x] ? .stone : .rock
                 cells[y * W + x] = t.rawValue
+            }
+        }
+        func walk(_ n: Int, _ x0: Int, _ y0: Int, _ t: Cell, _ only: Set<Cell>, grid: inout [UInt8], rng: inout Rng) {
+            var x = x0, y = y0
+            for _ in 0..<n {
+                if x >= 0 && x < W && y > G && y < H - 1 {
+                    let cur = Cell(rawValue: grid[y * W + x]) ?? .air
+                    if only.contains(cur) { grid[y * W + x] = t.rawValue }
+                }
+                switch rng.next() % 4 { case 0: x += 1; case 1: x -= 1; case 2: y += 1; default: y -= 1 }
+            }
+        }
+        var grid = cells
+        // pockets of the next material in each layer, so the ground reads in patches, not noise
+        for _ in 0..<10 { walk(5 + Int(r.next() % 6), Int(r.next() % UInt64(W)), G + 3 + Int(r.next() % 12), .clay, [.soil], grid: &grid, rng: &r) }
+        for _ in 0..<12 { walk(5 + Int(r.next() % 7), Int(r.next() % UInt64(W)), G + 12 + Int(r.next() % 20), .stone, [.clay], grid: &grid, rng: &r) }
+        for _ in 0..<12 { walk(5 + Int(r.next() % 7), Int(r.next() % UInt64(W)), G + 24 + Int(r.next() % 30), .clay, [.stone], grid: &grid, rng: &r) }
+        for _ in 0..<16 { walk(6 + Int(r.next() % 8), Int(r.next() % UInt64(W)), G + 34 + Int(r.next() % UInt64(H - G - 36)), .stone, [.rock], grid: &grid, rng: &r) }
+        // crystal veins: amber near the top, blue in clay and stone, red in the deep rock
+        for _ in 0..<9 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 3 + Int(r.next() % 16), .amber, [.soil, .clay], grid: &grid, rng: &r) }
+        for _ in 0..<7 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 20 + Int(r.next() % 40), .amber, [.clay, .stone], grid: &grid, rng: &r) }
+        for _ in 0..<10 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 12 + Int(r.next() % 40), .blue, [.clay, .stone], grid: &grid, rng: &r) }
+        for _ in 0..<9 { walk(2 + Int(r.next() % 3), Int(r.next() % UInt64(W)), G + 30 + Int(r.next() % UInt64(H - G - 32)), .red, [.rock, .stone], grid: &grid, rng: &r) }
+        cells = grid
+        // odds and ends: the things Moss can't leave, and motes of old light
+        for y in (G + 1)..<(H - 1) {
+            let d = y - G
+            for x in 0..<W {
+                let c = Cell(rawValue: cells[y * W + x]) ?? .air
+                guard c == .soil || c == .clay || c == .stone || c == .rock else { continue }
+                let u = r.unit()
+                if u < (d < 20 ? 0.045 : 0.03) { cells[y * W + x] = Cell.trinket.rawValue }
+                else if u < (d < 20 ? 0.085 : 0.06) { cells[y * W + x] = Cell.mote.rawValue }
             }
         }
         // caves: blobs of air below the first few rows, where the shadows live
