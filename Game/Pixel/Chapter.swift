@@ -57,7 +57,7 @@ enum ChapterOne {
         switch key {
         case "drag": return "按住屏幕拖着莫斯跑，用光丝扫碎影子"
         case "loop": return "绕一圈接上轨迹，圈里的都被套住；石壳影只能这样打"
-        case "wake": return "灯快灭了就点一下奥托，叫醒他"
+        case "wake": return "灯快灭了，就点一下奥托"
         case "fang": return "尖影闪「！」就要冲向奥托：用光丝拦住它"
         case "thief": return "莫斯托偷了光要逃：把他圈住，光就回来"
         case "boss": return "灯吞肚子发亮时套住它，伤害三倍"
