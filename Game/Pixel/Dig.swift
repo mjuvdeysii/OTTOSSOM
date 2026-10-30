@@ -4,7 +4,7 @@ import Foundation
 // stays dug from night to night; what she brings back up feeds the lamp shop by day. Pure rules, no drawing, so
 // tests can run whole nights.
 
-enum Tile: UInt8 {
+enum Cell: UInt8 {
     case air = 0, soil, clay, stone, rock, bedrock, amber, blue, red, trinket, memory, memoryRead, mote, grass
 
     var solid: Bool { self != .air }
@@ -48,7 +48,7 @@ struct DigWorld: Codable {
         for y in G..<H {
             let d = y - G
             for x in 0..<W {
-                var t: Tile
+                var t: Cell
                 let u = r.unit()
                 if y == H - 1 { t = .bedrock }
                 else if d == 0 { t = .grass }
@@ -70,24 +70,24 @@ struct DigWorld: Codable {
             let rx = 1 + Int(r.unit() * 2), ry = 1
             for y in (cy - ry)...(cy + ry) { for x in (cx - rx)...(cx + rx) where x >= 0 && x < W && y > G + 3 && y < H - 1 {
                 let dx = Double(x - cx) / Double(rx), dy = Double(y - cy) / Double(ry)
-                if dx * dx + dy * dy <= 1.1 { cells[y * W + x] = Tile.air.rawValue }
+                if dx * dx + dy * dy <= 1.1 { cells[y * W + x] = Cell.air.rawValue }
             } }
         }
         // memory stones at fixed depths, in the middle third so they're found
         for (n, d) in [(1, 6), (2, 15), (3, 26), (4, 42)] {
             let x = 3 + Int(r.unit() * Double(W - 6)), y = G + d
-            cells[y * W + x] = Tile.memory.rawValue
+            cells[y * W + x] = Cell.memory.rawValue
             memories[n] = y * W + x
         }
     }
 
-    func at(_ x: Int, _ y: Int) -> Tile {
+    func at(_ x: Int, _ y: Int) -> Cell {
         if x < 0 || x >= DigWorld.W { return .bedrock }
         if y < 0 { return .air }
         if y >= DigWorld.H { return .bedrock }
-        return Tile(rawValue: cells[y * DigWorld.W + x]) ?? .air
+        return Cell(rawValue: cells[y * DigWorld.W + x]) ?? .air
     }
-    mutating func set(_ x: Int, _ y: Int, _ t: Tile) {
+    mutating func set(_ x: Int, _ y: Int, _ t: Cell) {
         guard x >= 0, x < DigWorld.W, y >= 0, y < DigWorld.H else { return }
         cells[y * DigWorld.W + x] = t.rawValue
     }
@@ -113,7 +113,7 @@ struct Shade {
     var moth = false
 }
 
-enum DigEvent: Equatable { case dug(Tile), gem(Gem), trinket(Trinket), mote, full, memory(Int), flash(Int), hurt, home, dark, hard, step, land }
+enum DigEvent: Equatable { case dug(Cell), gem(Gem), trinket(Trinket), mote, full, memory(Int), flash(Int), hurt, home, dark, hard, step, land }
 
 struct DigSim {
     static let T = 16.0
@@ -139,6 +139,8 @@ struct DigSim {
     var thread: [V2] = []          // the light thread back up to Otto: Moss's path with the loops taken out
     var deepest = 0
     var openMemory: Int?           // a memory stone she's touching
+    var pops: [(p: V2, icon: String, t0: Double)] = []   // what she just picked up, rising off her
+    var bits: [Spark] = []         // chips of what she dug
     var rng: Rng
     var nextID = 0
     let otto: V2
@@ -209,6 +211,9 @@ struct DigSim {
         moveMoss(dt)
         moveShades(dt)
         trackThread()
+        for i in bits.indices { bits[i].v.y += 300 * dt; bits[i].p = bits[i].p + bits[i].v * dt; bits[i].life -= dt }
+        bits.removeAll { $0.life <= 0 }
+        pops.removeAll { t - $0.t0 > 0.9 }
         deepest = max(deepest, depth)
         if light <= 0 { light = 0; outcome = -1; bag.halve(); events.append(.dark) }
     }
@@ -293,19 +298,28 @@ struct DigSim {
         if sx != 0 && grounded && Int(t * 8) != Int((t - dt) * 8) { events.append(.step) }
     }
 
-    private mutating func finishDig(_ x: Int, _ y: Int, _ tile: Tile) {
+    private mutating func finishDig(_ x: Int, _ y: Int, _ tile: Cell) {
         digging = nil
+        let c = V2((Double(x) + 0.5) * DigSim.T, (Double(y) + 0.5) * DigSim.T)
+        let col: UInt32 = tile == .amber ? 0xFF6BD3FF : tile == .blue ? 0xFFFFC48A : tile == .red ? 0xFF8A8AFF : tile == .stone || tile == .rock ? 0xFF76605C : 0xFF46364C
+        for _ in 0..<7 {
+            let a = rng.unit() * .pi - .pi, sp = 30 + rng.unit() * 50
+            bits.append(Spark(p: c, v: V2(cos(a) * sp, sin(a) * sp), life: 0.35 + rng.unit() * 0.3, color: col))
+        }
         switch tile {
         case .amber, .blue, .red:
             if bag.count >= capacity { events.append(.full); digging = (x, y, -999); return }
             let g: Gem = tile == .amber ? .amber : tile == .blue ? .blue : .red
             bag.gems[g, default: 0] += 1; events.append(.gem(g))
+            pops.append((p + V2(0, -18), "icon_\(g.rawValue)", t))
         case .trinket:
             if bag.count >= capacity { events.append(.full); digging = (x, y, -999); return }
             let k = Trinket.allCases[Int(rng.next() % 3)]
             bag.trinkets[k, default: 0] += 1; events.append(.trinket(k))
+            pops.append((p + V2(0, -18), "icon_\(k.rawValue)", t))
         case .mote:
             light = min(lightMax, light + 6); events.append(.mote)
+            pops.append((p + V2(0, -18), "mote_0", t))
         default: break
         }
         world.set(x, y, .air)

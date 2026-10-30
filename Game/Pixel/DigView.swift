@@ -10,7 +10,7 @@ enum DigPainter {
     static var tileCache: [Int: PSprite] = [:]
 
     /// One 16 × 16 cell of the tile sheet (row = tile kind, column = variant).
-    static func tile(_ kind: Tile, _ variant: Int) -> PSprite? {
+    static func tile(_ kind: Cell, _ variant: Int) -> PSprite? {
         let key = Int(kind.rawValue) * 8 + variant
         if let s = tileCache[key] { return s }
         guard let sheet = PixelArt.sprite("tiles") else { return nil }
@@ -28,7 +28,7 @@ enum DigPainter {
     }
 
     /// The wall behind a dug cell: what the cell was made of, pushed far back into the dark.
-    static func backKind(_ y: Int) -> Tile {
+    static func backKind(_ y: Int) -> Cell {
         let d = y - DigWorld.ground
         return d < 8 ? .soil : d < 18 ? .clay : d < 38 ? .stone : .rock
     }
@@ -136,6 +136,11 @@ enum DigPainter {
         for s in sim.shades {
             let name = s.moth ? "moth_\(Int(clock * 10) % 2)" : "shade_\(Int(clock * 6) % 2)"
             if let sp = PixelArt.sprite(name) { f.draw(sp, feet: Int(s.p.x + off.x), Int(s.p.y + off.y) + 1, flip: s.dir < 0) }
+        }
+        for b in sim.bits { f.set(Int(b.p.x + off.x), Int(b.p.y + off.y), b.color) }
+        for pop in sim.pops {
+            let a = sim.t - pop.t0
+            if let s = PixelArt.sprite(pop.icon) { f.draw(s, feet: Int(pop.p.x + off.x), Int(pop.p.y + off.y - a * 26), alpha: a < 0.6 ? 1 : max(0, 1 - (a - 0.6) / 0.3)) }
         }
         // the flash
         if sim.t - sim.flashAt < 0.2 {

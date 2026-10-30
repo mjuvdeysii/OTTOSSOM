@@ -8,7 +8,7 @@ final class DigTests: XCTestCase {
         XCTAssertEqual(w.cells.count, DigWorld.W * DigWorld.H)
         for x in 0..<DigWorld.W { XCTAssertEqual(w.at(x, DigWorld.H - 1), .bedrock); XCTAssertEqual(w.at(x, DigWorld.ground), .grass) }
         XCTAssertEqual(Set(w.memories.keys), [1, 2, 3, 4])
-        for (_, i) in w.memories { XCTAssertEqual(Tile(rawValue: w.cells[i]), .memory) }
+        for (_, i) in w.memories { XCTAssertEqual(Cell(rawValue: w.cells[i]), .memory) }
     }
 
     func testDigsDownAndFalls() {
