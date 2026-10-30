@@ -43,7 +43,7 @@ enum DigPainter {
         let groundY = G * T - camI
         if groundY > 0 {
             for y in 0..<min(f.h, groundY) {
-                let k = Double(y + camI) / Double(G * T)
+                let k = max(0, min(1, Double(y + camI) / Double(G * T)))
                 let c = PixelArt.rgb(Int(7 + 20 * k), Int(10 + 24 * k), Int(24 + 40 * k))
                 for x in 0..<f.w { f.set(x, y, c) }
             }

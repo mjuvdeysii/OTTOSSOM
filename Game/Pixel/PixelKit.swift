@@ -34,7 +34,8 @@ enum PixelArt {
     }
 
     static func rgb(_ r: Int, _ g: Int, _ b: Int, _ a: Int = 255) -> UInt32 {
-        UInt32(a) << 24 | UInt32(b) << 16 | UInt32(g) << 8 | UInt32(r)
+        let r = max(0, min(255, r)), g = max(0, min(255, g)), b = max(0, min(255, b)), a = max(0, min(255, a))
+        return UInt32(a) << 24 | UInt32(b) << 16 | UInt32(g) << 8 | UInt32(r)
     }
     static func hex(_ h: UInt32) -> UInt32 { rgb(Int(h >> 16 & 0xff), Int(h >> 8 & 0xff), Int(h & 0xff)) }
 }
