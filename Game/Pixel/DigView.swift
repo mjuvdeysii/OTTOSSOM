@@ -309,6 +309,7 @@ final class DigCanvas: UIView {
         clock += dt
         if let c = command {
             command = nil
+            drawnPaused = false       // whatever the command changed gets drawn, even while paused
             if c == "reel" { sim.reelIn() }
             if c == "closeMemory" { sim.openMemory = nil }
             if c == "drop" { sim.bag = Bag() }

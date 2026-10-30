@@ -15,7 +15,7 @@ enum SafeArea {
 /// a heartbeat when the light is low, a slow swell for a memory, a long rise at the nest. Falls back to the plain
 /// impact generators where Core Haptics isn't there.
 enum Feel {
-    enum Kind { case gem, hurt, heartbeat, memory, nest, hard, light }
+    enum Kind { case gem, trinket, hurt, heartbeat, memory, nest, hard, light }
     static var engine: CHHapticEngine? = {
         guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return nil }
         let e = try? CHHapticEngine()
@@ -40,6 +40,7 @@ enum Feel {
         var curves: [CHHapticParameterCurve] = []
         switch k {
         case .gem: events = [tap(0, 0.6, 0.8)]
+        case .trinket: events = [tap(0, 0.45, 0.45), tap(0.06, 0.3, 0.45)]
         case .hurt: events = [tap(0, 1.0, 0.2), tap(0.09, 0.8, 0.2)]
         case .heartbeat: events = [tap(0, 0.7, 0.3), tap(0.14, 0.45, 0.3)]
         case .hard: events = [tap(0, 0.4, 0.1)]
@@ -60,7 +61,7 @@ enum Feel {
 
     private static func fallback(_ k: Kind) {
         switch k {
-        case .gem, .light, .hard: Haptic.light()
+        case .gem, .trinket, .light, .hard: Haptic.light()
         case .hurt, .heartbeat: Haptic.warn()
         case .memory, .nest: Haptic.success()
         }

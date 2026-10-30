@@ -347,8 +347,8 @@ final class Sound {
     func crack(_ stage: Int) { knock(300 * pow(1.12, Double(stage)), 260 * pow(1.12, Double(stage)), 0.025, 0.06, noise: 0.6) }
     func chime(_ k: Int) { tones([[1046, 1568], [1175, 1760], [880, 1318]][k % 3], 0.4, 0.06) }
     func heartbeat() {
-        knock(140, 130, 0.09, 0.12, noise: 0, harmonic: 0.5)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) { self.knock(140, 128, 0.09, 0.09, noise: 0, harmonic: 0.5) }
+        knock(220, 200, 0.09, 0.12, noise: 0, harmonic: 0.5)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) { self.knock(210, 190, 0.09, 0.09, noise: 0, harmonic: 0.5) }
     }
     /// The bead flashing at nothing: a small plain note, not a reward.
     func flashMiss() { tones([784], 0.15, 0.04) }

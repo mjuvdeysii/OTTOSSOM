@@ -292,7 +292,7 @@ struct DigNight: View {
                 }
             case .crack(let n): Sound.shared.crack(n)
             case .gem(let g): Sound.shared.chime(g == .amber ? 0 : g == .blue ? 1 : 2); Feel.play(.gem)
-            case .trinket: Sound.shared.touch(); Feel.play(.light)
+            case .trinket: Sound.shared.touch(); Feel.play(.trinket)
             case .mote: Sound.shared.take()
             case .full: Sound.shared.bagFull(); Feel.play(.hard)
             case .hard: Sound.shared.no(); Feel.play(.hard)
