@@ -132,6 +132,7 @@ final class DigTests: XCTestCase {
     func testCoyoteJump() {
         var w = DigWorld(seed: 12)
         for x in 0..<DigWorld.W { for y in 0..<(DigWorld.ground + 4) { w.set(x, y, .air) } }
+        for x in 0..<DigWorld.W { for y in (DigWorld.ground + 4)...(DigWorld.ground + 8) { w.set(x, y, .air) } }
         for x in 0..<7 { w.set(x, DigWorld.ground + 4, .stone) }
         var sim = DigSim(world: w, upgrades: [:], seed: 12)
         sim.p = V2(100, Double(DigWorld.ground + 4) * 16)
@@ -233,7 +234,9 @@ final class DigPacingTests: XCTestCase {
         }
         lines.append("DIGBAL first memory day \(firstMemoryDay), ending day \(endingDay)")
         XCTAssertTrue((7...10).contains(endingDay), "the chapter should end on day 7–10, not \(endingDay)")
-        XCTAssertTrue(bags.dropFirst(8).allSatisfy { $0 >= 4 }, "after day 9 every night should bring at least 4 things: \(bags)")
+        // after day 9, every night but the one where she puts the bag down at the nest
+        let later = bags.enumerated().filter { $0.offset >= 8 && $0.offset != endingDay - 1 }.map { $0.element }
+        XCTAssertTrue(later.allSatisfy { $0 >= 4 }, "after day 9 every night should bring at least 4 things: \(bags)")
         for l in lines { print(l) }
         XCTAssertGreaterThan(firstMemoryDay, 0)
         XCTAssertLessThanOrEqual(firstMemoryDay, 2)
