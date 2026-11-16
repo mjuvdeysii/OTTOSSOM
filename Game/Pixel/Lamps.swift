@@ -54,6 +54,12 @@ struct Order: Codable, Equatable, Identifiable {
     var pay: Int { 6 * color.recipe.count + (color.recipe.count > 1 ? 4 : 0) + (who == "h" ? 0 : 2) }
 }
 
+struct TownLamp: Codable, Equatable {
+    var color: LampColor
+    var deliveries: Int
+    var day: Int                  // the latest delivery, retained when the day's orders expire
+}
+
 struct DigSave: Codable {
     var day = 1
     var coins = 0
@@ -69,6 +75,7 @@ struct DigSave: Codable {
     var deepest = 0
     var progress: DigProgress?     // a night that was interrupted: picked up again where it stopped
     var lit: [String]?             // colours lit in the shop so far: they glow on the shelf
+    var townLamps: [String: TownLamp]? // customer ID → their latest lamp; absent in older saves
 
     static let key = "dig.save.v1"
     static func load() -> DigSave {
@@ -117,15 +124,23 @@ struct DigSave: Codable {
         }
     }
 
-    /// Light a lamp with the chosen crystals: right colour → paid; wrong → the crystals come back.
+    /// Fulfil a live order once. Validate the whole exchange before consuming anything.
     mutating func light(_ order: Order, with picked: [Gem]) -> Bool {
-        guard LampColor.mix(picked) == order.color else { return false }
-        for g in picked { gems[g, default: 0] -= 1 }
+        guard let index = orders.firstIndex(of: order),
+              day - (order.since ?? day) < 3,
+              LampColor.mix(picked) == order.color else { return false }
+        let needed = picked.reduce(into: [Gem: Int]()) { $0[$1, default: 0] += 1 }
+        guard needed.allSatisfy({ (gems[$0.key] ?? 0) >= $0.value }) else { return false }
+
+        for (gem, count) in needed { gems[gem, default: 0] -= count }
         var l = lit ?? []
         if !l.contains(order.color.rawValue) { l.append(order.color.rawValue) }
         lit = l
+        var town = townLamps ?? [:]
+        town[order.who] = TownLamp(color: order.color, deliveries: (town[order.who]?.deliveries ?? 0) + 1, day: day)
+        townLamps = town
         coins += order.pay
-        orders.removeAll { $0.id == order.id }
+        orders.remove(at: index)
         return true
     }
 

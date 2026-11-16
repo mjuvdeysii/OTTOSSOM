@@ -49,13 +49,14 @@ struct PixelButton: View {
     let title: String
     let k: Int
     var primary = true
+    var minWidth: CGFloat = 70
     var action: () -> Void
     var body: some View {
         let pt = CGFloat(k) / UIScreen.main.scale
         Button(action: { Haptic.light(); action() }) {
             Text(title).font(PixelFont.font(1, k: k)).foregroundStyle(primary ? pxInk : pxCream)
                 .padding(.horizontal, pt * 8).padding(.vertical, pt * 4)
-                .frame(minWidth: pt * 70)
+                .frame(minWidth: pt * minWidth)
                 .background(primary ? pxGold : pxPanel, ignoresSafeAreaEdges: [])
                 .overlay(alignment: .bottom) { Rectangle().fill(primary ? Color(0xa86a18) : pxInk).frame(height: pt * 2) }
                 .padding(pt).background(pxInk, ignoresSafeAreaEdges: [])

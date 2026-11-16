@@ -27,12 +27,22 @@ struct DigGameView: View {
                 sv.upgrades = ["claw": 1]
             case "shop":
                 ph = .shop; sv.gems = [.amber: 3, .blue: 1]; sv.coins = 24; sv.openShop()
+            case "delivery":
+                ph = .shop; sv.gems = [.amber: 3]; sv.openShop()
             case "shoptalk":
                 ph = .shop; sv.gems = [.amber: 2]; sv.openShop(); tk = DigStory.afterNight[1] ?? []; sv.memories = [1]
             case "evening":
                 ph = .evening; sv.coins = 46; sv.upgrades = ["bag": 1]; sv.memories = [1]
             case "companions":
                 ph = .evening; sv.memories = Array(1...8); sv.seen.insert("ending")
+            case "shadowfriend":
+                ph = .evening; sv.memories = [2]
+            case "townlights", "lit_evening":
+                ph = .evening
+                sv.townLamps = ["h": TownLamp(color: .amber, deliveries: 1, day: 1),
+                                "d": TownLamp(color: .purple, deliveries: 2, day: 4),
+                                "t1": TownLamp(color: .blue, deliveries: 1, day: 2)]
+            case "townempty": ph = .evening
             default: ph = .title
             }
         }
@@ -50,9 +60,11 @@ struct DigGameView: View {
                 case .night:
                     DigNight(save: $save, scale: sc, demo: probe != nil, memoryProbe: probe == "memory", endingProbe: probe == "ending") { endNight() }.id(nightID)
                 case .shop:
-                    LampShop(save: $save, scale: sc) { go(.evening) }
+                    LampShop(save: $save, scale: sc, demo: probe != nil, receiptProbe: probe == "delivery") { go(.evening) }
                 case .evening:
-                    Evening(save: $save, scale: sc, journalProbe: probe == "companions") { startNight() }
+                    Evening(save: $save, scale: sc, journalProbe: probe == "companions" || probe == "shadowfriend",
+                            journalSelection: probe == "shadowfriend" ? "x" : "m",
+                            townProbe: probe == "townlights" || probe == "townempty") { startNight() }
                 }
                 if !talk.isEmpty { TalkBox(scale: sc, lines: $talk) { let a = afterTalk; afterTalk = nil; a?() } }
             }
@@ -432,6 +444,7 @@ struct MemoryAlbum: View {
 struct CompanionJournal: View {
     let save: DigSave
     let scale: PixelScale
+    var initialSelection = "m"
     var close: () -> Void
     @State private var selected = "m"
 
@@ -443,14 +456,15 @@ struct CompanionJournal: View {
             Text("一起走过长夜").font(PixelFont.font(1, k: k)).foregroundStyle(pxGold)
             HStack(spacing: pt * 6) {
                 ForEach(cast) { person in
-                    PixelButton(title: person.id == "m" ? "莫斯" : person.id == "o" ? "奥托" : "影子", k: k, primary: selected == person.id) {
+                    PixelButton(title: person.id == "m" ? "莫斯" : person.id == "o" ? "奥托" : "影子", k: k, primary: selected == person.id, minWidth: 0) {
                         selected = person.id
                     }
+                    .frame(maxWidth: .infinity)
                 }
             }
             ScrollView {
                 VStack(spacing: pt * 6) {
-                    PixelImage(name: companion.sprite, pt: pt * 2)
+                    PixelImage(name: companion.sprite, pt: companion.sprite.hasPrefix("memory_") ? pt : pt * 2)
                     Text(companion.name).foregroundStyle(pxGold)
                     Text(companion.role).foregroundStyle(Color(0x9a94b8))
                     Text(companion.text).foregroundStyle(pxCream)
@@ -468,6 +482,7 @@ struct CompanionJournal: View {
         .padding(.horizontal, pt * 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.75).ignoresSafeArea())
+        .onAppear { selected = initialSelection }
     }
 }
 
@@ -510,14 +525,17 @@ struct NightResult: View {
 struct LampShop: View {
     @Binding var save: DigSave
     let scale: PixelScale
+    var demo = false
+    var receiptProbe = false
     var close: () -> Void
     @State private var picked: [Gem] = []
     @State private var lit: LampColor?
     @State private var shake = false
     @State private var thanks: String?
+    @State private var served: Order?
     @State private var skipped: Set<Int> = []
 
-    private var current: Order? { save.orders.first { !skipped.contains($0.id) } }
+    private var current: Order? { served ?? save.orders.first { !skipped.contains($0.id) } }
 
     static func portrait(_ who: String) -> String {
         switch who {
@@ -543,7 +561,7 @@ struct LampShop: View {
                 .padding(.horizontal, pt * 8).padding(.vertical, pt * 4)
                 .modifier(PixelPanel(pt: pt))
                 if let o = current {
-                    GoalLine(text: save.seen.contains("recipe_\(o.color.rawValue)") ? "点亮\(DigStory.name(o.who))的灯" : "\(o.color.name)：放 \(o.color.recipe.map(gemName).joined(separator: " + "))", scale: scale)
+                    GoalLine(text: served != nil ? "这盏灯，会亮在\(DigStory.name(o.who))的窗边" : save.seen.contains("recipe_\(o.color.rawValue)") ? "点亮\(DigStory.name(o.who))的灯" : "\(o.color.name)：放 \(o.color.recipe.map(gemName).joined(separator: " + "))", scale: scale)
                     Spacer(minLength: pt * 4)
                     customer(o)
                     Spacer(minLength: pt * 4)
@@ -551,7 +569,9 @@ struct LampShop: View {
                 } else {
                     Spacer()
                     VStack(spacing: pt * 6) {
-                        Text(thanks ?? "今天的客人都走了").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
+                        Text("今天的客人都走了").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
+                        Text("交出的灯，傍晚去镇上看看").font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
+                            .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                         PixelButton(title: "打烊", k: k) { close() }
                     }
                     .padding(pt * 10).modifier(PixelPanel(pt: pt))
@@ -559,6 +579,12 @@ struct LampShop: View {
                 }
             }
             .padding(.horizontal, pt * 6).padding(.top, SafeArea.top + pt * 2).padding(.bottom, max(SafeArea.bottom, pt * 6) + pt * 4)
+        }
+        .onAppear {
+            if receiptProbe, served == nil, let o = current {
+                picked = o.color.recipe
+                tryLight(o)
+            }
         }
     }
 
@@ -571,11 +597,18 @@ struct LampShop: View {
                 PixelImage(name: LampShop.portrait(o.who), pt: pt * 2)
                 VStack(alignment: .leading, spacing: pt * 3) {
                     Text(DigStory.name(o.who)).font(PixelFont.font(1, k: k)).foregroundStyle(pxGold)
-                    HStack(spacing: pt * 4) {
+                    HStack(alignment: .top, spacing: pt * 4) {
                         Rectangle().fill(Color(o.color.rgb)).frame(width: pt * 8, height: pt * 8).overlay(Rectangle().strokeBorder(pxInk, lineWidth: pt))
                         Text(thanks ?? "想要\(o.color.name)").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text("付 \(o.pay)").font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
+                    if served == nil {
+                        Text(save.townLamps?[o.who].map { "上次的\($0.color.name)还亮着，今天想换一盏。" } ?? TownResident.find(o.who)?.request ?? "想把家里的灯重新点亮。")
+                            .font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Text(served == nil ? "付 \(o.pay)" : "已收 \(o.pay) · 灯已送出")
+                        .font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
                 }
                 .padding(pt * 6).modifier(PixelPanel(pt: pt))
             }
@@ -597,7 +630,7 @@ struct LampShop: View {
             // what's been put in
             HStack(spacing: pt * 4) {
                 ForEach(0..<3, id: \.self) { i in
-                    Button { if i < picked.count { picked.remove(at: i); Sound.shared.step() } } label: {
+                    Button { if lit == nil, i < picked.count { picked.remove(at: i); Sound.shared.step() } } label: {
                         ZStack {
                             Rectangle().fill(Color(0x0e0c18)).frame(width: pt * 18, height: pt * 18)
                             if i < picked.count { PixelImage(name: "icon_\(picked[i].rawValue)", pt: pt) }
@@ -609,7 +642,7 @@ struct LampShop: View {
             // the shelf: crystals she brought up
             HStack(spacing: pt * 6) {
                 ForEach(Gem.allCases, id: \.self) { g in
-                    let have = (save.gems[g] ?? 0) - picked.filter { $0 == g }.count
+                    let have = (save.gems[g] ?? 0) - (served == nil ? picked.filter { $0 == g }.count : 0)
                     Button {
                         guard have > 0, picked.count < 3, lit == nil else { Sound.shared.no(); return }
                         picked.append(g); Sound.shared.touch()
@@ -624,9 +657,15 @@ struct LampShop: View {
                     }.buttonStyle(.plain)
                 }
             }
-            HStack(spacing: pt * 6) {
-                PixelButton(title: "改天再来", k: k, primary: false) { later(o) }
-                PixelButton(title: "点灯", k: k, primary: !picked.isEmpty) { tryLight(o) }
+            if served != nil {
+                PixelButton(title: "收好灯，下一位", k: k) {
+                    served = nil; lit = nil; picked = []; thanks = nil
+                }
+            } else {
+                HStack(spacing: pt * 6) {
+                    PixelButton(title: "改天再来", k: k, primary: false) { later(o) }
+                    PixelButton(title: "点灯", k: k, primary: !picked.isEmpty) { tryLight(o) }
+                }
             }
         }
     }
@@ -640,16 +679,15 @@ struct LampShop: View {
     private func tryLight(_ o: Order) {
         guard !picked.isEmpty, lit == nil else { return }
         let mix = LampColor.mix(picked)
+        let first = save.townLamps?[o.who] == nil
         if mix == o.color, save.light(o, with: picked) {
             save.seen.insert("recipe_\(o.color.rawValue)")
-            Telemetry.log("order_done day=\(save.day) color=\(o.color.rawValue)")
+            if !demo { Telemetry.log("order_done day=\(save.day) color=\(o.color.rawValue)") }
             lit = o.color; Sound.shared.win(); Haptic.success()
-            thanks = "谢谢！"
-            save.save()
-            Task {
-                try? await Task.sleep(for: .seconds(1.4))
-                lit = nil; picked = []; thanks = nil
-            }
+            served = o
+            let person = TownResident.find(o.who)
+            thanks = first ? person?.response : person?.returnThanks
+            if !demo { save.save() }
         } else {
             Sound.shared.no(); Haptic.warn()
             withAnimation(.default.repeatCount(3, autoreverses: true).speed(4)) { shake.toggle() }
@@ -664,9 +702,12 @@ struct Evening: View {
     @Binding var save: DigSave
     let scale: PixelScale
     var journalProbe = false
+    var journalSelection = "m"
+    var townProbe = false
     var night: () -> Void
     @State private var album = false
     @State private var journal = false
+    @State private var town = false
     static let items: [(String, String, [String])] = [
         ("claw", "爪子", ["能挖石头和蓝晶", "能挖硬岩和红晶"]),
         ("bag", "背包", ["多装 4 件", "再多装 4 件"]),
@@ -675,7 +716,7 @@ struct Evening: View {
     var body: some View {
         let pt = scale.pt, k = scale.k
         ZStack {
-            PixelBackdrop(name: "town", scale: scale)
+            LitTownBackdrop(save: save, scale: scale)
             VStack(spacing: pt * 4) {
                 HStack(spacing: pt * 4) {
                     PixelImage(name: "npc_lynn", pt: pt)
@@ -704,7 +745,7 @@ struct Evening: View {
                         Spacer(minLength: pt * 4)
                         if lv < costs.count {
                             let c = costs[lv]
-                            PixelButton(title: "\(c)", k: k, primary: save.coins >= c) {
+                            PixelButton(title: "\(c)", k: k, primary: save.coins >= c, minWidth: 28) {
                                 guard save.coins >= c else { Sound.shared.no(); return }
                                 save.coins -= c; save.upgrades[it.0] = lv + 1; save.save(); Sound.shared.light(); Haptic.success()
                                 Telemetry.log("upgrade \(it.0)=\(lv + 1) day=\(save.day)")
@@ -714,19 +755,20 @@ struct Evening: View {
                     .padding(.horizontal, pt * 6).padding(.vertical, pt * 4)
                     .modifier(PixelPanel(pt: pt))
                 }
-                HStack {
-                    PixelButton(title: "记忆 \(save.memories.count)/8", k: k, primary: false) { album = true }
-                    PixelButton(title: "同伴", k: k, primary: false) { journal = true }
-                    Spacer()
-                    PixelButton(title: "入夜，下井", k: k) { night() }
+                HStack(spacing: pt * 4) {
+                    PixelButton(title: "记忆", k: k, primary: false, minWidth: 0) { album = true }.frame(maxWidth: .infinity)
+                    PixelButton(title: "同伴", k: k, primary: false, minWidth: 0) { journal = true }.frame(maxWidth: .infinity)
+                    PixelButton(title: "灯火", k: k, primary: false, minWidth: 0) { town = true }.frame(maxWidth: .infinity)
                 }
                 .padding(.top, pt * 4)
+                PixelButton(title: "入夜，下井", k: k) { night() }
             }
             .padding(.horizontal, pt * 6).padding(.top, SafeArea.top + pt * 2).padding(.bottom, max(SafeArea.bottom, pt * 6) + pt * 4)
             if album { MemoryAlbum(found: save.memories, scale: scale) { album = false } }
-            if journal { CompanionJournal(save: save, scale: scale) { journal = false } }
+            if journal { CompanionJournal(save: save, scale: scale, initialSelection: journalSelection) { journal = false } }
+            if town { TownLights(save: save, scale: scale) { town = false } }
         }
-        .onAppear { if journalProbe { journal = true } }
+        .onAppear { if journalProbe { journal = true }; if townProbe { town = true } }
     }
 }
 
