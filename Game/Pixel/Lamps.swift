@@ -169,6 +169,38 @@ struct DigSave: Codable {
 }
 
 enum DigStory {
+    struct Companion: Identifiable {
+        let id: String
+        let name: String
+        let sprite: String
+        let role: String
+        let text: String
+    }
+
+    static func companions(memories: [Int], reunited: Bool) -> [Companion] {
+        let found = Set(memories)
+        var moss = "喜欢摸亮亮的东西，也喜欢把它们带回家。今晚她下井，奥托在上面拉着线。"
+        if found.contains(7) { moss = "她曾把双手塞得满满的。记忆里，她终于放下瓶盖和硬币，空手去找没有跟上的朋友。" }
+        if reunited { moss = "在井底，她放下背包，先挥了挥手。亮东西还是喜欢的，但这次她记得给朋友留一只手。" }
+        let otto = reunited
+            ? "他没有替莫斯走完最后几步，只在井口牵着线。回来时，他说：两个都回来。"
+            : "话少，容易打瞌睡，却一直牵着莫斯的光线。灯芯会烧短，他等她回来的地方没有变。"
+        var result = [
+            Companion(id: "m", name: "莫斯 · Moss", sprite: "moss_idle_0", role: "下井找光的人", text: moss),
+            Companion(id: "o", name: "奥托 · Otto", sprite: "otto_idle_0", role: "井口的守灯人", text: otto),
+        ]
+        if reunited {
+            result.append(Companion(id: "x", name: "莫斯托 · Mosto", sprite: "mosto_fly_0", role: "一起回来的朋友", text: "他曾把珠子抱得紧紧的。看到莫斯空手挥手，他终于说：借你一半。歪王冠还戴着，光可以一起拿。"))
+        } else if found.contains(8) {
+            result.append(Companion(id: "x", name: "井底的小魔王", sprite: "mosto_fly_0", role: "抱着珠子的影子", text: "记忆里，他在暗处最里面发抖。莫斯朝他挥了挥手。也许下一次见面，不必先伸手去抢。"))
+        } else if found.contains(6) {
+            result.append(Companion(id: "x", name: "戴王冠的影子", sprite: "mosto_fly_0", role: "拿走珠子的家伙", text: "记忆里，他从墙上下来，抱走珠子，跑进暗处。他为什么不肯松手？还得再往下找。"))
+        } else if found.contains(2) {
+            result.append(Companion(id: "x", name: "墙上的朋友", sprite: "memory_2", role: "会回应挥手的影子", text: "小石头朝墙挥手，影子也挥手。那时它们还没有分开。"))
+        }
+        return result
+    }
+
     static func s(_ who: String, _ t: String) -> Say { Say(who: who, text: t) }
     static let intro: [Say] = [
         s("h", "灯塔……又黑了。"), s("m", "底下有亮亮的！我的！"), s("o", "……嗯。线我拉着。"),

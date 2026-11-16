@@ -427,6 +427,48 @@ struct MemoryAlbum: View {
     }
 }
 
+struct CompanionJournal: View {
+    let save: DigSave
+    let scale: PixelScale
+    var close: () -> Void
+    @State private var selected = "m"
+
+    var body: some View {
+        let pt = scale.pt, k = scale.k
+        let cast = DigStory.companions(memories: save.memories, reunited: save.seen.contains("ending"))
+        let companion = cast.first { $0.id == selected } ?? cast[0]
+        VStack(spacing: pt * 6) {
+            Text("一起走过长夜").font(PixelFont.font(1, k: k)).foregroundStyle(pxGold)
+            HStack(spacing: pt * 6) {
+                ForEach(cast) { person in
+                    PixelButton(title: person.id == "m" ? "莫斯" : person.id == "o" ? "奥托" : "影子", k: k, primary: selected == person.id) {
+                        selected = person.id
+                    }
+                }
+            }
+            ScrollView {
+                VStack(spacing: pt * 6) {
+                    PixelImage(name: companion.sprite, pt: pt * 2)
+                    Text(companion.name).foregroundStyle(pxGold)
+                    Text(companion.role).foregroundStyle(Color(0x9a94b8))
+                    Text(companion.text).foregroundStyle(pxCream)
+                        .fixedSize(horizontal: false, vertical: true).lineSpacing(pt * 2)
+                }
+                .font(PixelFont.font(1, k: k))
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+            }
+            .frame(maxHeight: pt * 150)
+            PixelButton(title: "合上", k: k) { close() }
+        }
+        .padding(pt * 8)
+        .modifier(PixelPanel(pt: pt, fill: Color(0x141024)))
+        .padding(.horizontal, pt * 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.75).ignoresSafeArea())
+    }
+}
+
 struct NightResult: View {
     let sim: DigSim
     let coins: Int
@@ -621,6 +663,7 @@ struct Evening: View {
     let scale: PixelScale
     var night: () -> Void
     @State private var album = false
+    @State private var journal = false
     static let items: [(String, String, [String])] = [
         ("claw", "爪子", ["能挖石头和蓝晶", "能挖硬岩和红晶"]),
         ("bag", "背包", ["多装 4 件", "再多装 4 件"]),
@@ -670,6 +713,7 @@ struct Evening: View {
                 }
                 HStack {
                     PixelButton(title: "记忆 \(save.memories.count)/8", k: k, primary: false) { album = true }
+                    PixelButton(title: "同伴", k: k, primary: false) { journal = true }
                     Spacer()
                     PixelButton(title: "入夜，下井", k: k) { night() }
                 }
@@ -677,6 +721,7 @@ struct Evening: View {
             }
             .padding(.horizontal, pt * 6).padding(.top, SafeArea.top + pt * 2).padding(.bottom, max(SafeArea.bottom, pt * 6) + pt * 4)
             if album { MemoryAlbum(found: save.memories, scale: scale) { album = false } }
+            if journal { CompanionJournal(save: save, scale: scale) { journal = false } }
         }
     }
 }
