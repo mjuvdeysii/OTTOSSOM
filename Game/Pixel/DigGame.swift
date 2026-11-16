@@ -31,6 +31,8 @@ struct DigGameView: View {
                 ph = .shop; sv.gems = [.amber: 2]; sv.openShop(); tk = DigStory.afterNight[1] ?? []; sv.memories = [1]
             case "evening":
                 ph = .evening; sv.coins = 46; sv.upgrades = ["bag": 1]; sv.memories = [1]
+            case "companions":
+                ph = .evening; sv.memories = Array(1...8); sv.seen.insert("ending")
             default: ph = .title
             }
         }
@@ -50,7 +52,7 @@ struct DigGameView: View {
                 case .shop:
                     LampShop(save: $save, scale: sc) { go(.evening) }
                 case .evening:
-                    Evening(save: $save, scale: sc) { startNight() }
+                    Evening(save: $save, scale: sc, journalProbe: probe == "companions") { startNight() }
                 }
                 if !talk.isEmpty { TalkBox(scale: sc, lines: $talk) { let a = afterTalk; afterTalk = nil; a?() } }
             }
@@ -661,6 +663,7 @@ struct LampShop: View {
 struct Evening: View {
     @Binding var save: DigSave
     let scale: PixelScale
+    var journalProbe = false
     var night: () -> Void
     @State private var album = false
     @State private var journal = false
@@ -723,6 +726,7 @@ struct Evening: View {
             if album { MemoryAlbum(found: save.memories, scale: scale) { album = false } }
             if journal { CompanionJournal(save: save, scale: scale) { journal = false } }
         }
+        .onAppear { if journalProbe { journal = true } }
     }
 }
 
