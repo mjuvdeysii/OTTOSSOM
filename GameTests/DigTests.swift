@@ -3,6 +3,39 @@ import XCTest
 
 /// The dig and the shop: the world, digging, the bag, the light, mixing colours, paying.
 final class DigTests: XCTestCase {
+    func testMemoryResponsesFollowDiscoveredIDsAndDrainWithoutSkipping() throws {
+        var save = DigSave()
+        save.memories = [8, 3, 3, 99]
+        XCTAssertEqual(save.nextMemoryStory, 3)
+        // Reloading before the last line must retain the pending conversation.
+        let restored = try JSONDecoder().decode(DigSave.self, from: JSONEncoder().encode(save))
+        XCTAssertEqual(restored.nextMemoryStory, 3)
+        save.finishMemoryStory(3)
+        XCTAssertEqual(save.nextMemoryStory, 8)
+        save.finishMemoryStory(8)
+        XCTAssertNil(save.nextMemoryStory)
+        XCTAssertFalse(save.seen.contains("story1"))
+        save.memories.append(1)
+        XCTAssertEqual(save.nextMemoryStory, 1)
+    }
+
+    func testMemoryResponsesRespectExistingSavesAndRejectUndiscoveredStones() {
+        var save = DigSave()
+        save.memories = [1, 2, 4]
+        save.seen = ["story1", "story2"]
+        save.finishMemoryStory(3)
+        XCTAssertFalse(save.seen.contains("story3"))
+        XCTAssertEqual(save.nextMemoryStory, 4)
+        XCTAssertEqual(Set(DigStory.afterNight.keys), Set(1...8))
+        for lines in DigStory.afterNight.values {
+            XCTAssertFalse(lines.isEmpty)
+            for line in lines {
+                XCTAssertNotNil(DigStory.castNames[line.who] ?? DigStory.customerName[line.who])
+                XCTAssertFalse(line.text.isEmpty)
+            }
+        }
+    }
+
     func testWorld() {
         let w = DigWorld(seed: 20261030)
         XCTAssertEqual(w.cells.count, DigWorld.W * DigWorld.H)

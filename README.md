@@ -1,10 +1,15 @@
 # 长夜 · OTTOSSOM
 
-Moss、Otto、Mosto 的 iOS 游戏：太阳一百天没有升起，三个角色各走一章，第四章汇合。俯视角格子冒险解谜，原生 SwiftUI，没有网页。
+Moss、Otto、Mosto 的原生 iOS 像素冒险，SwiftUI + Canvas。当前入口为 `Game/Pixel/DigGame.swift`。
 
-- 四章 21 个房间：守灯人（Otto · 照）、摸（Moss · 摸与推石）、影子大盗（Mosto · 抓光、飞过水）、让太阳睡一觉（三人轮换）
-- 规则：`Game/Engine/Rules.swift`；参考实现 `Tools/rooms/core.js`（房间设计与校验用，两者逐条一致）
-- 房间：`Tools/rooms/rooms.src.json` → `node Tools/rooms/build.js` → `Game/Resources/rooms.json`（带最短解）
-- 剧情：`Game/Resources/story.json`
-- 验证：CI 先用参考规则重解全部房间（`Tools/rooms/check.js`），再由 Swift 测试回放每个参考解、独立求解较小的房间，最短步数与搜索状态数必须一致
-- 构建：推送到 main 后构建、测试、给每个房间截图并上传 TestFlight；`dev/**` 分支只构建与测试。报告在 `ci-logs-<分支>` 分支
+夜间下井找光晶与八块记忆石，白天为镇民配灯，晚间升级工具。奥托牵住光线，莫斯探索地下，莫斯托在井底等待；放下背包、挥手完成第一章。
+
+- 物理与地下世界：`Game/Pixel/Dig.swift`
+- 经济、存档、对白：`Game/Pixel/Lamps.swift`
+- 场景与交互：`Game/Pixel/DigGame.swift`、`DigView.swift`
+- 角色世界观和待开发章节：[叙事基线](docs/narrative.md)
+- 测试：`GameTests/DigTests.swift`；macOS 上用 XcodeGen 生成工程，再运行 `xcodebuild test`。
+
+仓库也保留早期俯视角解谜与回合制 RPG 原型，当前不作为游戏入口。旧房间参考规则可用 `node Tools/rooms/check.js` 校验。
+
+`dev/**` 分支触发 iOS 构建和测试；`main` 还会归档并上传 TestFlight。CI 报告保存在 `ci-logs-<分支>` 分支。

@@ -72,6 +72,7 @@ struct DigGameView: View {
             afterTalk = { go(.night); Sound.shared.music(2) }
         } else if save.nightDone {
             save.openShop(); save.save(); go(.shop); Sound.shared.music(1)
+            tellMemoryStory()
         } else { go(.night); Sound.shared.music(2) }
     }
 
@@ -79,11 +80,15 @@ struct DigGameView: View {
         if probe != nil { return }
         save.openShop(); save.save()
         go(.shop); Sound.shared.music(1)
-        // the town answers what she has found: a few lines for the newest memory stone, once
-        let n = min(save.memories.count, 7)
-        if let k = (1...max(1, n)).first(where: { n > 0 && !save.seen.contains("story\($0)") }), let lines = DigStory.afterNight[k] {
-            save.seen.insert("story\(k)"); save.save()
-            talk = lines; afterTalk = nil
+        tellMemoryStory()
+    }
+
+    private func tellMemoryStory() {
+        guard let n = save.nextMemoryStory, let lines = DigStory.afterNight[n] else { return }
+        talk = lines
+        afterTalk = {
+            save.finishMemoryStory(n); save.save()
+            tellMemoryStory()
         }
     }
 

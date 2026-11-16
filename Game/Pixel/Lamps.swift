@@ -78,6 +78,19 @@ struct DigSave: Codable {
     }
     func save() { if let d = try? JSONEncoder().encode(self) { UserDefaults.standard.set(d, forKey: DigSave.key) } }
 
+    /// Respond to the stone actually found, never to the size of the collection.
+    /// Keep the marker pending until the conversation has been read so interruption can replay it.
+    var nextMemoryStory: Int? {
+        Set(memories).sorted().first {
+            DigStory.afterNight[$0] != nil && !seen.contains("story\($0)")
+        }
+    }
+
+    mutating func finishMemoryStory(_ n: Int) {
+        guard memories.contains(n), DigStory.afterNight[n] != nil else { return }
+        seen.insert("story\(n)")
+    }
+
     /// Who comes in today. The first days are written; after that people come for colours the dig can reach.
     mutating func openShop() {
         func add(_ who: String, _ c: LampColor) { orders.append(Order(id: nextOrder, who: who, color: c, since: day)); nextOrder += 1 }
@@ -160,15 +173,16 @@ enum DigStory {
     static let intro: [Say] = [
         s("h", "灯塔……又黑了。"), s("m", "底下有亮亮的！我的！"), s("o", "……嗯。线我拉着。"),
     ]
-    /// After a night, keyed by how many memory stones have been read: the town answers what she has found.
+    /// Keyed by stone ID: each response is safe to hear even if stones are found out of order.
     static let afterNight: [Int: [Say]] = [
         1: [s("o", "……回来了。"), s("m", "看！好多亮亮的。"), s("h", "天亮了，有人拿着灭掉的灯来找你们。")],
         2: [s("n", "听说灯塔开了灯铺？"), s("m", "我的灯铺。"), s("o", "……我们的。")],
-        3: [s("d", "地底下有一块会发光的石头吗？"), s("m", "有！上面刻着一个小石头。"), s("o", "像你。")],
+        3: [s("m", "石头上那个小家伙，搬了好多东西。"), s("d", "那它怎么牵朋友的手？"), s("m", "……可以先放下一件。")],
         4: [s("t3", "我年轻时下过那口井。越往下，越觉得有人在背后跟着。"), s("m", "是影子吧。"), s("t3", "影子会戴王冠吗？")],
         5: [s("h", "主灯还是暗的。光被偷到最深的地方去了。"), s("o", "……那就挖到最深。")],
         6: [s("m", "奥托，我的影子呢？"), s("o", "……在你脚下。"), s("m", "它刚才是不是没跟上？")],
         7: [s("n", "你背包里的东西越来越多了。"), s("m", "都是我的。"), s("n", "嗯。那你的手还空着吗？")],
+        8: [s("m", "最里面那个戴王冠的，在发抖。"), s("o", "……不是所有影子都想伤人。"), s("m", "这次我先挥手。你还拉着线吗？"), s("o", "一直拉着。")],
     ]
 
     /// The bottom of the well: what's said when she gets there, and after she has put the bag down and waved.
