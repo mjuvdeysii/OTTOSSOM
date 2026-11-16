@@ -565,11 +565,12 @@ struct LampShop: View {
                     ScrollView {
                         VStack(spacing: pt * 8) {
                             customer(o)
-                            counter(o)
+                            counter()
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, pt * 6)
                     }
+                    actions(o)
                 } else {
                     Spacer()
                     VStack(spacing: pt * 6) {
@@ -619,7 +620,7 @@ struct LampShop: View {
         }
     }
 
-    @ViewBuilder func counter(_ o: Order) -> some View {
+    @ViewBuilder func counter() -> some View {
         let pt = scale.pt, k = scale.k
         VStack(spacing: pt * 6) {
             // the lamp: its glass takes the colour of what's put in
@@ -631,45 +632,51 @@ struct LampShop: View {
                 PixelImage(name: "lamp", pt: pt * 3)
             }
             .offset(x: shake ? pt * 3 : 0)
-            // what's been put in
-            HStack(spacing: pt * 4) {
-                ForEach(0..<3, id: \.self) { i in
-                    Button { if lit == nil, i < picked.count { picked.remove(at: i); Sound.shared.step() } } label: {
-                        ZStack {
-                            Rectangle().fill(Color(0x0e0c18)).frame(width: pt * 18, height: pt * 18)
-                            if i < picked.count { PixelImage(name: "icon_\(picked[i].rawValue)", pt: pt) }
-                        }
-                        .overlay(Rectangle().strokeBorder(pxEdge, lineWidth: pt))
-                    }.buttonStyle(.plain)
+            if served == nil {
+                // what's been put in
+                HStack(spacing: pt * 4) {
+                    ForEach(0..<3, id: \.self) { i in
+                        Button { if lit == nil, i < picked.count { picked.remove(at: i); Sound.shared.step() } } label: {
+                            ZStack {
+                                Rectangle().fill(Color(0x0e0c18)).frame(width: pt * 18, height: pt * 18)
+                                if i < picked.count { PixelImage(name: "icon_\(picked[i].rawValue)", pt: pt) }
+                            }
+                            .overlay(Rectangle().strokeBorder(pxEdge, lineWidth: pt))
+                        }.buttonStyle(.plain)
+                    }
                 }
-            }
-            // the shelf: crystals she brought up
-            HStack(spacing: pt * 6) {
-                ForEach(Gem.allCases, id: \.self) { g in
-                    let have = (save.gems[g] ?? 0) - (served == nil ? picked.filter { $0 == g }.count : 0)
-                    Button {
-                        guard have > 0, picked.count < 3, lit == nil else { Sound.shared.no(); return }
-                        picked.append(g); Sound.shared.touch()
-                    } label: {
-                        VStack(spacing: pt * 2) {
-                            PixelImage(name: "icon_\(g.rawValue)", pt: pt * 2)
-                            Text("\(max(0, have))").font(PixelFont.font(1, k: k)).foregroundStyle(have > 0 ? pxCream : Color(0x5a5470))
-                        }
-                        .frame(width: pt * 34).padding(.vertical, pt * 4)
-                        .modifier(PixelPanel(pt: pt))
-                        .opacity(have > 0 ? 1 : 0.5)
-                    }.buttonStyle(.plain)
-                }
-            }
-            if served != nil {
-                PixelButton(title: "收好灯，下一位", k: k) {
-                    served = nil; lit = nil; picked = []; thanks = nil
-                }
-            } else {
+                // the shelf: crystals she brought up
                 HStack(spacing: pt * 6) {
-                    PixelButton(title: "改天再来", k: k, primary: false) { later(o) }
-                    PixelButton(title: "点灯", k: k, primary: !picked.isEmpty) { tryLight(o) }
+                    ForEach(Gem.allCases, id: \.self) { g in
+                        let have = (save.gems[g] ?? 0) - picked.filter { $0 == g }.count
+                        Button {
+                            guard have > 0, picked.count < 3, lit == nil else { Sound.shared.no(); return }
+                            picked.append(g); Sound.shared.touch()
+                        } label: {
+                            VStack(spacing: pt * 2) {
+                                PixelImage(name: "icon_\(g.rawValue)", pt: pt * 2)
+                                Text("\(max(0, have))").font(PixelFont.font(1, k: k)).foregroundStyle(have > 0 ? pxCream : Color(0x5a5470))
+                            }
+                            .frame(width: pt * 34).padding(.vertical, pt * 4)
+                            .modifier(PixelPanel(pt: pt))
+                            .opacity(have > 0 ? 1 : 0.5)
+                        }.buttonStyle(.plain)
+                    }
                 }
+            }
+        }
+    }
+
+    @ViewBuilder private func actions(_ o: Order) -> some View {
+        let pt = scale.pt, k = scale.k
+        if served != nil {
+            PixelButton(title: "收好灯，下一位", k: k) {
+                served = nil; lit = nil; picked = []; thanks = nil
+            }
+        } else {
+            HStack(spacing: pt * 6) {
+                PixelButton(title: "改天再来", k: k, primary: false) { later(o) }
+                PixelButton(title: "点灯", k: k, primary: !picked.isEmpty) { tryLight(o) }
             }
         }
     }
