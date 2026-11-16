@@ -562,10 +562,14 @@ struct LampShop: View {
                 .modifier(PixelPanel(pt: pt))
                 if let o = current {
                     GoalLine(text: served != nil ? "这盏灯，会亮在\(DigStory.name(o.who))的窗边" : save.seen.contains("recipe_\(o.color.rawValue)") ? "点亮\(DigStory.name(o.who))的灯" : "\(o.color.name)：放 \(o.color.recipe.map(gemName).joined(separator: " + "))", scale: scale)
-                    Spacer(minLength: pt * 4)
-                    customer(o)
-                    Spacer(minLength: pt * 4)
-                    counter(o)
+                    ScrollView {
+                        VStack(spacing: pt * 8) {
+                            customer(o)
+                            counter(o)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, pt * 6)
+                    }
                 } else {
                     Spacer()
                     VStack(spacing: pt * 6) {

@@ -21,14 +21,16 @@ struct TownLampTests {
         save.gems = [.amber: 2, .blue: 1]
         save.openShop()
         let first = try #require(save.orders.first { $0.who == "h" })
-        #expect(save.light(first, with: [.amber]))
+        let firstDelivered = save.light(first, with: [.amber])
+        #expect(firstDelivered)
         #expect(save.townLamps?["h"] == TownLamp(color: .amber, deliveries: 1, day: 1))
 
         save.day = 2
         let second = Order(id: save.nextOrder, who: "h", color: .green, since: 2)
         save.nextOrder += 1
         save.orders.append(second)
-        #expect(save.light(second, with: [.blue, .amber]))
+        let secondDelivered = save.light(second, with: [.blue, .amber])
+        #expect(secondDelivered)
         #expect(save.townLamps?["h"] == TownLamp(color: .green, deliveries: 2, day: 2))
         #expect(save.coins == first.pay + second.pay)
         #expect(save.gems[.amber] == 0)
@@ -46,24 +48,29 @@ struct TownLampTests {
         save.openShop()
         let live = try #require(save.orders.first)
         let before = Exchange(save)
-        #expect(!save.light(live, with: [.blue]))
+        let wrongColorDelivered = save.light(live, with: [.blue])
+        #expect(!wrongColorDelivered)
         #expect(Exchange(save) == before)
 
         var forged = live
         forged.who = "t3"
-        #expect(!save.light(forged, with: [.amber]))
+        let wrongCustomerDelivered = save.light(forged, with: [.amber])
+        #expect(!wrongCustomerDelivered)
         #expect(Exchange(save) == before)
         forged = live
         forged.color = .blue
-        #expect(!save.light(forged, with: [.blue]))
+        let forgedColorDelivered = save.light(forged, with: [.blue])
+        #expect(!forgedColorDelivered)
         #expect(Exchange(save) == before)
         forged = live
         forged.since = 0
-        #expect(!save.light(forged, with: [.amber]))
+        let forgedDateDelivered = save.light(forged, with: [.amber])
+        #expect(!forgedDateDelivered)
         #expect(Exchange(save) == before)
 
         save.day = 4
-        #expect(!save.light(live, with: [.amber]))
+        let expiredDelivered = save.light(live, with: [.amber])
+        #expect(!expiredDelivered)
         #expect(Exchange(save) == before)
     }
 
@@ -73,7 +80,8 @@ struct TownLampTests {
         save.orders = [order]
         save.gems = [.amber: 1]
         let before = Exchange(save)
-        #expect(!save.light(order, with: [.amber, .blue]))
+        let insufficientDelivered = save.light(order, with: [.amber, .blue])
+        #expect(!insufficientDelivered)
         #expect(Exchange(save) == before)
     }
 
@@ -82,12 +90,15 @@ struct TownLampTests {
         save.gems = [.amber: 3]
         save.openShop()
         let order = try #require(save.orders.first)
-        #expect(save.light(order, with: [.amber]))
+        let delivered = save.light(order, with: [.amber])
+        #expect(delivered)
         let paid = Exchange(save)
-        #expect(!save.light(order, with: [.amber]))
+        let deliveredAgain = save.light(order, with: [.amber])
+        #expect(!deliveredAgain)
         #expect(Exchange(save) == paid)
         let unknown = Order(id: 100, who: "h", color: .amber, since: 1)
-        #expect(!save.light(unknown, with: [.amber]))
+        let unknownDelivered = save.light(unknown, with: [.amber])
+        #expect(!unknownDelivered)
         #expect(Exchange(save) == paid)
     }
 
