@@ -547,7 +547,7 @@ struct NightResult: View {
             ScrollView {
                 VStack(spacing: pt * 6) {
                     if sim.outcome != 1 {
-                        Text("奥托拉莫斯回家时，她背着的物品掉了一半。")
+                        Text(sim.forgiving ? "奥托及时接住了背包，东西都在。" : "奥托拉莫斯回家时，她背着的物品掉了一半。")
                             .font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
                             .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                     }
