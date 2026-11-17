@@ -1,0 +1,12 @@
+town shade	Lv1	win 100%	rounds 2.0
+town 2 shades	Lv1	win 96%	rounds 5.8
+wilds shell	Lv2	win 100%	rounds 4.3
+wilds moth+shade	Lv2	win 100%	rounds 3.3
+wilds fang	Lv2	win 100%	rounds 3.2
+wilds shell+moth	Lv3	win 100%	rounds 4.0
+cellar fang+shade	Lv3	win 100%	rounds 4.3
+cellar 2 shells	Lv3	win 96%	rounds 8.4
+cellar 2 moths+shade	Lv3	win 100%	rounds 4.3
+big shade	Lv4	win 96%	rounds 9.7
+maw	Lv5	win 73%	rounds 13.1
+maw, attacks only	win 2%
