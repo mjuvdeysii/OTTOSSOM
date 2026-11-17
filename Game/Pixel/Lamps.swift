@@ -54,6 +54,12 @@ struct Order: Codable, Equatable, Identifiable {
     var pay: Int { 6 * color.recipe.count + (color.recipe.count > 1 ? 4 : 0) + (who == "h" ? 0 : 2) }
 }
 
+struct TownLamp: Codable, Equatable {
+    var color: LampColor
+    var deliveries: Int
+    var day: Int                  // the latest delivery, retained when the day's orders expire
+}
+
 struct DigSave: Codable {
     var day = 1
     var coins = 0
@@ -69,6 +75,7 @@ struct DigSave: Codable {
     var deepest = 0
     var progress: DigProgress?     // a night that was interrupted: picked up again where it stopped
     var lit: [String]?             // colours lit in the shop so far: they glow on the shelf
+    var townLamps: [String: TownLamp]? // customer ID → their latest lamp; absent in older saves
 
     static let key = "dig.save.v1"
     static func load() -> DigSave {
@@ -77,6 +84,19 @@ struct DigSave: Codable {
         return s
     }
     func save() { if let d = try? JSONEncoder().encode(self) { UserDefaults.standard.set(d, forKey: DigSave.key) } }
+
+    /// Respond to the stone actually found, never to the size of the collection.
+    /// Keep the marker pending until the conversation has been read so interruption can replay it.
+    var nextMemoryStory: Int? {
+        Set(memories).sorted().first {
+            DigStory.afterNight[$0] != nil && !seen.contains("story\($0)")
+        }
+    }
+
+    mutating func finishMemoryStory(_ n: Int) {
+        guard memories.contains(n), DigStory.afterNight[n] != nil else { return }
+        seen.insert("story\(n)")
+    }
 
     /// Who comes in today. The first days are written; after that people come for colours the dig can reach.
     mutating func openShop() {
@@ -104,15 +124,23 @@ struct DigSave: Codable {
         }
     }
 
-    /// Light a lamp with the chosen crystals: right colour → paid; wrong → the crystals come back.
+    /// Fulfil a live order once. Validate the whole exchange before consuming anything.
     mutating func light(_ order: Order, with picked: [Gem]) -> Bool {
-        guard LampColor.mix(picked) == order.color else { return false }
-        for g in picked { gems[g, default: 0] -= 1 }
+        guard let index = orders.firstIndex(of: order),
+              day - (order.since ?? day) < 3,
+              LampColor.mix(picked) == order.color else { return false }
+        let needed = picked.reduce(into: [Gem: Int]()) { $0[$1, default: 0] += 1 }
+        guard needed.allSatisfy({ (gems[$0.key] ?? 0) >= $0.value }) else { return false }
+
+        for (gem, count) in needed { gems[gem, default: 0] -= count }
         var l = lit ?? []
         if !l.contains(order.color.rawValue) { l.append(order.color.rawValue) }
         lit = l
+        var town = townLamps ?? [:]
+        town[order.who] = TownLamp(color: order.color, deliveries: (town[order.who]?.deliveries ?? 0) + 1, day: day)
+        townLamps = town
         coins += order.pay
-        orders.removeAll { $0.id == order.id }
+        orders.remove(at: index)
         return true
     }
 
@@ -126,6 +154,18 @@ struct DigSave: Codable {
         }
         coins += c
         return c
+    }
+
+    /// Both bags belong to this night. Settle only once, including after interruption recovery.
+    mutating func settleNight(_ sim: DigSim) -> Int? {
+        guard !nightDone, sim.outcome == 1 || sim.outcome == -1 else { return nil }
+        world = sim.world
+        progress = nil
+        let carriedCoins = bank(sim.bag)
+        let sentCoins = bank(sim.sentBag)
+        deepest = max(deepest, sim.deepest)
+        nightDone = true
+        return carriedCoins + sentCoins
     }
 
     static let upgradeCosts: [String: [Int]] = ["claw": [30, 90], "bag": [20, 60], "wick": [20, 60]]
@@ -156,19 +196,52 @@ struct DigSave: Codable {
 }
 
 enum DigStory {
+    struct Companion: Identifiable {
+        let id: String
+        let name: String
+        let sprite: String
+        let role: String
+        let text: String
+    }
+
+    static func companions(memories: [Int], reunited: Bool) -> [Companion] {
+        let found = Set(memories)
+        var moss = "喜欢摸亮亮的东西，也喜欢把它们带回家。今晚她下井，奥托在上面拉着线。"
+        if found.contains(7) { moss = "她曾把双手塞得满满的。记忆里，她终于放下瓶盖和硬币，空手去找没有跟上的朋友。" }
+        if reunited { moss = "在井底，她放下背包，先挥了挥手。亮东西还是喜欢的，但这次她记得给朋友留一只手。" }
+        let otto = reunited
+            ? "他没有替莫斯走完最后几步，只在井口牵着线。回来时，他说：两个都回来。"
+            : "话少，容易打瞌睡，却一直牵着莫斯的光线。灯芯会烧短，他等她回来的地方没有变。"
+        var result = [
+            Companion(id: "m", name: "莫斯 · Moss", sprite: "moss_idle_0", role: "下井找光的人", text: moss),
+            Companion(id: "o", name: "奥托 · Otto", sprite: "otto_idle_0", role: "井口的守灯人", text: otto),
+        ]
+        if reunited {
+            result.append(Companion(id: "x", name: "莫斯托 · Mosto", sprite: "mosto_fly_0", role: "一起回来的朋友", text: "他曾把珠子抱得紧紧的。看到莫斯空手挥手，他终于说：借你一半。歪王冠还戴着，光可以一起拿。"))
+        } else if found.contains(8) {
+            result.append(Companion(id: "x", name: "井底的小魔王", sprite: "mosto_fly_0", role: "抱着珠子的影子", text: "记忆里，他在暗处最里面发抖。莫斯朝他挥了挥手。也许下一次见面，不必先伸手去抢。"))
+        } else if found.contains(6) {
+            result.append(Companion(id: "x", name: "戴王冠的影子", sprite: "mosto_fly_0", role: "拿走珠子的家伙", text: "记忆里，他从墙上下来，抱走珠子，跑进暗处。他为什么不肯松手？还得再往下找。"))
+        } else if found.contains(2) {
+            result.append(Companion(id: "x", name: "墙上的朋友", sprite: "memory_2", role: "会回应挥手的影子", text: "小石头朝墙挥手，影子也挥手。那时它们还没有分开。"))
+        }
+        return result
+    }
+
     static func s(_ who: String, _ t: String) -> Say { Say(who: who, text: t) }
     static let intro: [Say] = [
         s("h", "灯塔……又黑了。"), s("m", "底下有亮亮的！我的！"), s("o", "……嗯。线我拉着。"),
     ]
-    /// After a night, keyed by how many memory stones have been read: the town answers what she has found.
+    /// Keyed by stone ID: each response is safe to hear even if stones are found out of order.
     static let afterNight: [Int: [Say]] = [
         1: [s("o", "……回来了。"), s("m", "看！好多亮亮的。"), s("h", "天亮了，有人拿着灭掉的灯来找你们。")],
         2: [s("n", "听说灯塔开了灯铺？"), s("m", "我的灯铺。"), s("o", "……我们的。")],
-        3: [s("d", "地底下有一块会发光的石头吗？"), s("m", "有！上面刻着一个小石头。"), s("o", "像你。")],
+        3: [s("m", "石头上那个小家伙，搬了好多东西。"), s("d", "那它怎么牵朋友的手？"), s("m", "……可以先放下一件。")],
         4: [s("t3", "我年轻时下过那口井。越往下，越觉得有人在背后跟着。"), s("m", "是影子吧。"), s("t3", "影子会戴王冠吗？")],
         5: [s("h", "主灯还是暗的。光被偷到最深的地方去了。"), s("o", "……那就挖到最深。")],
         6: [s("m", "奥托，我的影子呢？"), s("o", "……在你脚下。"), s("m", "它刚才是不是没跟上？")],
         7: [s("n", "你背包里的东西越来越多了。"), s("m", "都是我的。"), s("n", "嗯。那你的手还空着吗？")],
+        8: [s("m", "最里面那个戴王冠的，在发抖。"), s("o", "……不是所有影子都想伤人。"), s("m", "这次我先挥手。你还拉着线吗？"), s("o", "一直拉着。")],
     ]
 
     /// The bottom of the well: what's said when she gets there, and after she has put the bag down and waved.
@@ -201,6 +274,24 @@ struct DigProgress: Codable {
     var bag: Bag
     var light: Double
     var deepest: Int
+    var sentBag: Bag? = nil       // absent in older saves; nonempty also records Mosto's one trip this night
+    var atNest: Bool? = nil       // keep the ending encounter distinct from the following night
+}
+
+extension DigProgress {
+    init(_ sim: DigSim) {
+        self.init(world: sim.world, x: sim.p.x, y: sim.p.y, bag: sim.bag,
+                  light: sim.light, deepest: sim.deepest, sentBag: sim.sentBag.count > 0 ? sim.sentBag : nil,
+                  atNest: sim.atNest ? true : nil)
+    }
+
+    func restore(into sim: inout DigSim) {
+        sim.world = world; sim.p = V2(x, y); sim.bag = bag; sim.light = light
+        sim.sentBag = sentBag ?? Bag()
+        sim.atNest = atNest ?? false
+        sim.deepest = deepest; sim.started = true
+        sim.thread = [sim.otto + V2(-6, -25), sim.p]
+    }
 }
 
 /// What happens, kept on the device only, so a TestFlight round can be judged on numbers: opens, nights, depths,

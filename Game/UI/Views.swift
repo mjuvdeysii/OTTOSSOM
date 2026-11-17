@@ -29,7 +29,12 @@ struct RootView: View {
             nightBG.ignoresSafeArea()
             switch router.screen {
             case .title: DigGameView().transition(.opacity)
-            case .dig(let what): DigGameView(probe: what).id(what)
+            case .dig(let what):
+                if what.hasSuffix("_compact") {
+                    // Snapshot-only viewport: keep short/narrow layouts in the native capture pass.
+                    DigGameView(probe: String(what.dropLast(8)))
+                        .frame(width: 320, height: 568).clipped().id(what)
+                } else { DigGameView(probe: what).id(what) }
             case .pixel(let what): PixelGameView(probe: what).id(what)
             case .chapter(let id):
                 if let ch = Content.chapters.first(where: { $0.id == id }) {

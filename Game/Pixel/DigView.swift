@@ -177,6 +177,23 @@ enum DigPainter {
             }
             f.line(prev, sim.p + off + V2(0, -8), gold, glow: amber)
         }
+        // After the reunion he follows Moss, then waits with the delivered bag beside Otto.
+        // Draw over the light thread so it cannot cross his face; keep the whole sprite in the shaft.
+        if sim.nestDone {
+            let delivered = sim.sentBag.count > 0
+            let name = delivered ? "mosto_carry_\(Int(clock * 4) % 2)" : "mosto_fly_\(Int(clock * 4) % 2)"
+            if let mo = PixelArt.sprite(name) {
+                let half = Double(mo.w) / 2
+                var x = delivered ? sim.otto.x + 30 : sim.p.x - sim.face * 28
+                if !delivered && (x < half || x > Double(W * T) - half) { x = sim.p.x + sim.face * 28 }
+                x = max(half, min(Double(W * T) - half, x))
+                let y = (delivered ? sim.otto.y - 4 : sim.p.y - 12) + sin(clock * 3) * 2
+                let feet = V2(x, y) + off
+                if feet.y > 0 && feet.y - Double(mo.h) < Double(f.h) {
+                    f.draw(mo, feet: Int(feet.x), Int(feet.y), flip: !delivered && sim.face < 0)
+                }
+            }
+        }
         // the shadows, over the dark so their eyes read
         for s in sim.shades {
             let name = s.moth ? "moth_\(Int(clock * 10) % 2)" : "shade_\(Int(clock * 6) % 2)"
@@ -269,7 +286,7 @@ final class DigCanvas: UIView {
     var finger: CGPoint?
     var downAt: CFTimeInterval = 0
     var moved = false
-    var command: String?            // set from SwiftUI: "reel", "closeMemory"
+    var command: String?            // set from SwiftUI: "reel", "closeMemory", "drop", "share"
     var shake = 0.0
     var drawnPaused = false
     var hudTarget: V2 { V2(Double(scale.w) - 30, Double(SafeArea.top / scale.pt) + 14) }
@@ -313,6 +330,7 @@ final class DigCanvas: UIView {
             if c == "reel" { sim.reelIn() }
             if c == "closeMemory" { sim.openMemory = nil }
             if c == "drop" { sim.bag = Bag() }
+            if c == "share" { _ = sim.shareWithMosto() }
         }
         if demo && !paused { demoSteer() }
         // a held finger keeps meaning "toward here", even as she walks past it or the view scrolls

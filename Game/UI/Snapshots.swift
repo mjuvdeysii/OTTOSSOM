@@ -12,12 +12,31 @@ enum Snapshots {
     static func say(_ name: String) { try? name.write(to: dir.appendingPathComponent("now.txt"), atomically: true, encoding: .utf8) }
     static func wait(_ s: Double) async { try? await Task.sleep(for: .milliseconds(Int(s * 1000))) }
 
+    /// The simulator may take longer than a frame to capture. Hold this scene until the host confirms it.
+    static func capture(_ name: String) async -> Bool {
+        say(name)
+        let ack = dir.appendingPathComponent("ack.txt")
+        for _ in 0..<600 {
+            if Task.isCancelled { return false }
+            if (try? String(contentsOf: ack, encoding: .utf8)) == name { return true }
+            await wait(0.1)
+        }
+        say("failed_\(name)")
+        return false
+    }
+
     static func run(_ router: Router) async {
         Sound.shared.enabled = false
-        router.screen = .dig("title"); await wait(4.5); say("00_title"); await wait(6.0)
-        for (what, hold) in [("dig", 9.0), ("deep", 9.0), ("memory", 4.0), ("ending", 4.0), ("shop", 4.0), ("shoptalk", 4.0), ("evening", 4.0)] {
+        try? FileManager.default.removeItem(at: dir.appendingPathComponent("ack.txt"))
+        router.screen = .dig("title"); await wait(4.5)
+        guard await capture("00_title") else { return }
+        for (what, hold) in [("dig", 9.0), ("deep", 9.0), ("memory", 4.0), ("ending", 4.0), ("shop", 4.0), ("delivery", 4.0), ("shoptalk", 4.0), ("evening", 4.0), ("companions", 4.0), ("shadowfriend", 4.0), ("townempty", 4.0), ("townlights", 4.0), ("lit_evening", 4.0), ("evening_compact", 4.0), ("shadowfriend_compact", 4.0), ("townlights_compact", 4.0), ("shop_compact", 4.0), ("delivery_compact", 4.0)] {
             router.screen = .dig(what); await wait(hold)
-            say("dg_\(what)"); await wait(8.0)
+            guard await capture("dg_\(what)") else { return }
+        }
+        for what in ["mosto_follow", "mosto_sent", "mosto_home", "mosto_dark", "ending_resume", "mosto_follow_compact", "mosto_dark_compact"] {
+            router.screen = .dig(what); await wait(4.0)
+            guard await capture("dg_\(what)") else { return }
         }
         router.screen = .title; await wait(1)
         say("done")

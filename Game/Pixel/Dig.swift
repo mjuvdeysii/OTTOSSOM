@@ -166,6 +166,30 @@ struct Bag: Codable, Equatable {
         for g in Gem.allCases { gems[g] = (gems[g] ?? 0) / 2 }
         for t in Trinket.allCases { trinkets[t] = (trinkets[t] ?? 0) / 2 }
     }
+
+    /// Hand over half the whole bag, in a stable order, leaving the odd item with Moss.
+    mutating func takeHalf() -> Bag {
+        var given = Bag()
+        var remaining = count / 2
+        guard remaining > 0 else { return given }
+        for gem in Gem.allCases {
+            let n = min(remaining, gems[gem] ?? 0)
+            if n > 0 {
+                gems[gem, default: 0] -= n
+                given.gems[gem] = n
+                remaining -= n
+            }
+        }
+        for trinket in Trinket.allCases {
+            let n = min(remaining, trinkets[trinket] ?? 0)
+            if n > 0 {
+                trinkets[trinket, default: 0] -= n
+                given.trinkets[trinket] = n
+                remaining -= n
+            }
+        }
+        return given
+    }
 }
 
 struct Shade {
@@ -191,6 +215,7 @@ struct DigSim {
     var light: Double
     var lightMax: Double
     var bag = Bag()
+    var sentBag = Bag()            // carried safely home by Mosto, once per night after the reunion
     var capacity: Int
     var claw: Int
     var shades: [Shade] = []
@@ -286,6 +311,18 @@ struct DigSim {
     mutating func reelIn() {
         guard outcome == 0 else { return }
         outcome = 1; events.append(.home)
+    }
+
+    var canShareWithMosto: Bool {
+        nestDone && outcome == 0 && !atNest && bag.count >= 2 && sentBag.count == 0
+    }
+
+    /// Mosto carries half home. The first meeting must finish before a later night's sharing.
+    mutating func shareWithMosto() -> Bool {
+        guard canShareWithMosto else { return false }
+        sentBag = bag.takeHalf()
+        greedTimer = 0
+        return true
     }
 
     // MARK: step
