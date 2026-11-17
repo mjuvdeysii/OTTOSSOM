@@ -156,6 +156,18 @@ struct DigSave: Codable {
         return c
     }
 
+    /// Both bags belong to this night. Settle only once, including after interruption recovery.
+    mutating func settleNight(_ sim: DigSim) -> Int? {
+        guard !nightDone, sim.outcome == 1 || sim.outcome == -1 else { return nil }
+        world = sim.world
+        progress = nil
+        let carriedCoins = bank(sim.bag)
+        let sentCoins = bank(sim.sentBag)
+        deepest = max(deepest, sim.deepest)
+        nightDone = true
+        return carriedCoins + sentCoins
+    }
+
     static let upgradeCosts: [String: [Int]] = ["claw": [30, 90], "bag": [20, 60], "wick": [20, 60]]
 
     var goal: String { goal(depth: nil) }
@@ -262,6 +274,24 @@ struct DigProgress: Codable {
     var bag: Bag
     var light: Double
     var deepest: Int
+    var sentBag: Bag? = nil       // absent in older saves; nonempty also records Mosto's one trip this night
+    var atNest: Bool? = nil       // keep the ending encounter distinct from the following night
+}
+
+extension DigProgress {
+    init(_ sim: DigSim) {
+        self.init(world: sim.world, x: sim.p.x, y: sim.p.y, bag: sim.bag,
+                  light: sim.light, deepest: sim.deepest, sentBag: sim.sentBag.count > 0 ? sim.sentBag : nil,
+                  atNest: sim.atNest ? true : nil)
+    }
+
+    func restore(into sim: inout DigSim) {
+        sim.world = world; sim.p = V2(x, y); sim.bag = bag; sim.light = light
+        sim.sentBag = sentBag ?? Bag()
+        sim.atNest = atNest ?? false
+        sim.deepest = deepest; sim.started = true
+        sim.thread = [sim.otto + V2(-6, -25), sim.p]
+    }
 }
 
 /// What happens, kept on the device only, so a TestFlight round can be judged on numbers: opens, nights, depths,

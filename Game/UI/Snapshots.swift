@@ -34,6 +34,10 @@ enum Snapshots {
             router.screen = .dig(what); await wait(hold)
             guard await capture("dg_\(what)") else { return }
         }
+        for what in ["mosto_follow", "mosto_sent", "mosto_home", "mosto_dark", "ending_resume", "mosto_follow_compact", "mosto_dark_compact"] {
+            router.screen = .dig(what); await wait(4.0)
+            guard await capture("dg_\(what)") else { return }
+        }
         router.screen = .title; await wait(1)
         say("done")
     }

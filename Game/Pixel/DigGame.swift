@@ -20,6 +20,14 @@ struct DigGameView: View {
             sv.seen = ["intro"]
             switch p {
             case "dig", "memory", "ending": ph = .night
+            case "mosto_follow", "mosto_sent", "mosto_home", "mosto_dark":
+                ph = .night; sv.day = 2; sv.seen.insert("ending"); sv.memories = Array(1...8)
+            case "ending_resume":
+                ph = .night; sv.day = 4; sv.seen.insert("ending"); sv.coins = 60
+                var sim = DigSim(world: sv.world, upgrades: [:], seed: 1)
+                sim.atNest = true
+                sim.p = V2(Double(DigWorld.nestX) * DigSim.T, Double(DigWorld.nestY + 1) * DigSim.T)
+                sv.progress = DigProgress(sim)
             case "deep":
                 ph = .night
                 // a shaft already dug part of the way down
@@ -58,7 +66,8 @@ struct DigGameView: View {
                 case .title:
                     PixelTitle(scale: sc, resume: save.day > 1 || save.seen.contains("intro")) { begin() }
                 case .night:
-                    DigNight(save: $save, scale: sc, demo: probe != nil, memoryProbe: probe == "memory", endingProbe: probe == "ending") { endNight() }.id(nightID)
+                    DigNight(save: $save, scale: sc, demo: probe != nil, memoryProbe: probe == "memory", endingProbe: probe == "ending",
+                             companionProbe: probe?.hasPrefix("mosto_") == true ? probe : nil) { endNight() }.id(nightID)
                 case .shop:
                     LampShop(save: $save, scale: sc, demo: probe != nil, receiptProbe: probe == "delivery") { go(.evening) }
                 case .evening:
@@ -170,6 +179,7 @@ struct DigNight: View {
     let scale: PixelScale
     var demo = false
     var memoryProbe = false
+    let companionProbe: String?
     var done: () -> Void
     @Environment(\.scenePhase) private var phase
     @State private var sim: DigSim
@@ -185,11 +195,15 @@ struct DigNight: View {
     @State private var box = SimBox()
     @State private var pulse = false
 
-    struct HUD: Equatable { var light = 1.0; var depth = 0; var bag = 0; var cap = 8 }
+    struct HUD: Equatable {
+        var light = 1.0; var depth = 0; var bag = 0; var cap = 8
+        var companion = false; var canShare = false; var sent = 0
+    }
     final class SimBox { var sim: DigSim? }
 
-    init(save: Binding<DigSave>, scale: PixelScale, demo: Bool, memoryProbe: Bool, endingProbe: Bool = false, done: @escaping () -> Void) {
+    init(save: Binding<DigSave>, scale: PixelScale, demo: Bool, memoryProbe: Bool, endingProbe: Bool = false, companionProbe: String? = nil, done: @escaping () -> Void) {
         _save = save; self.scale = scale; self.demo = demo; self.memoryProbe = memoryProbe; self.done = done
+        self.companionProbe = companionProbe
         let s = save.wrappedValue
         var sim = DigSim(world: s.world, upgrades: s.upgrades, seed: UInt64(s.day) * 977 + 13)
         sim.nestDone = s.seen.contains("ending")
@@ -197,13 +211,33 @@ struct DigNight: View {
         sim.demoFlashDone = s.seen.contains("demoflash")
         if let pr = s.progress {
             // carry on from where the night was stopped
-            sim.world = pr.world; sim.p = V2(pr.x, pr.y); sim.bag = pr.bag; sim.light = pr.light
-            sim.deepest = pr.deepest; sim.started = true
-            sim.thread = [sim.otto + V2(-6, -25), sim.p]
+            pr.restore(into: &sim)
+            if sim.atNest {
+                if s.seen.contains("ending") {
+                    _nestStage = State(initialValue: 3)
+                    _endCard = State(initialValue: true)
+                } else {
+                    _nestStage = State(initialValue: 1)
+                    _talk = State(initialValue: DigStory.nestMeet)
+                }
+            }
         } else if s.day > 1 {
             sim.regrow()
         }
+        if let companionProbe {
+            for y in DigWorld.ground...(DigWorld.ground + 5) { for x in 3...9 { sim.world.set(x, y, .air) } }
+            let depth = companionProbe == "mosto_sent" ? 0 : 4
+            sim.p = V2(6.5 * DigSim.T, Double(DigWorld.ground + depth) * DigSim.T)
+            sim.bag = Bag(gems: [.amber: 2, .blue: 1], trinkets: [.coin: 2])
+            sim.deepest = sim.depth; sim.started = true
+            sim.thread = [sim.otto + V2(-6, -25), sim.p]
+            if companionProbe != "mosto_follow" { _ = sim.shareWithMosto() }
+            if companionProbe == "mosto_home" { sim.reelIn() }
+            if companionProbe == "mosto_dark" { sim.light = 0; sim.step(0.01) }
+        }
         _sim = State(initialValue: sim)
+        _hud = State(initialValue: HUD(light: sim.light / sim.lightMax, depth: sim.depth, bag: sim.bag.count, cap: sim.capacity,
+                                       companion: sim.nestDone && !sim.atNest, canShare: sim.canShareWithMosto, sent: sim.sentBag.count))
         if memoryProbe { _memory = State(initialValue: 6) }
         if endingProbe { _nestStage = State(initialValue: 2) }
     }
@@ -212,7 +246,7 @@ struct DigNight: View {
         let pt = scale.pt, k = scale.k
         let full = hud.bag >= hud.cap
         ZStack {
-            DigCanvasView(sim: sim, scale: scale, paused: result != nil || !talk.isEmpty || endCard || away || nestStage == 1 || nestStage == 2, demo: demo, command: $command,
+            DigCanvasView(sim: sim, scale: scale, paused: companionProbe != nil || result != nil || !talk.isEmpty || endCard || away || nestStage == 1 || nestStage == 2, demo: demo, command: $command,
                           onEvents: handle, onTick: tick)
                 .frame(width: CGFloat(scale.w) * pt, height: CGFloat(scale.h) * pt)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -231,6 +265,11 @@ struct DigNight: View {
                         Text(goalText).font(PixelFont.font(1, k: k)).foregroundStyle(pxCream).lineLimit(1).minimumScaleFactor(0.7)
                         Spacer(minLength: 0)
                     }
+                    if hud.companion {
+                        Text(hud.sent > 0 ? "莫斯托送回 \(hud.sent) 件 · 本夜已帮忙" : "莫斯托同行 · 满两件可分一半，每夜一次")
+                            .font(PixelFont.font(1, k: k)).foregroundStyle(Color(0xc8a0ff))
+                            .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .padding(.horizontal, pt * 6).padding(.vertical, pt * 4)
                 .modifier(PixelPanel(pt: pt, fill: Color(0x141024).opacity(0.92)))
@@ -244,7 +283,11 @@ struct DigNight: View {
                     case 2:
                         PixelButton(title: "朝他挥挥手", k: k) { wave() }
                     default:
-                        PixelButton(title: "收线回家", k: k, primary: full || hud.light < 0.2) { command = "reel" }
+                        if hud.companion {
+                            PixelButton(title: hud.sent > 0 ? "已送 \(hud.sent) 件" : "分一半", k: k, primary: hud.canShare && hud.light >= 0.2) { command = "share" }
+                                .disabled(!hud.canShare).opacity(hud.canShare ? 1 : 0.55)
+                        }
+                        PixelButton(title: "收线回家", k: k, primary: (full && !hud.canShare) || hud.light < 0.2) { command = "reel" }
                             .scaleEffect(full && pulse ? 1.08 : 1)
                     }
                 }
@@ -271,7 +314,9 @@ struct DigNight: View {
         .frame(width: CGFloat(scale.w) * scale.pt)
         .animation(.easeInOut(duration: 0.25), value: memory)
         .onAppear {
-            if save.progress == nil { Telemetry.log("night_start day=\(save.day)") } else { Telemetry.log("night_resume day=\(save.day)") }
+            if !demo {
+                if save.progress == nil { Telemetry.log("night_start day=\(save.day)") } else { Telemetry.log("night_resume day=\(save.day)") }
+            }
             withAnimation(.easeInOut(duration: 0.45).repeatForever(autoreverses: true)) { pulse = true }
         }
         .onChange(of: phase) { _, p in
@@ -288,7 +333,12 @@ struct DigNight: View {
 
     private func tick(_ s: DigSim) {
         box.sim = s
-        let h = HUD(light: (s.light / s.lightMax * 40).rounded(.up) / 40, depth: s.depth, bag: s.bag.count, cap: s.capacity)
+        let h = HUD(light: (s.light / s.lightMax * 40).rounded(.up) / 40, depth: s.depth, bag: s.bag.count, cap: s.capacity,
+                    companion: s.nestDone && !s.atNest, canShare: s.canShareWithMosto, sent: s.sentBag.count)
+        if h.sent > 0 && hud.sent == 0 {
+            if !demo { Sound.shared.motif(.mosto); Feel.play(.light); Telemetry.log("mosto_share day=\(save.day) count=\(h.sent)") }
+            keepProgress()
+        }
         if s.light / s.lightMax < 0.2 && s.light > 0 && Int(s.t) != Int(s.t - 1.0 / 60) && Int(s.t) % 2 == 0 && result == nil && s.outcome == 0 {
             Sound.shared.heartbeat(); Feel.play(.heartbeat)
         }
@@ -350,8 +400,10 @@ struct DigNight: View {
     }
     private func talkDone() {
         if nestStage == 3 {
-            save.seen.insert("ending")
-            save.coins += 60          // the lighthouse's thanks, sent down by Hank
+            if !save.seen.contains("ending") {
+                save.seen.insert("ending")
+                save.coins += 60      // the lighthouse's thanks, sent down by Hank
+            }
             save.save()
             Telemetry.log("ending day=\(save.day)")
             Sound.shared.music(0)
@@ -366,21 +418,18 @@ struct DigNight: View {
 
     private func keepProgress() {
         guard let s = box.sim, s.outcome == 0, result == nil, !demo else { return }
-        save.progress = DigProgress(world: s.world, x: s.p.x, y: s.p.y, bag: s.bag, light: s.light, deepest: s.deepest)
+        save.progress = DigProgress(s)
         save.save()
     }
 
     private func finish(_ s: DigSim) {
         var sv = save
-        sv.world = s.world
-        sv.progress = nil
-        banked = sv.bank(s.bag)
-        sv.deepest = max(sv.deepest, s.deepest)
-        sv.nightDone = true
-        sv.save()
+        guard result == nil, let coins = sv.settleNight(s) else { return }
+        banked = coins
+        if !demo { sv.save() }
         save = sv
         result = s
-        Telemetry.log("night_end day=\(sv.day) depth=\(s.deepest) bag=\(s.bag.count) outcome=\(s.outcome) secs=\(Int(s.t))")
+        if !demo { Telemetry.log("night_end day=\(sv.day) depth=\(s.deepest) bag=\(s.bag.count) sent=\(s.sentBag.count) outcome=\(s.outcome) secs=\(Int(s.t))") }
         if s.outcome == 1 { Sound.shared.take() } else { Sound.shared.dim() }
     }
 }
@@ -495,28 +544,59 @@ struct NightResult: View {
         let pt = scale.pt, k = scale.k
         VStack(spacing: pt * 6) {
             Text(sim.outcome == 1 ? "收线回家" : "灯灭了").font(PixelFont.font(2, k: k)).foregroundStyle(sim.outcome == 1 ? pxGold : Color(0xb8c0e0))
-            if sim.outcome != 1 {
-                Text("奥托把莫斯拉了回来，背包里的东西掉了一半").font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
-                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-            }
-            Text("最深 \(sim.deepest) 米").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
-            let items: [(String, Int)] = Gem.allCases.map { ("icon_\($0.rawValue)", sim.bag.gems[$0] ?? 0) } + Trinket.allCases.map { ("icon_\($0.rawValue)", sim.bag.trinkets[$0] ?? 0) }
-            let shown = items.filter { $0.1 > 0 }
-            if shown.isEmpty {
-                Text("空手回来了").font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
-            } else {
-                HStack(spacing: pt * 6) {
-                    ForEach(shown.indices, id: \.self) { i in Counter(icon: shown[i].0, text: "×\(shown[i].1)", scale: scale) }
+            ScrollView {
+                VStack(spacing: pt * 6) {
+                    if sim.outcome != 1 {
+                        Text("奥托拉莫斯回家时，她背着的物品掉了一半。")
+                            .font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
+                            .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Text("最深 \(sim.deepest) 米").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
+                    if sim.sentBag.count > 0 {
+                        Text("莫斯背回来的").font(PixelFont.font(1, k: k)).foregroundStyle(pxCream)
+                    }
+                    contents(sim.bag, empty: sim.sentBag.count > 0 ? "身上的背包空了" : "空手回来了")
+                    if sim.sentBag.count > 0 {
+                        Text("莫斯托已送回 \(sim.sentBag.count) 件")
+                            .font(PixelFont.font(1, k: k)).foregroundStyle(Color(0xc8a0ff))
+                        contents(sim.sentBag, empty: "")
+                        Text("奥托已经收好，这一包没有丢。")
+                            .font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
+                            .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if coins > 0 {
+                        Text("汉克收走小玩意 +\(coins) 枚硬币")
+                            .font(PixelFont.font(1, k: k)).foregroundStyle(pxGold)
+                            .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
-            if coins > 0 { Counter(icon: "icon_coin", text: "汉克收走小玩意 +\(coins)", scale: scale, color: pxGold) }
+            .frame(maxHeight: pt * 210)
             PixelButton(title: "天亮了", k: k) { next() }
         }
         .padding(pt * 10)
         .modifier(PixelPanel(pt: pt, fill: Color(0x141024)))
         .padding(.horizontal, pt * 8)
+        .padding(.top, SafeArea.top + pt * 2)
+        .padding(.bottom, SafeArea.bottom + pt * 4)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.6).ignoresSafeArea())
+    }
+
+    @ViewBuilder private func contents(_ bag: Bag, empty: String) -> some View {
+        let pt = scale.pt, k = scale.k
+        let items = Gem.allCases.map { ("icon_\($0.rawValue)", bag.gems[$0] ?? 0) }
+            + Trinket.allCases.map { ("icon_\($0.rawValue)", bag.trinkets[$0] ?? 0) }
+        let shown = items.filter { $0.1 > 0 }
+        if shown.isEmpty {
+            Text(empty).font(PixelFont.font(1, k: k)).foregroundStyle(Color(0x9a94b8))
+        } else {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: pt * 4), count: 3), spacing: pt * 4) {
+                ForEach(shown.indices, id: \.self) { i in
+                    Counter(icon: shown[i].0, text: "×\(shown[i].1)", scale: scale)
+                }
+            }
+        }
     }
 }
 
